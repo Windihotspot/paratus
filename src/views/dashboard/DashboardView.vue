@@ -1,46 +1,55 @@
 <template>
  <MainLayout>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
-    <!-- Received from Bank -->
-    <div
-      class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
-    >
-      <div class="p-3 text-blue-600">
-        <i class="fas fa-building-columns text-lg"></i>
+    <div class="p-4">
+      <!-- Loading State -->
+      <div v-if="loading" class="flex flex-col items-center justify-center min-h-[200px]">
+        <v-progress-circular indeterminate color="#27bfa0" size="40" width="4" />
+        <span class="mt-2 text-gray-600 text-sm">Loading Dashboard</span>
       </div>
-      <div class="ml-4">
-        <p class="text-gray-500 text-sm">Received from Bank</p>
-        <p class="text-lg font-medium">{{ kpis.total_facilities_from_banks }}</p>
-      </div>
-    </div>
 
-    <!-- Disbursed to Customers -->
-    <div
-      class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
-    >
-      <div class="p-3 text-green-600">
-        <i class="fas fa-money-bill-wave text-lg"></i>
-      </div>
-      <div class="ml-4">
-        <p class="text-gray-500 text-sm">Disbursed to Customers</p>
-        <p class="text-lg font-medium">{{ kpis.total_disbursed_loans }}</p>
-      </div>
-    </div>
+      <!-- KPIs Grid -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Received from Bank -->
+        <div
+          class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
+        >
+          <div class="p-3 text-blue-600">
+            <i class="fas fa-building-columns text-lg"></i>
+          </div>
+          <div class="ml-4">
+            <p class="text-gray-500 text-sm">Received from Bank</p>
+            <p class="text-lg font-medium">{{ kpis.total_facilities_from_banks }}</p>
+          </div>
+        </div>
 
-    <!-- Balance -->
-    <div
-      class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
-    >
-      <div class="p-3 text-purple-600">
-        <i class="fas fa-wallet text-lg"></i>
-      </div>
-      <div class="ml-4">
-        <p class="text-gray-500 text-sm">Balance</p>
-        <p class="text-lg font-medium">{{ kpis.outstanding_facility_balance }}</p>
+        <!-- Disbursed to Customers -->
+        <div
+          class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
+        >
+          <div class="p-3 text-green-600">
+            <i class="fas fa-money-bill-wave text-lg"></i>
+          </div>
+          <div class="ml-4">
+            <p class="text-gray-500 text-sm">Disbursed to Customers</p>
+            <p class="text-lg font-medium">{{ kpis.total_disbursed_loans }}</p>
+          </div>
+        </div>
+
+        <!-- Balance -->
+        <div
+          class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
+        >
+          <div class="p-3 text-purple-600">
+            <i class="fas fa-wallet text-lg"></i>
+          </div>
+          <div class="ml-4">
+            <p class="text-gray-500 text-sm">Balance</p>
+            <p class="text-lg font-medium">{{ kpis.outstanding_facility_balance }}</p>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</MainLayout>
+  </MainLayout>
 
 </template>
 
@@ -52,6 +61,7 @@ import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+const loading = ref(false)
 
 // KPI reactive variables
 const kpis = ref({
@@ -71,6 +81,7 @@ const formatCurrency = (value) => {
 }
 
 const fetchFinancialKPIs = async () => {
+  loading.value = true
   if (!authStore.merchant?.id) return
 
   const merchantId = authStore.merchant.id
@@ -88,6 +99,7 @@ const fetchFinancialKPIs = async () => {
       outstanding_facility_balance: formatCurrency(data.balance)
     }
   }
+  loading.value = false
 }
 
 onMounted(() => {
