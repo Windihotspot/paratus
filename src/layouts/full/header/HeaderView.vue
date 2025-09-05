@@ -1,111 +1,37 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue'
-import axios from 'axios'
+import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth' // your Pinia auth store
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-const authStore = useAuthStore()
-const savedAuth = localStorage.getItem('data') ? JSON.parse(localStorage.getItem('data')) : null
-
-
-const token = savedAuth
-  ? savedAuth?.token
-  : computed(() => authStore.token)?.value;
-
-const tenantId = savedAuth
-  ? savedAuth.user?.business_name
-    ? savedAuth.user?.id
-    : savedAuth.user?.tenant_id
-  : computed(() =>
-      authStore.user?.business_name ? authStore.user.id : authStore.user.tenant_id
-    )?.value;
-
-const user = savedAuth?.user
 
 const router = useRouter()
-const buisnessName = ref('')
+const authStore = useAuthStore()
 
-const getRoleLabelById = (id) => {
-  return roles.value[id - 1]?.label || 'N/A'
-}
-
-const displayName = computed(() => {
-  if (!user) return ''
-  return user.business_name || `${user.firstname} ${user.lastname}`
+// Computed properties for the header
+const userInitials = computed(() => {
+  if (!authStore.merchant?.business_name) return ''
+  return authStore.merchant.business_name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
 })
 
-const userInitials = computed(() => {
-  if (!user) return ''
-
-  if (user.business_name) {
-    return user.business_name.slice(0, 2).toUpperCase()
-  }
-
-  const first = user.firstname?.charAt(0).toUpperCase() || ''
-  const last = user.lastname?.charAt(0).toUpperCase() || ''
-  return first + last
+const displayName = computed(() => {
+  return authStore.merchant?.business_name || authStore.user?.full_name || ''
 })
 
 const displayRole = computed(() => {
-  return getRoleLabelById(user?.role_id)
+  return authStore.user ? 'Merchant' : ''
 })
-
-// Reactive variable to handle loading state
-const isLoading = ref(false)
-const errorMessage = ref(null)
 
 // Logout function
 const logout = async () => {
-  isLoading.value = true
-  errorMessage.value = null
-
-  try {
-    const response = await axios.post(
-      `https://staging.getjupita.com/api/${tenantId}/logout`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      }
-    )
-
-    // Handle the successful logout
-    console.log('Logged out successfully:', response.data)
-
-    // Redirect to login page or any other page
-    router.push('/')
-  } catch (error) {
-    // Handle errors
-    errorMessage.value = error.response?.data?.message || error.message
-    console.error('Logout failed:', errorMessage.value)
-  } finally {
-    isLoading.value = false
-  }
+  authStore.logout()  // call the correct Pinia store method
+  router.push('/')
 }
-
-const roles = ref([
-  { value: 'tenant', label: 'Tenant' },
-  { value: 'super_admin', label: 'Super Admin' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'credit_manager', label: 'Credit Manager' },
-  { value: 'loan_manager', label: 'Loan Manager' },
-  { value: 'analysis_manager', label: 'Analysis Manager' },
-  { value: 'observer', label: 'Observer' }
-])
-const getRoleLabel = (roleValue) => {
-  const found = roles.value.find((r) => r.value === roleValue)
-  return found ? found.label : 'N/A'
-}
-
-onMounted(() => {
-  getRoleLabel()
-
-  if (user) {
-    buisnessName.value = user.business_name
-  }
-})
 </script>
+
+
 
 <template>
   <div class="header items-center px-4 py-4 bg-white">
@@ -126,7 +52,7 @@ onMounted(() => {
             v-bind="props"
             class="flex items-center cursor-pointer bg-white rounded-md px-2 py-1 hover:bg-gray-100 transition"
           >
-            <v-avatar start size="30" color="#1F5AA3" class="text-white font-bold p-4 text-sm">
+            <v-avatar start size="30" color="#27bfa0" class="text-white font-bold p-4 text-sm">
               {{ userInitials }}
             </v-avatar>
 

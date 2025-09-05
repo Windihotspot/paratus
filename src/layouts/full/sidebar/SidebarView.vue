@@ -101,7 +101,7 @@ const logout = async () => {
   justify-content: space-between;
   height: 100vh;
   background: #ffffff;
-  border-right: 1px solid #eaeaea;
+ 
 }
 
 /* Default button state */

@@ -1,10 +1,13 @@
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
 import { supabase } from '@/services/supabase.js'
 import { useRouter } from 'vue-router'
 const router = useRouter()
-
+const merchantData = ref(null) // <-- this will hold the merchant details
+// User auth data ref
+const userData = ref(null)
 const loginForm = ref({
   email: '',
   password: '',
@@ -23,16 +26,15 @@ const togglePasswordVisibility = () => {
 // Handle Login Submission
 const submitForm = async () => {
   loginForm.value.processing = true
-  loginForm.value.errors = {} // clear previous errors
+  loginForm.value.errors = {}
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data: userData, error } = await supabase.auth.signInWithPassword({
       email: loginForm.value.email,
       password: loginForm.value.password
     })
 
     if (error) {
-      // show error on correct field
       if (error.message.toLowerCase().includes('email')) {
         loginForm.value.errors.email = error.message
       } else if (error.message.toLowerCase().includes('password')) {
@@ -41,8 +43,23 @@ const submitForm = async () => {
         loginForm.value.errors.email = 'Invalid login credentials'
       }
     } else {
-      // successful login, redirect
-      router.push('/dashboard')
+      // Fetch merchant details tied to this user
+      const { data: merchantData, error: merchantError } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .single()
+      console.log("merchant details:", merchantData)
+      if (merchantError) {
+        console.log('Merchant fetch error:', merchantError)
+        loginForm.value.errors.email = 'Failed to fetch merchant details'
+      } else {
+        // Save both user & merchant in Pinia and localStorage
+        authStore.setAuth(userData.user, merchantData)
+
+        // Redirect to dashboard
+        router.push('/dashboard')
+      }
     }
   } catch (err) {
     console.error('Login error:', err)
@@ -51,6 +68,7 @@ const submitForm = async () => {
     loginForm.value.processing = false
   }
 }
+
 </script>
 
 <template>

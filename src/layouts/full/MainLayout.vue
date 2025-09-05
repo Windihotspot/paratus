@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import SidebarView from './sidebar/SidebarView.vue'
-
+import HeaderView from './header/HeaderView.vue'
 const drawer = ref()
 const innerW = window.innerWidth
 
@@ -26,7 +26,7 @@ onMounted(() => {
         <!-- <img src="/src/assets/images/white.png" class="" /> -->
       </div>
       <v-spacer></v-spacer>
-     
+     <HeaderView/>
     </v-app-bar>
     <!-- ---------------------------------------------- -->
     <!--- Sidebar -->
