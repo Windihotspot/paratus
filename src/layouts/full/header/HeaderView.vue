@@ -15,13 +15,13 @@ const userInitials = computed(() => {
     .join('')
     .toUpperCase()
 })
-
+console.log("store:", authStore)
 const displayName = computed(() => {
   return authStore.merchant?.business_name || authStore.user?.full_name || ''
 })
 
 const displayRole = computed(() => {
-  return authStore.user ? 'Merchant' : ''
+  return authStore.user ? 'Super Admin' : ''
 })
 
 // Logout function
