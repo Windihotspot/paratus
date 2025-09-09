@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
+const merchantId = authStore.merchant.id
 // Computed properties for the header
 const userInitials = computed(() => {
   if (!authStore.merchant?.business_name) return ''
@@ -24,6 +24,16 @@ const displayRole = computed(() => {
   return authStore.user ? 'Super Admin' : ''
 })
 
+const logFacilityChange = (facility) => {
+  console.log("🏦 Facility switched:", facility)
+  console.log("🔎 Selected Facility in store:", authStore.selectedFacility)
+}
+const selectedFacilityId = computed({
+  get: () => authStore.selectedFacility?.id || null,
+  set: (val) => authStore.setSelectedFacility(val),
+})
+
+
 // Logout function
 const logout = async () => {
   authStore.logout()  // call the correct Pinia store method
@@ -35,17 +45,25 @@ const logout = async () => {
 
 <template>
   <div class="header items-center px-4 py-4 bg-white">
-    <!-- Icons (Right) -->
-    <div class="space-x-4">
-      <!-- Notifications Icon -->
-      <!-- <v-menu anchor="bottom end" origin="auto" min-width="300">
-        <template v-slot:activator="{ props }">
-          <v-btn class="min-w-0 w-4 h-4" v-bind="props" icon>
-            <i class="fa-regular fa-bell font-light fa-2xl" style="color: #1f5aa3"></i>
-          </v-btn>
-        </template>
-      </v-menu> -->
+    <!-- Facility Dropdown -->
+    <div class="w-60">
+     <v-select
+  v-model="selectedFacilityId"
+  :items="authStore.facilities"
+  item-title="bank_name"
+  item-value="id"
+  label="Select Facility"
+  variant="outlined"
+  density="compact"
+  hide-details
+  color="#27bfa0"
+  @update:modelValue="logFacilityChange"
+/>
 
+    </div>
+
+    <!-- User Menu -->
+    <div class="space-x-4">
       <v-menu offset-y location="bottom left" origin="top left" min-width="200">
         <template v-slot:activator="{ props }">
           <div
@@ -72,31 +90,6 @@ const logout = async () => {
           </v-list-item>
         </v-list>
       </v-menu>
-
-      <!-- User Profile -->
-      <!-- <v-menu anchor="bottom end" origin="auto" min-width="300">
-        <template v-slot:activator="{ props }">
-          <v-btn v-bind="props" class="user-btn p-0" elevation="0" variant="text" :ripple="false">
-            <v-avatar size="40" class="mr-2">
-              <img src="@/assets/images/users/black-user.jpg" alt="User Avatar" />
-            </v-avatar>
-
-            <div class="d-flex flex-column">
-              <span class="font-normal text-sm">John Doe</span>
-              <span class="font-light text-xs">Super admin</span>
-            </div>
-          </v-btn>
-        </template>
-
-        <v-list>
-          <v-list-item @click="logout" link class="text-gray-700 hover:text-red-500">
-            <div class="flex items-center gap-2">
-              <i class="fas fa-sign-out-alt text-gray-500 hover:text-red-500"></i>
-              <v-list-item-title>Logout</v-list-item-title>
-            </div>
-          </v-list-item>
-        </v-list>
-      </v-menu> -->
     </div>
   </div>
 </template>

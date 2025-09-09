@@ -55,56 +55,83 @@
 
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import MainLayout from '@/layouts/full/MainLayout.vue';
+import { ref, onMounted, computed, watch } from 'vue'
+import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 
-// KPI reactive variables
 const kpis = ref({
-  total_disbursed_loans: 0,
-  outstanding_customer_balance: 0,
-  total_customer_repayments: 0,
-  total_settlements_received: 0,
-  customer_default_rate_percent: 0,
-  total_facilities_from_banks: 0,
-  outstanding_facility_balance: 0,
-  overdraft_utilization_percent: 0
+  total_disbursed_loans: "₦0.00",
+  outstanding_customer_balance: "₦0.00",
+  total_customer_repayments: "₦0.00",
+  total_settlements_received: "₦0.00",
+  customer_default_rate_percent: "0%",
+  total_facilities_from_banks: "₦0.00",
+  outstanding_facility_balance: "₦0.00",
+  overdraft_utilization_percent: "0%"
 })
 
-// Helper to format amounts as Naira currency
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
+  const num = Number(value) || 0
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(num)
 }
 
 const fetchFinancialKPIs = async () => {
-  loading.value = true
-  if (!authStore.merchant?.id) return
-
-  const merchantId = authStore.merchant.id
-
-  const { data, error } = await supabase.rpc('get_bank_to_merchant_kpis', { p_merchant_id: merchantId })
-  console.log("financial kpis:", data)
-  if (error) {
-    console.log('Error fetching KPIs:', error)
-  } else {
-    // Format all amount values
-    kpis.value = {
-      ...data,
-      total_disbursed_loans: formatCurrency(data.disbursed_to_customers),
-      total_facilities_from_banks: formatCurrency(data.received_from_bank),
-      outstanding_facility_balance: formatCurrency(data.balance)
-    }
+  if (!authStore.merchant?.id) {
+    console.warn("Merchant not ready yet")
+    return
   }
+
+  loading.value = true
+  const merchantId = authStore.merchant.id
+  const { data, error } = await supabase.rpc("get_facility_kpis", { 
+    p_merchant_id: merchantId, 
+    p_facility_id: authStore.selectedFacility?.id 
+  })
+
+  console.log("📊 Raw RPC result:", data)
+
+  if (error) {
+    console.error("Error fetching KPIs:", error)
+  } else if (data && data.length > 0) {
+    const row = data[0]  // 👈 take the first row
+
+    kpis.value = {
+      total_disbursed_loans: formatCurrency(row.disbursed_to_customers || 0),
+      total_facilities_from_banks: formatCurrency(row.received_from_bank || 0),
+      outstanding_facility_balance: formatCurrency(row.balance || 0),
+      total_customer_repayments: formatCurrency(row.total_repayments || 0),
+      customer_default_rate_percent: row.customer_default_rate !== null
+        ? `${(row.customer_default_rate * 100).toFixed(2)}%`
+        : "0%"
+    }
+
+    console.log("🎯 Formatted KPIs:", kpis.value)
+  }
+
   loading.value = false
 }
 
-onMounted(() => {
-  fetchFinancialKPIs()
+
+const selectedFacility = computed(() => authStore.selectedFacility)
+
+watch(
+  () => selectedFacility.value?.id,
+  async (newVal, oldVal) => {
+    console.log("🔄 Facility changed in store:", oldVal, "➡️", newVal)
+    if (newVal && newVal !== oldVal) {
+      await fetchFinancialKPIs()
+    }
+  }
+)
+
+onMounted(async () => {
+  await fetchFinancialKPIs()
 })
 </script>
+
 
 

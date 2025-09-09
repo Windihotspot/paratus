@@ -23,7 +23,6 @@ const formatCurrency = (value) => {
 const disburseMenu = ref(false)
 const facilityTypes = [
   { label: 'Overdraft', value: 'overdraft' },
-  { label: 'Cash', value: 'cash' }
 ]
 
 // Form state
@@ -58,6 +57,7 @@ const fetchFacilities = async () => {
   const { data, error } = await supabase.rpc('get_merchant_facilities', {
     p_merchant_id: merchantId
   })
+  console.log("facilities:", data)
   if (error) console.error('Error fetching facilities:', error)
   else facilities.value = data
   loading.value = false

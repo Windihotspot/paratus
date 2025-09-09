@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
@@ -7,7 +7,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useFormattedFields } from '@/composables/useFormmatedFields'
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
-
 const loans = ref([])
 const customers = ref([])
 const facilities = ref([])
@@ -15,29 +14,10 @@ const showModal = ref(false)
 const loading = ref(false)
 const formRef = ref(null)
 const valid = ref(false)
+const merchant = authStore.merchant
+const errorMessage = ref(null)
 
-const fetchCustomers = async () => {
-  loading.value = true
-  const { data, error } = await supabase.rpc('get_merchant_customers', {
-    p_merchant_id: merchantId
-  })
 
-  if (error) {
-    console.error('Error fetching customers:', error)
-  } else {
-    // sort by created_at DESC (latest first)
-
-    customers.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    customers.value = data.map((c) => ({
-      ...c,
-      full_name: `${c.first_name} ${c.last_name}`
-    }))
-
-    customers.value = data
-  }
-
-  loading.value = false
-}
 const disburseMenu = ref(false)
 
 const loan = ref({
@@ -83,7 +63,7 @@ const submitLoan = async () => {
     const payload = {
       p_merchant_id: merchantId,
       p_customer_id: loan.value.customer_id,
-      p_facility_id: loan.value.facility_id,
+      p_facility_id: loan.value.facility_id = authStore.selectedFacility?.id,
       p_loan_amount: loan.value.loan_amount,
       p_agreed_rate: loan.value.agreed_rate,
       p_tenure_days: loan.value.tenure_days,
@@ -93,7 +73,7 @@ const submitLoan = async () => {
     const { data, error } = await supabase.rpc('add_loan', {
       p_merchant_id: merchantId,
       p_customer_id: loan.value.customer_id,
-      p_facility_id: loan.value.facility_id,
+      p_facility_id: loan.value.facility_id = authStore.selectedFacility?.id,
       p_loan_amount: loan.value.loan_amount,
       p_agreed_rate: loan.value.agreed_rate,
       p_tenure_days: loan.value.tenure_days,
@@ -131,27 +111,79 @@ const formattedLoanAmount = useFormattedFields(loan.value, 'loan_amount', { curr
 const openModal = () => (showModal.value = true)
 const closeModal = () => (showModal.value = false)
 
+const fetchCustomers = async () => {
+  loading.value = true
+  errorMessage.value = null
+
+  try {
+    const { data, error } = await supabase.rpc('get_merchant_customers', {
+      p_merchant_id: authStore.merchant.id,
+      p_facility_id: authStore.selectedFacility?.id || null
+    })
+
+    if (error) throw error
+
+    // Sort latest first
+    customers.value = (data || []).sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    )
+
+    console.log("Sorted customers:", customers.value)
+  } catch (err) {
+    console.error('fetchCustomers error:', err)
+    errorMessage.value = 'Failed to load customers'
+  } finally {
+    loading.value = false
+  }
+}
+
+
+// fetch merchant loans
 const fetchLoans = async () => {
   loading.value = true
-  const { data, error } = await supabase.rpc('get_merchant_loans', {
-    p_merchant_id: merchantId
-  })
+  errorMessage.value = null
 
-  console.log('merchant loans:', data)
+  const facilityId = authStore.selectedFacility?.id || null
+  console.log("📥 Fetching loans for Merchant:", authStore.merchant.id)
+  console.log("🏦 With Facility ID:", facilityId)
 
-  if (error) {
-    console.log('Error fetching loans:', error)
-  } else {
-    loans.value = data
+  try {
+    const { data, error } = await supabase.rpc('get_merchant_loans', {
+      p_merchant_id: authStore.merchant.id,
+      p_facility_id: facilityId
+    })
+
+    if (error) throw error
+
+    console.log("✅ Loans fetched:", data)
+    loans.value = data || []
+  } catch (err) {
+    console.error('❌ fetchLoans error:', err)
+    errorMessage.value = 'Failed to load loans'
+  } finally {
+    loading.value = false
   }
-
-  loading.value = false
 }
 
 const formatCurrency = (value) => {
   if (!value) return '₦0.00'
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
 }
+
+const selectedFacility = computed(() => authStore.selectedFacility)
+
+watch(
+  () => selectedFacility.value?.id,
+  async (newVal, oldVal) => {
+    console.log("🔄 Facility changed in store:", oldVal, "➡️", newVal)
+    if (newVal && newVal !== oldVal) {
+      await fetchLoans()
+      await fetchCustomers()
+    }
+  },
+  { immediate: true }
+)
+
 
 onMounted(() => {
   fetchLoans()

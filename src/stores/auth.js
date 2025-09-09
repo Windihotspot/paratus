@@ -6,15 +6,23 @@ export const useAuthStore = defineStore('auth', () => {
   const merchant = ref(null)    // merchant details
   const token = ref(null)       // optional JWT or session token
 
+   const facilities = ref([])          // merchant facilities
+  const selectedFacility = ref(null) 
+
   // Load from localStorage on init
   const init = () => {
     const storedUser = localStorage.getItem('user')
     const storedMerchant = localStorage.getItem('merchant')
     const storedToken = localStorage.getItem('token')
+    const storedFacilities = localStorage.getItem('facilities')
+    const storedSelectedFacility = localStorage.getItem('selectedFacility')
 
     if (storedUser) user.value = JSON.parse(storedUser)
     if (storedMerchant) merchant.value = JSON.parse(storedMerchant)
     if (storedToken) token.value = storedToken
+    if (storedFacilities) facilities.value = JSON.parse(storedFacilities)
+    if (storedSelectedFacility) selectedFacility.value = JSON.parse(storedSelectedFacility)
+  
   }
 
   const setAuth = (u, m, t = null) => {
@@ -26,15 +34,47 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('merchant', JSON.stringify(m))
     if (t) localStorage.setItem('token', t)
   }
+const setFacilities = (list) => {
+    facilities.value = list || []
+    localStorage.setItem('facilities', JSON.stringify(list || []))
+    if (list?.length > 0) {
+      setSelectedFacility(list[0].id) // default to first
+    }
+  }
+
+  const setSelectedFacility = (facilityId) => {
+    const found = facilities.value.find(f => f.id === facilityId) || null
+    selectedFacility.value = found
+    if (found) {
+      localStorage.setItem('selectedFacility', JSON.stringify(found))
+    } else {
+      localStorage.removeItem('selectedFacility')
+    }
+  }
 
   const logout = () => {
     user.value = null
     merchant.value = null
     token.value = null
+    facilities.value = []
+    selectedFacility.value = null
+
     localStorage.removeItem('user')
     localStorage.removeItem('merchant')
     localStorage.removeItem('token')
+     localStorage.removeItem('facilities')
+    localStorage.removeItem('selectedFacility')
   }
-
-  return { user, merchant, token, setAuth, logout, init }
+    return {
+    user,
+    merchant,
+    token,
+    facilities,
+    selectedFacility,
+    setAuth,
+    setFacilities,
+    setSelectedFacility,
+    logout,
+    init
+  }
 })

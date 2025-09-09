@@ -29,7 +29,8 @@ const submitForm = async () => {
   loginForm.value.errors = {}
 
   try {
-    const { data: userData, error } = await supabase.auth.signInWithPassword({
+    // 1. Authenticate user
+    const { data: userResponse, error } = await supabase.auth.signInWithPassword({
       email: loginForm.value.email,
       password: loginForm.value.password
     })
@@ -42,25 +43,42 @@ const submitForm = async () => {
       } else {
         loginForm.value.errors.email = 'Invalid login credentials'
       }
-    } else {
-      // Fetch merchant details tied to this user
-      const { data: merchantData, error: merchantError } = await supabase
-        .from('merchants')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .single()
-      console.log("merchant details:", merchantData)
-      if (merchantError) {
-        console.log('Merchant fetch error:', merchantError)
-        loginForm.value.errors.email = 'Failed to fetch merchant details'
-      } else {
-        // Save both user & merchant in Pinia and localStorage
-        authStore.setAuth(userData.user, merchantData)
-
-        // Redirect to dashboard
-        router.push('/dashboard')
-      }
+      return
     }
+
+    userData.value = userResponse.user
+
+    // 2. Fetch merchant details
+    const { data: merchant, error: merchantError } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('user_id', userData.value.id)
+      .single()
+
+    if (merchantError) {
+      console.log('Merchant fetch error:', merchantError)
+      loginForm.value.errors.email = 'Failed to fetch merchant details'
+      return
+    }
+
+    merchantData.value = merchant
+
+    // 3. Fetch merchant facilities via RPC
+    const { data: facilities, error: facilitiesError } = await supabase.rpc(
+      'get_merchant_facilities',
+      { p_merchant_id: merchant.id }
+    )
+
+    if (facilitiesError) {
+      console.error('Facilities fetch error:', facilitiesError)
+    }
+
+    // 4. Save everything into Pinia + localStorage
+    authStore.setAuth(userData.value, merchant)
+    authStore.setFacilities(facilities || [])
+
+    // 5. Redirect to dashboard
+    router.push('/dashboard')
   } catch (err) {
     console.error('Login error:', err)
     loginForm.value.errors.email = 'Something went wrong. Try again.'
@@ -68,13 +86,12 @@ const submitForm = async () => {
     loginForm.value.processing = false
   }
 }
-
 </script>
 
 <template>
   <!-- Login Form Section -->
   <div class="w-full min-h-screen flex items-center justify-center bg-white">
-  <div class="max-w-md w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-md w-full px-4 sm:px-6 lg:px-8 py-8">
       <!-- Heading -->
 
       <p class="text-gray-600 mt-2 text-center">Login to access your account</p>
@@ -124,17 +141,15 @@ const submitForm = async () => {
             <span class="text-sm text-gray-700">Remember me</span>
           </label>
 
-          
-            <v-btn
-              no-uppercase
-              variant="text"
-              size="small"
-              color="#27bfa0"
-              class="normal-case text-none"
-            >
-              Forgot password?
-            </v-btn>
-       
+          <v-btn
+            no-uppercase
+            variant="text"
+            size="small"
+            color="#27bfa0"
+            class="normal-case text-none"
+          >
+            Forgot password?
+          </v-btn>
         </div>
 
         <!-- Submit Button -->

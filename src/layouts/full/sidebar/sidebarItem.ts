@@ -19,6 +19,12 @@ const sidebarItems = [
     path: '/customers',
     icon: 'fa-solid fa-users', // Users icon
   },
+  {
+  title: 'Profit & Loss',
+  path: '/profit-loss',
+  icon: 'fa-solid fa-chart-line', // Line chart icon to represent financial performance
+},
+
 ]
 
 export default sidebarItems

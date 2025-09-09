@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
@@ -7,7 +7,7 @@ import { ElMessage, ElNotification } from 'element-plus'
 
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
-
+const errorMessage = ref(null)
 const customers = ref([])
 const showModal = ref(false)
 const loading = ref(false)
@@ -21,10 +21,10 @@ const customer = ref({
   email: '',
   phone: '',
   account_number: '',
-  bank_id: null
+  facility_id: null
 })
 
-const banks = ref([])
+const facilities = ref([])
 
 const openModal = () => (showModal.value = true)
 const closeModal = () => {
@@ -36,14 +36,29 @@ const closeModal = () => {
     email: '',
     phone: '',
     account_number: '',
-    bank_id: null
+    facility_id: null
   }
 }
 
 // Fetch available banks
-const fetchBanks = async () => {
-  const { data, error } = await supabase.from('banks').select('id, name')
-  if (!error) banks.value = data
+const fetchFacilities = async () => {
+  loading.value = true
+  const { data, error } = await supabase.rpc('get_merchant_facilities', {
+    p_merchant_id: merchantId
+  })
+  console.log('merchant facilities:', data)
+  facilities.value = data
+
+  if (error) {
+    console.log('Error fetching facilities:', error)
+  } else {
+    facilities.value = (data || []).map((f) => ({
+      id: f.id, // facility UUID
+      name: f.name || f.bank_name || 'Unnamed Facility' // adjust to your column name
+    }))
+  }
+
+  loading.value = false // set loading to false when done
 }
 
 const submitCustomer = async () => {
@@ -73,7 +88,7 @@ const submitCustomer = async () => {
       p_email: customer.value.email,
       p_phone: customer.value.phone,
       p_account_number: customer.value.account_number,
-      p_bank_id: customer.value.bank_id
+      p_facility_id: customer.value.facility_id
     })
 
     if (error) {
@@ -105,24 +120,41 @@ const submitCustomer = async () => {
 
 const fetchCustomers = async () => {
   loading.value = true
-  const { data, error } = await supabase.rpc('get_merchant_customers', {
-    p_merchant_id: merchantId
-  })
+  errorMessage.value = null
 
-  if (error) {
-    console.error('Error fetching customers:', error)
-  } else {
-    // sort by created_at DESC (latest first)
-    customers.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    customers.value = data
+  try {
+    const { data, error } = await supabase.rpc('get_merchant_customers', {
+      p_merchant_id: authStore.merchant.id,
+      p_facility_id: authStore.selectedFacility?.id || null
+    })
+    console.log("merchant customers:", data)
+    if (error) throw error
+    customers.value = data || []
+  } catch (err) {
+    console.error('fetchCustomers error:', err)
+    errorMessage.value = 'Failed to load customers'
+  } finally {
+    loading.value = false
   }
-
-  loading.value = false
 }
+
+
+const selectedFacility = computed(() => authStore.selectedFacility)
+
+watch(
+  () => selectedFacility.value?.id,
+  async (newVal, oldVal) => {
+    console.log("🔄 Facility changed in store:", oldVal, "➡️", newVal)
+    if (newVal && newVal !== oldVal) {
+      await fetchCustomers()
+    }
+  },
+  { immediate: true }
+)
 
 onMounted(() => {
   fetchCustomers()
-  fetchBanks()
+  fetchFacilities()
 })
 </script>
 
@@ -272,11 +304,11 @@ onMounted(() => {
           <v-select
             variant="outlined"
             color="#27bfa0"
-            v-model="customer.bank_id"
-            :items="banks"
+            v-model="customer.facility_id"
+            :items="facilities"
             item-title="name"
             item-value="id"
-            label="Bank"
+            label="Facility"
             :rules="[(v) => !!v || 'Bank is required']"
             required
           />
