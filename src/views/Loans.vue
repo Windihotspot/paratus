@@ -25,7 +25,8 @@ const loan = ref({
   loan_amount: '',
   agreed_rate: '',
   tenure_days: '',
-  disbursed_at: ''
+  disbursed_at: '',
+ 
 })
 const fetchFacilities = async () => {
   loading.value = true
@@ -54,13 +55,15 @@ const editLoan = (loanData) => {
   isEditing.value = true
   editingLoanId.value = loanData.id
   loan.value = {
-    customer_id: loanData.customer_id,
-    facility_id: loanData.facility_id,
-    loan_amount: loanData.loan_amount,
-    agreed_rate: loanData.agreed_rate,
-    tenure_days: loanData.tenure_days,
-    disbursed_at: loanData.disbursed_at
-  }
+  customer_id: loanData.customer_id,
+  facility_id: loanData.facility_id,
+  loan_amount: loanData.loan_amount,
+  agreed_rate: loanData.agreed_rate,
+  tenure_days: loanData.tenure_days,
+  disbursed_at: loanData.disbursed_at,
+  
+}
+
   showModal.value = true
 }
 
@@ -84,12 +87,13 @@ const submitLoan = async () => {
       // Update existing loan
       const { data, error } = await supabase.rpc('update_loan', {
         p_loan_id: editingLoanId.value,
-        p_customer_id: loan.value.customer_id,
-        p_facility_id: loan.value.facility_id,
         p_loan_amount: loan.value.loan_amount,
         p_agreed_rate: loan.value.agreed_rate,
+        p_disbursed_at: loan.value.disbursed_at,
+        p_status: loan.value.status || 'active', // default if not set
         p_tenure_days: loan.value.tenure_days,
-        p_disbursed_at: loan.value.disbursed_at
+        p_customer_id: loan.value.customer_id,
+        p_facility_id: loan.value.facility_id
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
@@ -130,7 +134,7 @@ const submitLoan = async () => {
   }
 }
 
-const formattedLoanAmount = useFormattedFields(loan.value, 'loan_amount', { currency: true })
+const formattedLoanAmount = useFormattedFields(loan, 'loan_amount', { currency: true })
 const openModal = () => (showModal.value = true)
 const closeModal = () => {
   showModal.value = false
@@ -146,7 +150,6 @@ const closeModal = () => {
     disbursed_at: null
   }
 }
-
 
 const fetchCustomers = async () => {
   loading.value = true
@@ -252,7 +255,6 @@ const cancelDelete = () => {
   showDeleteModal.value = false
   loanToDelete.value = null
 }
-
 
 onMounted(() => {
   fetchLoans()
@@ -398,19 +400,20 @@ onMounted(() => {
     </div>
 
     <!-- Delete loan modal -->
-     <v-dialog v-model="showDeleteModal" max-width="400px">
-  <v-card>
-    <v-card-title class="text-lg font-bold">Delete Loan</v-card-title>
-    <v-card-text>
-      Are you sure you want to delete the loan for 
-      <strong>{{ loanToDelete?.customer_name }}</strong>?
-    </v-card-text>
-    <v-card-actions class="justify-end">
-      <v-btn text color="gray" @click="cancelDelete">Cancel</v-btn>
-      <v-btn color="red" dark @click="confirmDeleteLoan" :loading="loading">Delete</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+    <v-dialog v-model="showDeleteModal" max-width="400px">
+      <v-card>
+        <v-card-title class="text-lg font-bold">Delete Loan</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete the loan for
+          <strong>{{ loanToDelete?.customer_name }}</strong
+          >?
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn text color="gray" @click="cancelDelete">Cancel</v-btn>
+          <v-btn color="red" dark @click="confirmDeleteLoan" :loading="loading">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Add Loan Modal -->
     <v-dialog v-model="showModal" persistent max-width="800px">
@@ -425,6 +428,7 @@ onMounted(() => {
 
         <v-form ref="formRef" v-model="valid" lazy-validation>
           <v-select
+          :disabled="isEditing"
             variant="outlined"
             color="#27bfa0"
             v-model="loan.customer_id"
@@ -435,6 +439,7 @@ onMounted(() => {
             required
           ></v-select>
           <v-select
+          :disabled="isEditing"
             variant="outlined"
             color="#27bfa0"
             v-model="loan.facility_id"
