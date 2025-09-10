@@ -26,10 +26,11 @@ const customer = ref({
 
 const facilities = ref([])
 
-const openModal = () => (showModal.value = true)
 const closeModal = () => {
   showModal.value = false
   if (formRef.value) formRef.value.reset()
+
+  // Reset the customer form
   customer.value = {
     first_name: '',
     last_name: '',
@@ -38,6 +39,10 @@ const closeModal = () => {
     account_number: '',
     facility_id: null
   }
+
+  // Reset edit state
+  isEditingCustomer.value = false
+  editingCustomerId.value = null
 }
 
 // Fetch available banks
@@ -127,7 +132,7 @@ const fetchCustomers = async () => {
       p_merchant_id: authStore.merchant.id,
       p_facility_id: authStore.selectedFacility?.id || null
     })
-    console.log("merchant customers:", data)
+    console.log('merchant customers:', data)
     if (error) throw error
     customers.value = data || []
   } catch (err) {
@@ -138,13 +143,77 @@ const fetchCustomers = async () => {
   }
 }
 
+const showDeleteModal = ref(false)
+const customerToDelete = ref(null)
+
+const openDeleteModal = (customerData) => {
+  customerToDelete.value = customerData
+  showDeleteModal.value = true
+}
+
+const confirmDeleteCustomer = async () => {
+  if (!customerToDelete.value) return
+  loading.value = true
+
+  try {
+    const { data, error } = await supabase.rpc('delete_customer', {
+      p_customer_id: customerToDelete.value.id
+    })
+    if (error) throw error
+
+    ElNotification({
+      title: 'Deleted',
+      message: 'Customer deleted successfully!',
+      type: 'success'
+    })
+    await fetchCustomers()
+  } catch (err) {
+    console.error('Error deleting customer:', err)
+    ElNotification({
+      title: 'Error',
+      message: err.message,
+      type: 'error'
+    })
+  } finally {
+    loading.value = false
+    showDeleteModal.value = false
+    customerToDelete.value = null
+  }
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  customerToDelete.value = null
+}
+
+const isEditingCustomer = ref(false)
+const editingCustomerId = ref(null)
+const editCustomer = (customerData) => {
+  isEditingCustomer.value = true
+  editingCustomerId.value = customerData.id
+  customer.value = {
+    first_name: customerData.first_name,
+    last_name: customerData.last_name,
+    email: customerData.email,
+    phone: customerData.phone,
+    account_number: customerData.account_number,
+    facility_id: customerData.facility_id
+  }
+  showModal.value = true
+}
+
+const openModal = () => {
+  isEditingCustomer.value = false
+  editingCustomerId.value = null
+  showModal.value = true
+}
 
 const selectedFacility = computed(() => authStore.selectedFacility)
 
 watch(
   () => selectedFacility.value?.id,
   async (newVal, oldVal) => {
-    console.log("🔄 Facility changed in store:", oldVal, "➡️", newVal)
+    console.log('🔄 Facility changed in store:', oldVal, '➡️', newVal)
     if (newVal && newVal !== oldVal) {
       await fetchCustomers()
     }
@@ -225,8 +294,21 @@ onMounted(() => {
                     {{ customer.status || 'active' }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button class="text-indigo-600 hover:text-indigo-900 font-semibold">View</button>
+                <td
+                  class="px-6 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium flex gap-2 justify-center"
+                >
+                  <button
+                    class="text-indigo-600 hover:text-indigo-900 font-semibold"
+                    @click="editCustomer(customer)"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button
+                    class="text-red-600 hover:text-red-900"
+                    @click="openDeleteModal(customer)"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -242,7 +324,22 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Add Customer Modal -->
+    <!-- Delete Customer Modal -->
+    <v-dialog v-model="showDeleteModal" max-width="400px">
+      <v-card>
+        <v-card-title class="text-lg font-bold">Delete Customer</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete
+          <strong>{{ customerToDelete?.full_name }}</strong
+          >?
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn text color="gray" @click="cancelDelete">Cancel</v-btn>
+          <v-btn color="red" dark @click="confirmDeleteCustomer" :loading="loading">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Add Customer Modal -->
     <v-dialog v-model="showModal" persistent max-width="800px">
       <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
@@ -251,8 +348,9 @@ onMounted(() => {
           <i class="fas fa-times fa-lg"></i>
         </button>
 
-        <h2 class="text-lg font-bold mb-4">Add a new customer</h2>
-
+        <h2 class="text-lg font-bold mb-4">
+          {{ isEditingCustomer ? 'Edit Customer' : 'Add a new customer' }}
+        </h2>
         <v-form ref="formRef" v-model="valid" lazy-validation>
           <v-text-field
             variant="outlined"
@@ -322,7 +420,7 @@ onMounted(() => {
               :loading="loading"
               :disabled="!valid || loading"
             >
-              Save
+              {{ isEditingCustomer ? 'Update' : 'Save' }}
             </v-btn>
           </div>
         </v-form>

@@ -17,7 +17,6 @@ const valid = ref(false)
 const merchant = authStore.merchant
 const errorMessage = ref(null)
 
-
 const disburseMenu = ref(false)
 
 const loan = ref({
@@ -48,6 +47,23 @@ const fetchFacilities = async () => {
   loading.value = false // set loading to false when done
 }
 
+const isEditing = ref(false)
+const editingLoanId = ref(null)
+
+const editLoan = (loanData) => {
+  isEditing.value = true
+  editingLoanId.value = loanData.id
+  loan.value = {
+    customer_id: loanData.customer_id,
+    facility_id: loanData.facility_id,
+    loan_amount: loanData.loan_amount,
+    agreed_rate: loanData.agreed_rate,
+    tenure_days: loanData.tenure_days,
+    disbursed_at: loanData.disbursed_at
+  }
+  showModal.value = true
+}
+
 const submitLoan = async () => {
   if (!formRef.value) return
   const formValid = await formRef.value.validate()
@@ -57,39 +73,44 @@ const submitLoan = async () => {
   }
 
   loading.value = true
-  ElMessage({ message: 'Adding loan...', type: 'info', duration: 1500 })
+  ElMessage({
+    message: isEditing.value ? 'Updating loan...' : 'Adding loan...',
+    type: 'info',
+    duration: 1500
+  })
 
   try {
-    const payload = {
-      p_merchant_id: merchantId,
-      p_customer_id: loan.value.customer_id,
-      p_facility_id: loan.value.facility_id = authStore.selectedFacility?.id,
-      p_loan_amount: loan.value.loan_amount,
-      p_agreed_rate: loan.value.agreed_rate,
-      p_tenure_days: loan.value.tenure_days,
-      p_disbursed_at: loan.value.disbursed_at
+    if (isEditing.value) {
+      // Update existing loan
+      const { data, error } = await supabase.rpc('update_loan', {
+        p_loan_id: editingLoanId.value,
+        p_customer_id: loan.value.customer_id,
+        p_facility_id: loan.value.facility_id,
+        p_loan_amount: loan.value.loan_amount,
+        p_agreed_rate: loan.value.agreed_rate,
+        p_tenure_days: loan.value.tenure_days,
+        p_disbursed_at: loan.value.disbursed_at
+      })
+      if (error) throw error
+      ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
+    } else {
+      // Add new loan (your existing logic)
+      const { data, error } = await supabase.rpc('add_loan', {
+        p_merchant_id: merchantId,
+        p_customer_id: loan.value.customer_id,
+        p_facility_id: loan.value.facility_id,
+        p_loan_amount: loan.value.loan_amount,
+        p_agreed_rate: loan.value.agreed_rate,
+        p_tenure_days: loan.value.tenure_days,
+        p_disbursed_at: loan.value.disbursed_at
+      })
+      if (error) throw error
+      ElNotification({ title: 'Success', message: 'Loan added successfully!', type: 'success' })
     }
-    console.log('📤 Submitting loan payload:', payload)
-    const { data, error } = await supabase.rpc('add_loan', {
-      p_merchant_id: merchantId,
-      p_customer_id: loan.value.customer_id,
-      p_facility_id: loan.value.facility_id = authStore.selectedFacility?.id,
-      p_loan_amount: loan.value.loan_amount,
-      p_agreed_rate: loan.value.agreed_rate,
-      p_tenure_days: loan.value.tenure_days,
-      p_disbursed_at: loan.value.disbursed_at
-    })
 
-    if (error) throw error
-    if (!data) throw new Error('No data returned from add_loan')
-
-    ElNotification({ title: 'Success', message: 'Loan added successfully!', type: 'success' })
     await fetchLoans()
-    // ✅ Reset fields after success
-    if (formRef.value) {
-      formRef.value.reset() // resets Vuetify form validation + values
-    }
-
+    closeModal()
+    // Reset form
     loan.value = {
       customer_id: null,
       facility_id: null,
@@ -98,18 +119,34 @@ const submitLoan = async () => {
       tenure_days: null,
       disbursed_at: null
     }
-
-    closeModal()
+    isEditing.value = false
+    editingLoanId.value = null
+    formRef.value.reset()
   } catch (err) {
-    console.error('Error adding loan:', err)
+    console.error('Error submitting loan:', err)
     ElNotification({ title: 'Error', message: err.message, type: 'error' })
   } finally {
     loading.value = false
   }
 }
+
 const formattedLoanAmount = useFormattedFields(loan.value, 'loan_amount', { currency: true })
 const openModal = () => (showModal.value = true)
-const closeModal = () => (showModal.value = false)
+const closeModal = () => {
+  showModal.value = false
+  isEditing.value = false
+  editingLoanId.value = null
+  if (formRef.value) formRef.value.reset()
+  loan.value = {
+    customer_id: null,
+    facility_id: null,
+    loan_amount: null,
+    agreed_rate: null,
+    tenure_days: null,
+    disbursed_at: null
+  }
+}
+
 
 const fetchCustomers = async () => {
   loading.value = true
@@ -124,11 +161,9 @@ const fetchCustomers = async () => {
     if (error) throw error
 
     // Sort latest first
-    customers.value = (data || []).sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at)
-    )
+    customers.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
-    console.log("Sorted customers:", customers.value)
+    console.log('Sorted customers:', customers.value)
   } catch (err) {
     console.error('fetchCustomers error:', err)
     errorMessage.value = 'Failed to load customers'
@@ -137,15 +172,14 @@ const fetchCustomers = async () => {
   }
 }
 
-
 // fetch merchant loans
 const fetchLoans = async () => {
   loading.value = true
   errorMessage.value = null
 
   const facilityId = authStore.selectedFacility?.id || null
-  console.log("📥 Fetching loans for Merchant:", authStore.merchant.id)
-  console.log("🏦 With Facility ID:", facilityId)
+  console.log('📥 Fetching loans for Merchant:', authStore.merchant.id)
+  console.log('🏦 With Facility ID:', facilityId)
 
   try {
     const { data, error } = await supabase.rpc('get_merchant_loans', {
@@ -155,7 +189,7 @@ const fetchLoans = async () => {
 
     if (error) throw error
 
-    console.log("✅ Loans fetched:", data)
+    console.log('✅ Loans fetched:', data)
     loans.value = data || []
   } catch (err) {
     console.error('❌ fetchLoans error:', err)
@@ -175,7 +209,7 @@ const selectedFacility = computed(() => authStore.selectedFacility)
 watch(
   () => selectedFacility.value?.id,
   async (newVal, oldVal) => {
-    console.log("🔄 Facility changed in store:", oldVal, "➡️", newVal)
+    console.log('🔄 Facility changed in store:', oldVal, '➡️', newVal)
     if (newVal && newVal !== oldVal) {
       await fetchLoans()
       await fetchCustomers()
@@ -183,6 +217,41 @@ watch(
   },
   { immediate: true }
 )
+
+const showDeleteModal = ref(false)
+const loanToDelete = ref(null)
+
+const openDeleteModal = (loanData) => {
+  loanToDelete.value = loanData
+  showDeleteModal.value = true
+}
+
+const confirmDeleteLoan = async () => {
+  if (!loanToDelete.value) return
+  loading.value = true
+
+  try {
+    const { data, error } = await supabase.rpc('delete_loan', {
+      p_loan_id: loanToDelete.value.id
+    })
+    if (error) throw error
+
+    ElNotification({ title: 'Deleted', message: 'Loan deleted successfully!', type: 'success' })
+    await fetchLoans()
+  } catch (err) {
+    console.error('Error deleting loan:', err)
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  } finally {
+    loading.value = false
+    showDeleteModal.value = false
+    loanToDelete.value = null
+  }
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  loanToDelete.value = null
+}
 
 
 onMounted(() => {
@@ -306,8 +375,13 @@ onMounted(() => {
                 </td>
 
                 <!-- Actions -->
-                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button class="text-indigo-600 hover:text-indigo-900 font-semibold">View</button>
+                <td class="px-8 flex gap-2 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editLoan(loan)">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="text-red-600 hover:text-red-900" @click="openDeleteModal(loan)">
+                    <i class="fas fa-trash"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -323,6 +397,21 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Delete loan modal -->
+     <v-dialog v-model="showDeleteModal" max-width="400px">
+  <v-card>
+    <v-card-title class="text-lg font-bold">Delete Loan</v-card-title>
+    <v-card-text>
+      Are you sure you want to delete the loan for 
+      <strong>{{ loanToDelete?.customer_name }}</strong>?
+    </v-card-text>
+    <v-card-actions class="justify-end">
+      <v-btn text color="gray" @click="cancelDelete">Cancel</v-btn>
+      <v-btn color="red" dark @click="confirmDeleteLoan" :loading="loading">Delete</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+
     <!-- Add Loan Modal -->
     <v-dialog v-model="showModal" persistent max-width="800px">
       <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
@@ -330,7 +419,9 @@ onMounted(() => {
           <i class="fas fa-times fa-lg"></i>
         </button>
 
-        <h2 class="text-lg font-bold mb-4">Add a new loan</h2>
+        <h2 class="text-lg font-bold mb-4">
+          {{ isEditing ? 'Edit Existing Loan' : 'Add a New Loan' }}
+        </h2>
 
         <v-form ref="formRef" v-model="valid" lazy-validation>
           <v-select
@@ -416,7 +507,7 @@ onMounted(() => {
               :loading="loading"
               @click="submitLoan"
             >
-              Save
+              {{ isEditing ? 'Update' : 'Save' }}
             </v-btn>
           </div>
         </v-form>

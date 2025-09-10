@@ -12,7 +12,6 @@ const showModal = ref(false)
 const openModal = () => (showModal.value = true)
 const closeModal = () => (showModal.value = false)
 const facilities = ref([])
-const showFacilityModal = ref(false)
 const loading = ref(false)
 const formRef = ref(null)
 const valid = ref(false)
@@ -20,10 +19,12 @@ const formatCurrency = (value) => {
   if (!value) return '₦0.00'
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
 }
+
+const isEditing = ref(false)
+const editingFacilityId = ref(null)
+
 const disburseMenu = ref(false)
-const facilityTypes = [
-  { label: 'Overdraft', value: 'overdraft' },
-]
+const facilityTypes = [{ label: 'Overdraft', value: 'overdraft' }]
 
 // Form state
 const facilityForm = ref({
@@ -57,15 +58,93 @@ const fetchFacilities = async () => {
   const { data, error } = await supabase.rpc('get_merchant_facilities', {
     p_merchant_id: merchantId
   })
-  console.log("facilities:", data)
+  console.log('facilities:', data)
   if (error) console.error('Error fetching facilities:', error)
   else facilities.value = data
   loading.value = false
 }
 
 // Open/Close modal
-const openFacilityModal = () => (showFacilityModal.value = true)
-const closeFacilityModal = () => (showFacilityModal.value = false)
+const openFacilityModal = (facility) => {
+  isEditing.value = true
+  editingFacilityId.value = facility.id
+  facilityForm.value = {
+    bank_id: facility.bank_id,
+    facility_type: facility.facility_type,
+    facility_amount: facility.facility_amount,
+    borrowing_rate: facility.borrowing_rate,
+    drawdown_date: facility.drawdown_date,
+    drawdown_date_obj: facility.drawdown_date ? new Date(facility.drawdown_date) : null,
+    tenure_days: facility.tenure_days
+  }
+  showModal.value = true
+}
+
+const closeFacilityModal = () => {
+  showModal.value = false
+  isEditing.value = false
+  editingFacilityId.value = null
+  if (formRef.value) formRef.value.reset()
+  facilityForm.value = {
+    bank_id: null,
+    facility_type: '',
+    facility_amount: null,
+    borrowing_rate: null,
+    drawdown_date: null,
+    drawdown_date_obj: null,
+    tenure_days: null
+  }
+}
+
+// Delete modal state
+const showDeleteFacilityModal = ref(false)
+const facilityToDelete = ref(null)
+
+// open the delete confirmation modal for a specific facility
+const openDeleteFacilityModal = (facility) => {
+  facilityToDelete.value = facility
+  showDeleteFacilityModal.value = true
+}
+
+// cancel deletion
+const cancelDeleteFacility = () => {
+  showDeleteFacilityModal.value = false
+  facilityToDelete.value = null
+}
+
+// confirm deletion (calls your RPC)
+const confirmDeleteFacility = async () => {
+  if (!facilityToDelete.value) return
+  loading.value = true
+
+  try {
+    const { error } = await supabase.rpc('delete_facility', {
+      p_facility_id: facilityToDelete.value.id
+    })
+
+    if (error) throw error
+
+    ElNotification({
+      title: 'Deleted',
+      message: 'Facility deleted successfully!',
+      type: 'success'
+    })
+
+    await fetchFacilities()
+  } catch (err) {
+    console.error('Error deleting facility:', err)
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to delete facility',
+      type: 'error'
+    })
+  } finally {
+    loading.value = false
+    showDeleteFacilityModal.value = false
+    facilityToDelete.value = null
+  }
+}
+
 
 // Submit facility form
 const submitFacility = async () => {
@@ -134,7 +213,7 @@ onMounted(() => {
         </div>
 
         <v-btn
-          @click="openModal"
+          @click="openFacilityModal"
           size="medium"
           class="normal-case custom-btn hover:bg-green-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
         >
@@ -198,8 +277,19 @@ onMounted(() => {
                     {{ facility.status }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button class="text-indigo-600 hover:text-indigo-900 font-semibold">View</button>
+                <td class="px-6 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium space-x-3">
+                  <button
+                    @click="openFacilityModal(facility)"
+                    class="text-indigo-600 hover:text-indigo-900 font-semibold"
+                  >
+                  <i class="fas fa-edit"></i>
+                  </button>
+                  <button
+                    @click="openDeleteFacilityModal(facility)"
+                    class="text-red-600 hover:text-red-900 font-semibold"
+                  >
+                  <i class="fas fa-trash"></i>
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -218,11 +308,13 @@ onMounted(() => {
     <v-dialog v-model="showModal" persistent max-width="800px">
       <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative h-screen">
         <!-- Close button -->
-        <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
+        <button @click="closeFacilityModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
           <i class="fas fa-times fa-lg"></i>
         </button>
 
-        <p class="mb-4">Add a new facility</p>
+        <p class="mb-4">
+  {{ isEditing ? 'Edit existing facility' : 'Add a new facility' }}
+</p>
 
         <v-form ref="formRef" v-model="valid" lazy-validation>
           <v-select
@@ -237,17 +329,16 @@ onMounted(() => {
           />
 
           <v-select
-  variant="outlined"
-  color="#27bfa0"
-  v-model="facilityForm.facility_type"
-  :items="facilityTypes"
-  item-title="label"
-  item-value="value"
-  label="Facility Type"
-  :rules="[(v) => !!v || 'Facility type is required']"
-  required
-/>
-
+            variant="outlined"
+            color="#27bfa0"
+            v-model="facilityForm.facility_type"
+            :items="facilityTypes"
+            item-title="label"
+            item-value="value"
+            label="Facility Type"
+            :rules="[(v) => !!v || 'Facility type is required']"
+            required
+          />
 
           <v-text-field
             variant="outlined"
@@ -299,7 +390,7 @@ onMounted(() => {
 
           <v-text-field
             variant="outlined"
-                color="#27bfa0"
+            color="#27bfa0"
             v-model="facilityForm.tenure_days"
             label="Tenure (Days)"
             required
@@ -320,6 +411,24 @@ onMounted(() => {
         </v-form>
       </div>
     </v-dialog>
+
+    <v-dialog v-model="showDeleteFacilityModal" max-width="420px">
+  <v-card>
+    <v-card-title class="text-lg font-bold">Delete Facility</v-card-title>
+
+    <v-card-text>
+      Are you sure you want to delete the facility
+      <strong>{{ facilityToDelete?.bank_name || 'this facility' }}</strong>
+      <span v-if="facilityToDelete"> — {{ facilityToDelete.facility_type }}</span>?
+    </v-card-text>
+
+    <v-card-actions class="justify-end">
+      <v-btn text color="gray" @click="cancelDeleteFacility">Cancel</v-btn>
+      <v-btn color="red" dark @click="confirmDeleteFacility" :loading="loading">Delete</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+
   </MainLayout>
 </template>
 
