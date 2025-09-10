@@ -79,49 +79,72 @@ const submitCustomer = async () => {
   }
 
   loading.value = true
-  ElMessage({
-    message: 'Adding customer...',
-    type: 'info',
-    duration: 1500
-  })
 
   try {
-    const { data, error } = await supabase.rpc('add_customer', {
-      p_merchant_id: merchantId,
-      p_first_name: customer.value.first_name,
-      p_last_name: customer.value.last_name,
-      p_email: customer.value.email,
-      p_phone: customer.value.phone,
-      p_account_number: customer.value.account_number,
-      p_facility_id: customer.value.facility_id
-    })
+   if (isEditingCustomer.value) {
+    ElMessage({ message: 'Updating customer...', type: 'info', duration: 1500 })
+  const { data, error } = await supabase.rpc('update_customer', {
+    p_customer_id: editingCustomerId.value,
+    p_first_name: customer.value.first_name,
+    p_last_name: customer.value.last_name,
+    p_middle_name: customer.value.middle_name ?? null,
+    p_gender: customer.value.gender ?? null,
+    p_dob: customer.value.dob ?? null,
+    p_phone: customer.value.phone,
+    p_email: customer.value.email,
+    p_national_id_type: customer.value.national_id_type ?? null,
+    p_national_id_number: customer.value.national_id_number ?? null,
+    p_marital_status: customer.value.marital_status ?? null,
+    p_account_number: customer.value.account_number,
+    p_status: customer.value.status || 'active',
+    p_address: customer.value.address ?? null,
+    p_bank_id: customer.value.bank_id ?? null
+  })
 
-    if (error) {
-      throw error
+  if (error) throw error
+  ElNotification({
+        title: 'Success',
+        message: 'Customer updated successfully!',
+        type: 'success'
+      })
+}
+ else {
+      // 🟢 Add new customer
+      ElMessage({ message: 'Adding customer...', type: 'info', duration: 1500 })
+
+      const { data, error } = await supabase.rpc('add_customer', {
+        p_merchant_id: merchantId,
+        p_first_name: customer.value.first_name,
+        p_last_name: customer.value.last_name,
+        p_email: customer.value.email,
+        p_phone: customer.value.phone,
+        p_account_number: customer.value.account_number,
+        p_facility_id: customer.value.facility_id
+      })
+
+      if (error) throw error
+
+      ElNotification({
+        title: 'Success',
+        message: 'Customer added successfully!',
+        type: 'success'
+      })
     }
 
-    // check if we got valid data back
-    if (!data) {
-      throw new Error('No data returned from add_customer')
-    }
     closeModal()
-    ElNotification({
-      title: 'Success',
-      message: 'Customer added successfully!',
-      type: 'success'
-    })
     fetchCustomers()
   } catch (err) {
-    console.error('Error adding customer:', err)
+    console.error('Error saving customer:', err)
     ElNotification({
       title: 'Error',
-      message: err.message || 'Failed to add customer',
+      message: err.message || 'Failed to save customer',
       type: 'error'
     })
   } finally {
     loading.value = false
   }
 }
+
 
 const fetchCustomers = async () => {
   loading.value = true
@@ -340,7 +363,7 @@ onMounted(() => {
       </v-card>
     </v-dialog>
 
-    <!-- Add Customer Modal -->
+    <!-- Add/ edit Customer Modal -->
     <v-dialog v-model="showModal" persistent max-width="800px">
       <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
         <!-- Close button -->
@@ -400,6 +423,7 @@ onMounted(() => {
             ]"
           />
           <v-select
+          :disabled="isEditingCustomer"
             variant="outlined"
             color="#27bfa0"
             v-model="customer.facility_id"
@@ -418,7 +442,7 @@ onMounted(() => {
               class="ml-3"
               @click="submitCustomer"
               :loading="loading"
-              :disabled="!valid || loading"
+              :disabled="loading"
             >
               {{ isEditingCustomer ? 'Update' : 'Save' }}
             </v-btn>
