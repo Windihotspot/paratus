@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
@@ -9,9 +9,8 @@ import { useFormattedFields } from '@/composables/useFormmatedFields'
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
 const showModal = ref(false)
-const openModal = () => (showModal.value = true)
-const closeModal = () => (showModal.value = false)
-const facilities = ref([])
+const facilities = computed(() => authStore.facilities)
+
 const loading = ref(false)
 const formRef = ref(null)
 const valid = ref(false)
@@ -37,7 +36,7 @@ const facilityForm = ref({
   tenure_days: null
 })
 
-const formattedFacilityAmount = useFormattedFields(facilityForm.value, 'facility_amount', {
+const formattedFacilityAmount = useFormattedFields(facilityForm, 'facility_amount', {
   currency: true
 })
 
@@ -65,19 +64,96 @@ const fetchFacilities = async () => {
 }
 
 // Open/Close modal
-const openFacilityModal = (facility) => {
-  isEditing.value = true
-  editingFacilityId.value = facility.id
-  facilityForm.value = {
-    bank_id: facility.bank_id,
-    facility_type: facility.facility_type,
-    facility_amount: facility.facility_amount,
-    borrowing_rate: facility.borrowing_rate,
-    drawdown_date: facility.drawdown_date,
-    drawdown_date_obj: facility.drawdown_date ? new Date(facility.drawdown_date) : null,
-    tenure_days: facility.tenure_days
+// Open/Close modal for edit
+const openFacilityModal = (facility = null) => {
+  if (facility) {
+    isEditing.value = true
+    editingFacilityId.value = facility.id
+    facilityForm.value = {
+      bank_id: facility.bank_id,
+      facility_type: facility.facility_type,
+      facility_amount: facility.facility_amount,
+      borrowing_rate: facility.borrowing_rate,
+      drawdown_date: facility.drawdown_date,
+      drawdown_date_obj: facility.drawdown_date ? new Date(facility.drawdown_date) : null,
+      tenure_days: facility.tenure_days ? Number(facility.tenure_days) : null // ✅ ensure number
+    }
+  } else {
+    isEditing.value = false
+    editingFacilityId.value = null
+    facilityForm.value = {
+      bank_id: null,
+      facility_type: '',
+      facility_amount: null,
+      borrowing_rate: null,
+      drawdown_date: null,
+      drawdown_date_obj: null,
+      tenure_days: null
+    }
   }
   showModal.value = true
+}
+
+// Submit facility form
+const submitFacility = async () => {
+  if (!formRef.value) return
+  const formValid = await formRef.value.validate()
+  if (!formValid) {
+    ElMessage({ message: 'Please fix the form errors', type: 'error' })
+    return
+  }
+
+  loading.value = true
+  ElMessage({
+    message: isEditing.value ? 'Updating facility...' : 'Adding facility...',
+    type: 'info',
+    duration: 1500
+  })
+
+  try {
+    let data, error
+
+    if (isEditing.value && editingFacilityId.value) {
+      // ✅ Update facility
+      ;({ data, error } = await supabase.rpc('update_facility', {
+        p_facility_id: editingFacilityId.value,
+        p_bank_id: facilityForm.value.bank_id,
+        p_facility_type: facilityForm.value.facility_type,
+        p_facility_amount: facilityForm.value.facility_amount,
+        p_borrowing_rate: facilityForm.value.borrowing_rate,
+        p_drawdown_date: facilityForm.value.drawdown_date,
+        p_tenure_days: facilityForm.value.tenure_days
+      }))
+    } else {
+      // ✅ Add facility
+      ;({ data, error } = await supabase.rpc('add_facility', {
+        p_merchant_id: merchantId,
+        p_bank_id: facilityForm.value.bank_id,
+        p_facility_type: facilityForm.value.facility_type,
+        p_facility_amount: facilityForm.value.facility_amount,
+        p_borrowing_rate: facilityForm.value.borrowing_rate,
+        p_drawdown_date: facilityForm.value.drawdown_date,
+        p_tenure_days: facilityForm.value.tenure_days
+      }))
+    }
+
+    if (error) throw error
+    if (!data) throw new Error('No data returned from RPC')
+
+    ElNotification({
+      title: 'Success',
+      message: isEditing.value ? 'Facility updated successfully!' : 'Facility added successfully!',
+      type: 'success'
+    })
+    await authStore.fetchFacilities()
+    closeFacilityModal()
+    await fetchFacilities()
+  } catch (err) {
+    console.error('Error saving facility:', err)
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  } finally {
+    loading.value = false
+  }
 }
 
 const closeFacilityModal = () => {
@@ -145,61 +221,13 @@ const confirmDeleteFacility = async () => {
   }
 }
 
-
 // Submit facility form
-const submitFacility = async () => {
-  if (!formRef.value) return
-  const formValid = await formRef.value.validate()
-  if (!formValid) {
-    ElMessage({ message: 'Please fix the form errors', type: 'error' })
-    return
-  }
-
-  loading.value = true
-  ElMessage({ message: 'Adding facility...', type: 'info', duration: 1500 })
-
-  try {
-    const { data, error } = await supabase.rpc('add_facility', {
-      p_merchant_id: merchantId,
-      p_bank_id: facilityForm.value.bank_id,
-      p_facility_type: facilityForm.value.facility_type,
-      p_facility_amount: facilityForm.value.facility_amount,
-      p_borrowing_rate: facilityForm.value.borrowing_rate,
-      p_drawdown_date: facilityForm.value.drawdown_date,
-      p_tenure_days: facilityForm.value.tenure_days
-    })
-
-    if (error) throw error
-    if (!data) throw new Error('No data returned from add_facility')
-
-    ElNotification({ title: 'Success', message: 'Facility added successfully!', type: 'success' })
-    closeModal()
-    await fetchFacilities()
-
-    // Reset form
-    if (formRef.value) formRef.value.reset()
-    facilityForm.value = {
-      bank_id: null,
-      facility_type: '',
-      facility_amount: null,
-      borrowing_rate: null,
-      drawdown_date: null,
-      tenure_days: null
-    }
-
-    closeFacilityModal()
-  } catch (err) {
-    console.error('Error adding facility:', err)
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
-  } finally {
-    loading.value = false
-  }
-}
 
 onMounted(() => {
   fetchBanks()
-  fetchFacilities()
+  authStore.fetchFacilities()
 })
+
 </script>
 
 <template>
@@ -213,7 +241,7 @@ onMounted(() => {
         </div>
 
         <v-btn
-          @click="openFacilityModal"
+          @click="openFacilityModal()"
           size="medium"
           class="normal-case custom-btn hover:bg-green-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
         >
@@ -277,18 +305,20 @@ onMounted(() => {
                     {{ facility.status }}
                   </span>
                 </td>
-                <td class="px-6 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium space-x-3">
+                <td
+                  class="px-6 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium space-x-3"
+                >
                   <button
                     @click="openFacilityModal(facility)"
                     class="text-indigo-600 hover:text-indigo-900 font-semibold"
                   >
-                  <i class="fas fa-edit"></i>
+                    <i class="fas fa-edit"></i>
                   </button>
                   <button
                     @click="openDeleteFacilityModal(facility)"
                     class="text-red-600 hover:text-red-900 font-semibold"
                   >
-                  <i class="fas fa-trash"></i>
+                    <i class="fas fa-trash"></i>
                   </button>
                 </td>
               </tr>
@@ -308,13 +338,16 @@ onMounted(() => {
     <v-dialog v-model="showModal" persistent max-width="800px">
       <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative h-screen">
         <!-- Close button -->
-        <button @click="closeFacilityModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
+        <button
+          @click="closeFacilityModal"
+          class="absolute top-4 right-4 text-gray-600 hover:text-red-500"
+        >
           <i class="fas fa-times fa-lg"></i>
         </button>
 
         <p class="mb-4">
-  {{ isEditing ? 'Edit existing facility' : 'Add a new facility' }}
-</p>
+          {{ isEditing ? 'Edit existing facility' : 'Add a new facility' }}
+        </p>
 
         <v-form ref="formRef" v-model="valid" lazy-validation>
           <v-select
@@ -397,7 +430,7 @@ onMounted(() => {
           />
 
           <div class="flex justify-end mt-6">
-            <v-btn text @click="closeModal">Cancel</v-btn>
+            <v-btn text @click="closeFacilityModal">Cancel</v-btn>
             <v-btn
               color="green"
               class="ml-3"
@@ -405,7 +438,7 @@ onMounted(() => {
               :disabled="!valid"
               @click="submitFacility"
             >
-              Save
+              {{ isEditing ? 'Update' : 'Save' }}
             </v-btn>
           </div>
         </v-form>
@@ -413,22 +446,22 @@ onMounted(() => {
     </v-dialog>
 
     <v-dialog v-model="showDeleteFacilityModal" max-width="420px">
-  <v-card>
-    <v-card-title class="text-lg font-bold">Delete Facility</v-card-title>
+      <v-card>
+        <v-card-title class="text-lg font-bold">Delete Facility</v-card-title>
 
-    <v-card-text>
-      Are you sure you want to delete the facility
-      <strong>{{ facilityToDelete?.bank_name || 'this facility' }}</strong>
-      <span v-if="facilityToDelete"> — {{ facilityToDelete.facility_type }}</span>?
-    </v-card-text>
+        <v-card-text>
+          Are you sure you want to delete the facility
+          <strong>{{ facilityToDelete?.bank_name || 'this facility' }}</strong>
+          <span v-if="facilityToDelete"> — {{ facilityToDelete.facility_type }}</span
+          >?
+        </v-card-text>
 
-    <v-card-actions class="justify-end">
-      <v-btn text color="gray" @click="cancelDeleteFacility">Cancel</v-btn>
-      <v-btn color="red" dark @click="confirmDeleteFacility" :loading="loading">Delete</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
-
+        <v-card-actions class="justify-end">
+          <v-btn text color="gray" @click="cancelDeleteFacility">Cancel</v-btn>
+          <v-btn color="red" dark @click="confirmDeleteFacility" :loading="loading">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </MainLayout>
 </template>
 

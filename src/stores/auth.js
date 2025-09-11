@@ -1,13 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { supabase } from '@/services/supabase.js'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)        // supabase user object
-  const merchant = ref(null)    // merchant details
-  const token = ref(null)       // optional JWT or session token
+  const user = ref(null) // supabase user object
+  const merchant = ref(null) // merchant details
+  const token = ref(null) // optional JWT or session token
 
-   const facilities = ref([])          // merchant facilities
-  const selectedFacility = ref(null) 
+  const facilities = ref([]) // merchant facilities
+  const selectedFacility = ref(null)
 
   // Load from localStorage on init
   const init = () => {
@@ -22,7 +23,6 @@ export const useAuthStore = defineStore('auth', () => {
     if (storedToken) token.value = storedToken
     if (storedFacilities) facilities.value = JSON.parse(storedFacilities)
     if (storedSelectedFacility) selectedFacility.value = JSON.parse(storedSelectedFacility)
-  
   }
 
   const setAuth = (u, m, t = null) => {
@@ -34,7 +34,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('merchant', JSON.stringify(m))
     if (t) localStorage.setItem('token', t)
   }
-const setFacilities = (list) => {
+  const setFacilities = (list) => {
     facilities.value = list || []
     localStorage.setItem('facilities', JSON.stringify(list || []))
     if (list?.length > 0) {
@@ -43,13 +43,21 @@ const setFacilities = (list) => {
   }
 
   const setSelectedFacility = (facilityId) => {
-    const found = facilities.value.find(f => f.id === facilityId) || null
+    const found = facilities.value.find((f) => f.id === facilityId) || null
     selectedFacility.value = found
     if (found) {
       localStorage.setItem('selectedFacility', JSON.stringify(found))
     } else {
       localStorage.removeItem('selectedFacility')
     }
+  }
+
+  const fetchFacilities = async () => {
+    const { data, error } = await supabase.rpc('get_merchant_facilities', {
+      p_merchant_id: merchant.value.id
+    })
+    if (error) throw error
+    setFacilities(data || [])
   }
 
   const logout = () => {
@@ -62,10 +70,10 @@ const setFacilities = (list) => {
     localStorage.removeItem('user')
     localStorage.removeItem('merchant')
     localStorage.removeItem('token')
-     localStorage.removeItem('facilities')
+    localStorage.removeItem('facilities')
     localStorage.removeItem('selectedFacility')
   }
-    return {
+  return {
     user,
     merchant,
     token,
@@ -75,6 +83,7 @@ const setFacilities = (list) => {
     setFacilities,
     setSelectedFacility,
     logout,
-    init
+    init,
+    fetchFacilities
   }
 })

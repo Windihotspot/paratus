@@ -9,7 +9,7 @@ const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
 const loans = ref([])
 const customers = ref([])
-const facilities = ref([])
+const facilities = computed(() => authStore.facilities)
 const showModal = ref(false)
 const loading = ref(false)
 const formRef = ref(null)
@@ -28,25 +28,25 @@ const loan = ref({
   disbursed_at: '',
  
 })
-const fetchFacilities = async () => {
-  loading.value = true
-  const { data, error } = await supabase.rpc('get_merchant_facilities', {
-    p_merchant_id: merchantId
-  })
-  console.log('merchant facilities:', data)
-  facilities.value = data
+// const fetchFacilities = async () => {
+//   loading.value = true
+//   const { data, error } = await supabase.rpc('get_merchant_facilities', {
+//     p_merchant_id: merchantId
+//   })
+//   console.log('merchant facilities:', data)
+//   facilities.value = data
 
-  if (error) {
-    console.log('Error fetching facilities:', error)
-  } else {
-    facilities.value = (data || []).map((f) => ({
-      id: f.id, // facility UUID
-      name: f.name || f.bank_name || 'Unnamed Facility' // adjust to your column name
-    }))
-  }
+//   if (error) {
+//     console.log('Error fetching facilities:', error)
+//   } else {
+//     facilities.value = (data || []).map((f) => ({
+//       id: f.id, // facility UUID
+//       name: f.name || f.bank_name || 'Unnamed Facility' // adjust to your column name
+//     }))
+//   }
 
-  loading.value = false // set loading to false when done
-}
+//   loading.value = false // set loading to false when done
+// }
 
 const isEditing = ref(false)
 const editingLoanId = ref(null)
@@ -259,7 +259,7 @@ const cancelDelete = () => {
 onMounted(() => {
   fetchLoans()
   fetchCustomers()
-  fetchFacilities()
+  authStore.fetchFacilities()
 })
 </script>
 
@@ -302,8 +302,7 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate (%)</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Interest</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Yr</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Mo</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Dy</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Expiry Date</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Status</th>
@@ -342,14 +341,11 @@ onMounted(() => {
                   }}
                 </td>
 
-                <!-- Rate / Year -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.rate_year != null ? loan.rate_year.toFixed(2) : '0.00' }}%
-                </td>
+               
 
-                <!-- Rate / Month -->
+                <!-- Duration -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.rate_month != null ? loan.rate_month.toFixed(2) : '0.00' }}%
+                  {{ loan.tenure_days}} days
                 </td>
 
                 <!-- Rate / Day -->
@@ -445,15 +441,15 @@ onMounted(() => {
             v-model="loan.facility_id"
             :items="facilities"
             item-value="id"
-            item-title="name"
+            item-title="bank_name"
             label="Select Facility"
             :rules="[(v) => !!v || 'Facility is required']"
           />
 
           <v-text-field
             variant="outlined"
-            color="#27bfa0"
             v-model="formattedLoanAmount"
+            color="#27bfa0"
             label="Loan Amount"
             :rules="[(v) => !!v || 'Loan amount is required']"
           />

@@ -24,8 +24,7 @@ const customer = ref({
   facility_id: null
 })
 
-const facilities = ref([])
-
+const facilities = computed(() => authStore.facilities)
 const closeModal = () => {
   showModal.value = false
   if (formRef.value) formRef.value.reset()
@@ -157,7 +156,10 @@ const fetchCustomers = async () => {
     })
     console.log('merchant customers:', data)
     if (error) throw error
-    customers.value = data || []
+    customers.value = (data || []).sort(
+  (a, b) => new Date(b.created_at) - new Date(a.created_at)
+)
+
   } catch (err) {
     console.error('fetchCustomers error:', err)
     errorMessage.value = 'Failed to load customers'
@@ -246,7 +248,7 @@ watch(
 
 onMounted(() => {
   fetchCustomers()
-  fetchFacilities()
+  authStore.fetchFacilities()
 })
 </script>
 
@@ -428,7 +430,7 @@ onMounted(() => {
             color="#27bfa0"
             v-model="customer.facility_id"
             :items="facilities"
-            item-title="name"
+            item-title="bank_name"
             item-value="id"
             label="Facility"
             :rules="[(v) => !!v || 'Bank is required']"
