@@ -23,6 +23,11 @@ const sidebarItems = [
   title: 'Profit & Loss',
   path: '/profit-loss',
   icon: 'fa-solid fa-chart-line', // Line chart icon to represent financial performance
+  },
+  {
+  title: 'Repayments',
+  path: '/repayments',
+  icon: 'fa solid fa-arrows-rotate',
 },
 
 ]

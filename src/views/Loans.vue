@@ -364,7 +364,7 @@ onMounted(() => {
                     :class="{
                       'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
                       'bg-green-100 text-green-800': loan.status === 'active',
-                      'bg-blue-100 text-blue-800': loan.status === 'repaid',
+                      'bg-blue-100 text-blue-800': loan.status === 'completed',
                       'bg-red-100 text-red-800': loan.status === 'defaulted'
                     }"
                   >

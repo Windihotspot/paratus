@@ -93,23 +93,28 @@ async function fetchData() {
 
 onMounted(fetchData)
 // refetch whenever the selected facility changes
-watch(() => facility.value?.id, (newVal) => {
-  if (newVal) fetchData()
-})
+watch(
+  () => facility.value?.id,
+  (newVal) => {
+    if (newVal) fetchData()
+  }
+)
 </script>
 
 <template>
   <MainLayout>
-     <div v-if="loading" class="flex flex-col items-center justify-center min-h-[200px]">
-        <v-progress-circular indeterminate color="#27bfa0" size="40" width="4" />
-      </div>
+    <div v-if="loading" class="flex flex-col items-center justify-center min-h-[200px]">
+      <v-progress-circular indeterminate color="#27bfa0" size="40" width="4" />
+    </div>
     <div v-else class="p-6 space-y-6">
       <!-- Page Header -->
       <h1 class="text-2xl font-bold text-gray-800">
         📊 Facility Profit & Loss
         <span v-if="facility" class="text-sm text-gray-500 ml-2">
           ({{ facility.facility_type || 'facility' }}
-          <span v-if="facility.facility_amount">— {{ formatCurrency(facility.facility_amount) }}</span>)
+          <span v-if="facility.facility_amount"
+            >— {{ formatCurrency(facility.facility_amount) }}</span
+          >)
         </span>
       </h1>
 
@@ -141,91 +146,98 @@ watch(() => facility.value?.id, (newVal) => {
       </div>
 
       <!-- By Loan -->
-<div class="bg-white rounded-2xl shadow p-4">
-  <h2 class="text-lg font-semibold mb-4">💰 By Loan</h2>
-  <el-table :data="pagedLoans" stripe style="width: 100%">
-    <el-table-column prop="loan_id" label="Loan ID" />
-    <el-table-column label="Amount">
-      <template #default="scope">
-        {{ formatCurrency(scope.row.loan_amount) }}
-      </template>
-    </el-table-column>
-    <el-table-column prop="agreed_rate" label="Rate (%)" />
-    <el-table-column label="Income">
-      <template #default="scope">
-        {{ formatCurrency(scope.row.total_income) }}
-      </template>
-    </el-table-column>
-    <el-table-column label="Cost">
-      <template #default="scope">
-        {{ formatCurrency(scope.row.funding_cost) }}
-      </template>
-    </el-table-column>
-    <el-table-column label="PnL">
-      <template #default="scope">
-        <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
-          {{ formatCurrency(scope.row.pnl) }}
-        </span>
-      </template>
-    </el-table-column>
-  </el-table>
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="text-lg font-semibold mb-4">💰 By Loan</h2>
+        <el-table :data="pagedLoans" stripe style="width: 100%">
+          <el-table-column prop="loan_id" label="Loan ID" />
+          <el-table-column label="Amount">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.loan_amount) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="agreed_rate" label="Rate (%)" />
+          <el-table-column label="Income">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.total_income) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="Cost">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.funding_cost) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="PnL">
+            <template #default="scope">
+              <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatCurrency(scope.row.pnl) }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
 
-  <!-- pagination -->
-  <div class="mt-4 flex justify-center">
-    <el-pagination
-      background
-      layout="prev, pager, next"
-      :total="loans.length"
-      :page-size="loanPageSize"
-      v-model:current-page="loanPage"
-    />
-  </div>
-</div>
+        <!-- pagination -->
+        <div class="mt-4 flex justify-center">
+          <el-pagination
+            background
+            layout="prev, pager, next"
+            :total="loans.length"
+            :page-size="loanPageSize"
+            v-model:current-page="loanPage"
+          />
+        </div>
+      </div>
 
-<!-- By Customer -->
-<div class="bg-white rounded-2xl shadow p-4">
-  <h2 class="text-lg font-semibold mb-4">👤 By Customer</h2>
-  <el-table :data="pagedCustomers" stripe style="width: 100%">
-    <el-table-column prop="customer_name" label="Customer" />
-    <el-table-column label="Income">
-      <template #default="scope">
-        {{ formatCurrency(scope.row.total_income) }}
-      </template>
-    </el-table-column>
-    <el-table-column label="Cost">
-      <template #default="scope">
-        {{ formatCurrency(scope.row.total_cost) }}
-      </template>
-    </el-table-column>
-    <el-table-column label="PnL">
-      <template #default="scope">
-        <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
-          {{ formatCurrency(scope.row.pnl) }}
-        </span>
-      </template>
-    </el-table-column>
-  </el-table>
+      <!-- By Customer -->
+      <div class="bg-white rounded-2xl shadow p-4">
+        <h2 class="text-lg font-semibold mb-4">👤 By Customer</h2>
+        <el-table :data="pagedCustomers" stripe style="width: 100%">
+          <el-table-column prop="customer_name" label="Customer" />
+          <el-table-column label="Income">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.total_income) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="Cost">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.total_cost) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="PnL">
+            <template #default="scope">
+              <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatCurrency(scope.row.pnl) }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
 
-  <!-- pagination -->
-  <div class="mt-4 flex justify-center">
-    <el-pagination
-      background
-      layout="prev, pager, next"
-      :total="customers.length"
-      :page-size="customerPageSize"
-      v-model:current-page="customerPage"
-    />
-  </div>
-</div>
-
+        <!-- pagination -->
+        <div class="mt-4 flex justify-center">
+          <el-pagination
+            background
+            layout="prev, pager, next"
+            :total="customers.length"
+            :page-size="customerPageSize"
+            v-model:current-page="customerPage"
+          />
+        </div>
+      </div>
     </div>
   </MainLayout>
 </template>
 
 <style scoped>
 /* optional small helpers */
-.text-green-600 { color: #16a34a; }
-.text-red-600 { color: #dc2626; }
-.text-green-700 { color: #15803d; }
-.text-red-700 { color: #b91c1c; }
+.text-green-600 {
+  color: #16a34a;
+}
+.text-red-600 {
+  color: #dc2626;
+}
+.text-green-700 {
+  color: #15803d;
+}
+.text-red-700 {
+  color: #b91c1c;
+}
 </style>

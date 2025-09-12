@@ -6,6 +6,7 @@ import Facilities from '@/views/Facilities.vue'
 import Loans from '@/views/Loans.vue'
 import Customers from '@/views/Customers.vue'
 import ProfitLoss from '@/views/ProfitLoss.vue'
+import Repayments from '@/views/Repayments.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -39,6 +40,11 @@ const router = createRouter({
       path: '/profit-loss',
       name: 'profit-loss',
       component: ProfitLoss
+    },
+    {
+      path: '/repayments',
+      name: 'repayments',
+      component: Repayments
     },
   ]
 })
