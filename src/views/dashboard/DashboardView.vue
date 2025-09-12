@@ -65,11 +65,31 @@
                     'month'
                   )
                 },
+                yaxis: {
+                  labels: {
+                    formatter: (val) =>
+                      new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        maximumFractionDigits: 0
+                      }).format(val)
+                  }
+                },
                 colors: ['#3B82F6'],
                 dataLabels: { enabled: false },
                 stroke: { curve: 'smooth', width: 3 },
                 title: { text: 'Loan Disbursement Trend', style: { fontSize: '12px' } },
-                tooltip: { x: { format: 'MMM yyyy' } },
+                tooltip: {
+                  x: { format: 'MMM yyyy' },
+                  y: {
+                    formatter: (val) =>
+                      new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        maximumFractionDigits: 0
+                      }).format(val)
+                  }
+                },
                 noData: {
                   text: 'No data available',
                   align: 'center',
@@ -126,12 +146,32 @@
                     'month'
                   )
                 },
+                yaxis: {
+                  labels: {
+                    formatter: (val) =>
+                      new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        maximumFractionDigits: 0
+                      }).format(val)
+                  }
+                },
                 colors: ['#2563EB', '#16A34A'],
                 plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 4 } },
                 dataLabels: { enabled: false },
                 stroke: { show: true, width: 2, colors: ['transparent'] },
                 legend: { position: 'top' },
                 title: { text: 'Repayments vs Disbursements', style: { fontSize: '12px' } },
+                tooltip: {
+                  y: {
+                    formatter: (val) =>
+                      new Intl.NumberFormat('en-NG', {
+                        style: 'currency',
+                        currency: 'NGN',
+                        maximumFractionDigits: 0
+                      }).format(val)
+                  }
+                },
                 noData: {
                   text: 'No data available',
                   align: 'center',
@@ -242,6 +282,14 @@ const kpis = ref({
   overdraft_utilization_percent: '0%'
 })
 
+const merchantFacilitychartData = ref({
+  loan_disbursement_trend: [],
+  loan_status_distribution: [],
+  repayments_vs_disbursements: [],
+  customer_growth_trend: [],
+  customer_status_distribution: []
+})
+
 const formatCurrency = (value) => {
   const num = Number(value) || 0
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(num)
@@ -252,58 +300,75 @@ const formatMonths = (arr, key) => {
   return arr.map((d) => moment(d[key]).format('MMM YYYY'))
 }
 
-const fetchFinancialKPIs = async () => {
-  if (!authStore.merchant?.id) {
-    console.warn('Merchant not ready yet')
+const fetchFinancialKPIs = async (merchantId, facilityId) => {
+  const { data, error } = await supabase.rpc('get_facility_kpis', {
+    p_merchant_id: merchantId,
+    p_facility_id: facilityId
+  })
+  if (error) throw error
+  if (!data || data.length === 0) return kpis.value
+
+  const row = data[0]
+  return {
+    total_disbursed_loans: formatCurrency(row.disbursed_to_customers || 0),
+    total_facilities_from_banks: formatCurrency(row.received_from_bank || 0),
+    outstanding_facility_balance: formatCurrency(row.balance || 0),
+    total_customer_repayments: formatCurrency(row.total_repayments || 0),
+    customer_default_rate_percent:
+      row.customer_default_rate !== null
+        ? `${(row.customer_default_rate * 100).toFixed(2)}%`
+        : '0%'
+  }
+}
+
+const fetchMerchantFacilityStats = async (merchantId, facilityId) => {
+  const { data, error } = await supabase.rpc('dashboard_loans_customers', {
+    p_merchant_id: merchantId,
+    p_facility_id: facilityId
+  })
+  if (error) throw error
+  return {
+    loan_disbursement_trend: data?.loan_disbursement_trend || [],
+    loan_status_distribution: data?.loan_status_distribution || [],
+    repayments_vs_disbursements: data?.repayments_vs_disbursements || [],
+    customer_growth_trend: data?.customer_growth_trend || [],
+    customer_status_distribution: data?.customer_status_distribution || []
+  }
+}
+
+const loadAllData = async () => {
+  if (!authStore.merchant?.id || !authStore.selectedFacility?.id) {
+    console.warn('Merchant or facility not ready yet')
     return
   }
 
   loading.value = true
-  const merchantId = authStore.merchant.id
-  const { data, error } = await supabase.rpc('get_facility_kpis', {
-    p_merchant_id: merchantId,
-    p_facility_id: authStore.selectedFacility?.id
-  })
-
-  if (error) {
-    console.error('Error fetching KPIs:', error)
-  } else if (data && data.length > 0) {
-    const row = data[0]
-    kpis.value = {
-      total_disbursed_loans: formatCurrency(row.disbursed_to_customers || 0),
-      total_facilities_from_banks: formatCurrency(row.received_from_bank || 0),
-      outstanding_facility_balance: formatCurrency(row.balance || 0),
-      total_customer_repayments: formatCurrency(row.total_repayments || 0),
-      customer_default_rate_percent:
-        row.customer_default_rate !== null
-          ? `${(row.customer_default_rate * 100).toFixed(2)}%`
-          : '0%'
-    }
-  }
-
-  loading.value = false
-}
-
-const merchantFacilitychartData = ref(null)
-const fetchMerchantFacilityStats = async () => {
   try {
-    const { data, error } = await supabase.rpc('dashboard_loans_customers', {
-      p_merchant_id: authStore.merchant.id,
-      p_facility_id: authStore.selectedFacility.id
-    })
+    const merchantId = authStore.merchant.id
+    const facilityId = authStore.selectedFacility.id
 
-    if (error) throw error
-    // make sure empty arrays exist instead of nulls
-    merchantFacilitychartData.value = {
-      loan_disbursement_trend: data?.loan_disbursement_trend || [],
-      loan_status_distribution: data?.loan_status_distribution || [],
-      repayments_vs_disbursements: data?.repayments_vs_disbursements || [],
-      customer_growth_trend: data?.customer_growth_trend || [],
-      customer_status_distribution: data?.customer_status_distribution || []
-    }
-    console.log('loans customers stats:', merchantFacilitychartData.value)
+    // fetch both in parallel
+    const [kpiRes, statsRes] = await Promise.all([
+      fetchFinancialKPIs(merchantId, facilityId),
+      fetchMerchantFacilityStats(merchantId, facilityId)
+    ])
+
+    // update after both succeed
+    kpis.value = kpiRes
+    merchantFacilitychartData.value = statsRes
   } catch (err) {
-    console.log('❌ Failed to fetch chart data:', err)
+    console.error('❌ Failed to load dashboard data:', err)
+    // reset to empty to avoid partial data showing
+    kpis.value = {
+      total_disbursed_loans: '₦0.00',
+      outstanding_customer_balance: '₦0.00',
+      total_customer_repayments: '₦0.00',
+      total_settlements_received: '₦0.00',
+      customer_default_rate_percent: '0%',
+      total_facilities_from_banks: '₦0.00',
+      outstanding_facility_balance: '₦0.00',
+      overdraft_utilization_percent: '0%'
+    }
     merchantFacilitychartData.value = {
       loan_disbursement_trend: [],
       loan_status_distribution: [],
@@ -311,6 +376,8 @@ const fetchMerchantFacilityStats = async () => {
       customer_growth_trend: [],
       customer_status_distribution: []
     }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -320,15 +387,13 @@ watch(
   () => selectedFacility.value?.id,
   async (newVal, oldVal) => {
     if (newVal && newVal !== oldVal) {
-      await fetchFinancialKPIs()
-      await fetchMerchantFacilityStats()
+      await loadAllData()
     }
   }
 )
 
 onMounted(async () => {
-  await fetchFinancialKPIs()
-  await fetchMerchantFacilityStats()
+  await loadAllData()
 })
 </script>
 
