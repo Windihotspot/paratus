@@ -305,6 +305,7 @@ const fetchFinancialKPIs = async (merchantId, facilityId) => {
     p_merchant_id: merchantId,
     p_facility_id: facilityId
   })
+  console.log("financial kpi data:", data)
   if (error) throw error
   if (!data || data.length === 0) return kpis.value
 
