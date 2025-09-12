@@ -1,5 +1,5 @@
 <template>
- <MainLayout>
+  <MainLayout>
     <div class="p-4">
       <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center min-h-[200px]">
@@ -8,130 +8,327 @@
       </div>
 
       <!-- KPIs Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Received from Bank -->
-        <div
-          class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
-        >
-          <div class="p-3 text-blue-600">
-            <i class="fas fa-building-columns text-lg"></i>
+      <div v-else>
+        <!-- Bank facility stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Received from Bank -->
+          <div
+            class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
+          >
+            <div class="p-3 text-blue-600">
+              <i class="fas fa-building-columns text-lg"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-gray-500 text-sm">Received from Bank</p>
+              <p class="text-lg font-medium">{{ kpis.total_facilities_from_banks }}</p>
+            </div>
           </div>
-          <div class="ml-4">
-            <p class="text-gray-500 text-sm">Received from Bank</p>
-            <p class="text-lg font-medium">{{ kpis.total_facilities_from_banks }}</p>
+
+          <!-- Disbursed to Customers -->
+          <div
+            class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
+          >
+            <div class="p-3 text-green-600">
+              <i class="fas fa-money-bill-wave text-lg"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-gray-500 text-sm">Disbursed to Customers</p>
+              <p class="text-lg font-medium">{{ kpis.total_disbursed_loans }}</p>
+            </div>
+          </div>
+
+          <!-- Balance -->
+          <div
+            class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
+          >
+            <div class="p-3 text-purple-600">
+              <i class="fas fa-wallet text-lg"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-gray-500 text-sm">Balance</p>
+              <p class="text-lg font-medium">{{ kpis.outstanding_facility_balance }}</p>
+            </div>
           </div>
         </div>
+        <!-- Loan to customers stats -->
+        <div v-if="merchantFacilitychartData" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          <!-- Loan Disbursement Trend -->
+          <div class="rounded bg-white p-2">
+            <apexchart
+              type="area"
+              height="300"
+              :options="{
+                chart: { id: 'loan-disbursement', toolbar: { show: false } },
+                xaxis: {
+                  categories: formatMonths(
+                    merchantFacilitychartData.loan_disbursement_trend,
+                    'month'
+                  )
+                },
+                colors: ['#3B82F6'],
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 3 },
+                title: { text: 'Loan Disbursement Trend', style: { fontSize: '12px' } },
+                tooltip: { x: { format: 'MMM yyyy' } },
+                noData: {
+                  text: 'No data available',
+                  align: 'center',
+                  verticalAlign: 'middle',
+                  style: { color: '#9CA3AF', fontSize: '14px' }
+                }
+              }"
+              :series="[
+                {
+                  name: 'Total Disbursed',
+                  data:
+                    merchantFacilitychartData.loan_disbursement_trend?.map(
+                      (d) => d.total_disbursed
+                    ) || []
+                }
+              ]"
+            />
+          </div>
 
-        <!-- Disbursed to Customers -->
-        <div
-          class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
-        >
-          <div class="p-3 text-green-600">
-            <i class="fas fa-money-bill-wave text-lg"></i>
+          <!-- Loan Status Distribution -->
+          <div class="rounded bg-white p-2">
+            <apexchart
+              type="donut"
+              height="300"
+              :options="{
+                labels:
+                  merchantFacilitychartData.loan_status_distribution?.map((d) => d.status) || [],
+                colors: ['#10B981', '#EF4444', '#F59E0B', '#6366F1', '#14B8A6'],
+                legend: { position: 'bottom' },
+                title: { text: 'Loan Status Distribution', style: { fontSize: '12px' } },
+                noData: {
+                  text: 'No data available',
+                  align: 'center',
+                  verticalAlign: 'middle',
+                  style: { color: '#9CA3AF', fontSize: '14px' }
+                }
+              }"
+              :series="
+                merchantFacilitychartData.loan_status_distribution?.map((d) => d.count) || []
+              "
+            />
           </div>
-          <div class="ml-4">
-            <p class="text-gray-500 text-sm">Disbursed to Customers</p>
-            <p class="text-lg font-medium">{{ kpis.total_disbursed_loans }}</p>
-          </div>
-        </div>
 
-        <!-- Balance -->
-        <div
-          class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition-transform duration-300"
-        >
-          <div class="p-3 text-purple-600">
-            <i class="fas fa-wallet text-lg"></i>
+          <!-- Repayments vs Disbursements -->
+          <div class="rounded bg-white p-2">
+            <apexchart
+              type="bar"
+              height="300"
+              :options="{
+                chart: { toolbar: { show: false } },
+                xaxis: {
+                  categories: formatMonths(
+                    merchantFacilitychartData.repayments_vs_disbursements,
+                    'month'
+                  )
+                },
+                colors: ['#2563EB', '#16A34A'],
+                plotOptions: { bar: { horizontal: false, columnWidth: '50%', borderRadius: 4 } },
+                dataLabels: { enabled: false },
+                stroke: { show: true, width: 2, colors: ['transparent'] },
+                legend: { position: 'top' },
+                title: { text: 'Repayments vs Disbursements', style: { fontSize: '12px' } },
+                noData: {
+                  text: 'No data available',
+                  align: 'center',
+                  verticalAlign: 'middle',
+                  style: { color: '#9CA3AF', fontSize: '14px' }
+                }
+              }"
+              :series="[
+                {
+                  name: 'Disbursed',
+                  data:
+                    merchantFacilitychartData.repayments_vs_disbursements?.map(
+                      (d) => d.disbursed
+                    ) || []
+                },
+                {
+                  name: 'Repaid',
+                  data:
+                    merchantFacilitychartData.repayments_vs_disbursements?.map((d) => d.repaid) ||
+                    []
+                }
+              ]"
+            />
           </div>
-          <div class="ml-4">
-            <p class="text-gray-500 text-sm">Balance</p>
-            <p class="text-lg font-medium">{{ kpis.outstanding_facility_balance }}</p>
+
+          <!-- Customer Growth Trend -->
+          <div class="rounded bg-white p-2">
+            <apexchart
+              type="line"
+              height="300"
+              :options="{
+                chart: { id: 'customer-growth', toolbar: { show: false } },
+                xaxis: {
+                  categories: formatMonths(merchantFacilitychartData.customer_growth_trend, 'month')
+                },
+                colors: ['#F97316'],
+                dataLabels: { enabled: false },
+                stroke: { curve: 'smooth', width: 3 },
+                markers: { size: 4 },
+                title: { text: 'Customer Growth Trend', style: { fontSize: '12px' } },
+                tooltip: { x: { format: 'MMM yyyy' } },
+                noData: {
+                  text: 'No data available',
+                  align: 'center',
+                  verticalAlign: 'middle',
+                  style: { color: '#9CA3AF', fontSize: '14px' }
+                }
+              }"
+              :series="[
+                {
+                  name: 'New Customers',
+                  data:
+                    merchantFacilitychartData.customer_growth_trend?.map((d) => d.new_customers) ||
+                    []
+                }
+              ]"
+            />
+          </div>
+
+          <!-- Customer Status Distribution -->
+          <div class="rounded bg-white p-2">
+            <apexchart
+              type="pie"
+              height="300"
+              :options="{
+                labels:
+                  merchantFacilitychartData.customer_status_distribution?.map((d) => d.status) ||
+                  [],
+                colors: ['#0EA5E9', '#F43F5E', '#22C55E', '#EAB308', '#9333EA'],
+                legend: { position: 'bottom' },
+                title: { text: 'Customer Status Distribution', style: { fontSize: '12px' } },
+                noData: {
+                  text: 'No data available',
+                  align: 'center',
+                  verticalAlign: 'middle',
+                  style: { color: '#9CA3AF', fontSize: '14px' }
+                }
+              }"
+              :series="
+                merchantFacilitychartData.customer_status_distribution?.map((d) => d.count) || []
+              "
+            />
           </div>
         </div>
       </div>
     </div>
   </MainLayout>
-
 </template>
-
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
+import moment from 'moment'
 
 const authStore = useAuthStore()
 const loading = ref(false)
 
 const kpis = ref({
-  total_disbursed_loans: "₦0.00",
-  outstanding_customer_balance: "₦0.00",
-  total_customer_repayments: "₦0.00",
-  total_settlements_received: "₦0.00",
-  customer_default_rate_percent: "0%",
-  total_facilities_from_banks: "₦0.00",
-  outstanding_facility_balance: "₦0.00",
-  overdraft_utilization_percent: "0%"
+  total_disbursed_loans: '₦0.00',
+  outstanding_customer_balance: '₦0.00',
+  total_customer_repayments: '₦0.00',
+  total_settlements_received: '₦0.00',
+  customer_default_rate_percent: '0%',
+  total_facilities_from_banks: '₦0.00',
+  outstanding_facility_balance: '₦0.00',
+  overdraft_utilization_percent: '0%'
 })
 
 const formatCurrency = (value) => {
   const num = Number(value) || 0
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(num)
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(num)
+}
+
+const formatMonths = (arr, key) => {
+  if (!Array.isArray(arr) || arr.length === 0) return []
+  return arr.map((d) => moment(d[key]).format('MMM YYYY'))
 }
 
 const fetchFinancialKPIs = async () => {
   if (!authStore.merchant?.id) {
-    console.warn("Merchant not ready yet")
+    console.warn('Merchant not ready yet')
     return
   }
 
   loading.value = true
   const merchantId = authStore.merchant.id
-  const { data, error } = await supabase.rpc("get_facility_kpis", { 
-    p_merchant_id: merchantId, 
-    p_facility_id: authStore.selectedFacility?.id 
+  const { data, error } = await supabase.rpc('get_facility_kpis', {
+    p_merchant_id: merchantId,
+    p_facility_id: authStore.selectedFacility?.id
   })
 
-  console.log("📊 Raw RPC result:", data)
-
   if (error) {
-    console.error("Error fetching KPIs:", error)
+    console.error('Error fetching KPIs:', error)
   } else if (data && data.length > 0) {
-    const row = data[0]  // 👈 take the first row
-
+    const row = data[0]
     kpis.value = {
       total_disbursed_loans: formatCurrency(row.disbursed_to_customers || 0),
       total_facilities_from_banks: formatCurrency(row.received_from_bank || 0),
       outstanding_facility_balance: formatCurrency(row.balance || 0),
       total_customer_repayments: formatCurrency(row.total_repayments || 0),
-      customer_default_rate_percent: row.customer_default_rate !== null
-        ? `${(row.customer_default_rate * 100).toFixed(2)}%`
-        : "0%"
+      customer_default_rate_percent:
+        row.customer_default_rate !== null
+          ? `${(row.customer_default_rate * 100).toFixed(2)}%`
+          : '0%'
     }
-
-    console.log("🎯 Formatted KPIs:", kpis.value)
   }
 
   loading.value = false
 }
 
+const merchantFacilitychartData = ref(null)
+const fetchMerchantFacilityStats = async () => {
+  try {
+    const { data, error } = await supabase.rpc('dashboard_loans_customers', {
+      p_merchant_id: authStore.merchant.id,
+      p_facility_id: authStore.selectedFacility.id
+    })
+
+    if (error) throw error
+    // make sure empty arrays exist instead of nulls
+    merchantFacilitychartData.value = {
+      loan_disbursement_trend: data?.loan_disbursement_trend || [],
+      loan_status_distribution: data?.loan_status_distribution || [],
+      repayments_vs_disbursements: data?.repayments_vs_disbursements || [],
+      customer_growth_trend: data?.customer_growth_trend || [],
+      customer_status_distribution: data?.customer_status_distribution || []
+    }
+    console.log('loans customers stats:', merchantFacilitychartData.value)
+  } catch (err) {
+    console.log('❌ Failed to fetch chart data:', err)
+    merchantFacilitychartData.value = {
+      loan_disbursement_trend: [],
+      loan_status_distribution: [],
+      repayments_vs_disbursements: [],
+      customer_growth_trend: [],
+      customer_status_distribution: []
+    }
+  }
+}
 
 const selectedFacility = computed(() => authStore.selectedFacility)
 
 watch(
   () => selectedFacility.value?.id,
   async (newVal, oldVal) => {
-    console.log("🔄 Facility changed in store:", oldVal, "➡️", newVal)
     if (newVal && newVal !== oldVal) {
       await fetchFinancialKPIs()
+      await fetchMerchantFacilityStats()
     }
   }
 )
 
 onMounted(async () => {
   await fetchFinancialKPIs()
+  await fetchMerchantFacilityStats()
 })
 </script>
-
-
 
