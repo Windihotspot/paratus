@@ -155,7 +155,6 @@ watch(
               {{ formatCurrency(scope.row.loan_amount) }}
             </template>
           </el-table-column>
-          <el-table-column prop="agreed_rate" label="Rate (%)" />
           <el-table-column label="Income">
             <template #default="scope">
               {{ formatCurrency(scope.row.total_income) }}

@@ -67,7 +67,8 @@ const fetchCustomers = async () => {
 const fetchRepayments = async () => {
   try {
     const { data, error } = await supabase.rpc('get_merchant_repayments', {
-      p_merchant_id: merchantId
+      p_merchant_id: merchantId,
+        p_facility_id: authStore.selectedFacility?.id || null
     })
     if (error) throw error
     repayments.value = data || []
@@ -259,7 +260,10 @@ onMounted(() => {
   >
     <td class="px-4 py-2 text-center">{{ rep.customer_name || 'N/A' }}</td>
     <td class="px-4 py-2 text-center">{{ formatCurrency(rep.amount) }}</td>
-    <td class="px-4 py-2 text-center">{{ formatCurrency(rep.interest_component) }}</td>
+    <td class="px-4 py-2 text-center">
+  {{ formatCurrency(loans.find(l => l.id === rep.loan_id)?.interest_payable || 0) }}
+</td>
+
     <td class="px-4 py-2 text-center">{{ rep.payment_date }}</td>
     <td class="px-4 py-2 text-center capitalize">{{ rep.method }}</td>
     <td class="px-4 py-2 flex justify-center gap-2 text-center">
