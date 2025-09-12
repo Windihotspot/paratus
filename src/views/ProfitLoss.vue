@@ -14,6 +14,24 @@ const facilityPnl = ref(null)
 const loans = ref([])
 const customers = ref([])
 
+// pagination state
+const loanPage = ref(1)
+const loanPageSize = ref(10)
+
+const customerPage = ref(1)
+const customerPageSize = ref(10)
+
+// computed slices
+const pagedLoans = computed(() => {
+  const start = (loanPage.value - 1) * loanPageSize.value
+  return loans.value.slice(start, start + loanPageSize.value)
+})
+
+const pagedCustomers = computed(() => {
+  const start = (customerPage.value - 1) * customerPageSize.value
+  return customers.value.slice(start, start + customerPageSize.value)
+})
+
 // currency formatter (returns string with ₦)
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
   style: 'currency',
@@ -123,68 +141,83 @@ watch(() => facility.value?.id, (newVal) => {
       </div>
 
       <!-- By Loan -->
-      <div class="bg-white rounded-2xl shadow p-4">
-        <h2 class="text-lg font-semibold mb-4">💰 By Loan</h2>
-        <el-table :data="loans" stripe style="width: 100%">
-          <el-table-column prop="loan_id" label="Loan ID" />
-          
-          <el-table-column label="Amount">
-            <template #default="scope">
-              {{ formatCurrency(scope.row.loan_amount) }}
-            </template>
-          </el-table-column>
+<div class="bg-white rounded-2xl shadow p-4">
+  <h2 class="text-lg font-semibold mb-4">💰 By Loan</h2>
+  <el-table :data="pagedLoans" stripe style="width: 100%">
+    <el-table-column prop="loan_id" label="Loan ID" />
+    <el-table-column label="Amount">
+      <template #default="scope">
+        {{ formatCurrency(scope.row.loan_amount) }}
+      </template>
+    </el-table-column>
+    <el-table-column prop="agreed_rate" label="Rate (%)" />
+    <el-table-column label="Income">
+      <template #default="scope">
+        {{ formatCurrency(scope.row.total_income) }}
+      </template>
+    </el-table-column>
+    <el-table-column label="Cost">
+      <template #default="scope">
+        {{ formatCurrency(scope.row.funding_cost) }}
+      </template>
+    </el-table-column>
+    <el-table-column label="PnL">
+      <template #default="scope">
+        <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
+          {{ formatCurrency(scope.row.pnl) }}
+        </span>
+      </template>
+    </el-table-column>
+  </el-table>
 
-          <el-table-column prop="agreed_rate" label="Rate (%)" />
+  <!-- pagination -->
+  <div class="mt-4 flex justify-center">
+    <el-pagination
+      background
+      layout="prev, pager, next"
+      :total="loans.length"
+      :page-size="loanPageSize"
+      v-model:current-page="loanPage"
+    />
+  </div>
+</div>
 
-          <el-table-column label="Income">
-            <template #default="scope">
-              {{ formatCurrency(scope.row.total_income) }}
-            </template>
-          </el-table-column>
+<!-- By Customer -->
+<div class="bg-white rounded-2xl shadow p-4">
+  <h2 class="text-lg font-semibold mb-4">👤 By Customer</h2>
+  <el-table :data="pagedCustomers" stripe style="width: 100%">
+    <el-table-column prop="customer_name" label="Customer" />
+    <el-table-column label="Income">
+      <template #default="scope">
+        {{ formatCurrency(scope.row.total_income) }}
+      </template>
+    </el-table-column>
+    <el-table-column label="Cost">
+      <template #default="scope">
+        {{ formatCurrency(scope.row.total_cost) }}
+      </template>
+    </el-table-column>
+    <el-table-column label="PnL">
+      <template #default="scope">
+        <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
+          {{ formatCurrency(scope.row.pnl) }}
+        </span>
+      </template>
+    </el-table-column>
+  </el-table>
 
-          <el-table-column label="Cost">
-            <template #default="scope">
-              {{ formatCurrency(scope.row.funding_cost) }}
-            </template>
-          </el-table-column>
+  <!-- pagination -->
+  <div class="mt-4 flex justify-center">
+    <el-pagination
+      background
+      layout="prev, pager, next"
+      :total="customers.length"
+      :page-size="customerPageSize"
+      v-model:current-page="customerPage"
+    />
+  </div>
+</div>
 
-          <el-table-column label="PnL">
-            <template #default="scope">
-              <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ formatCurrency(scope.row.pnl) }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-
-      <!-- By Customer -->
-      <div class="bg-white rounded-2xl shadow p-4">
-        <h2 class="text-lg font-semibold mb-4">👤 By Customer</h2>
-        <el-table :data="customers" stripe style="width: 100%">
-          <el-table-column prop="customer_name" label="Customer" />
-
-          <el-table-column label="Income">
-            <template #default="scope">
-              {{ formatCurrency(scope.row.total_income) }}
-            </template>
-          </el-table-column>
-
-          <el-table-column label="Cost">
-            <template #default="scope">
-              {{ formatCurrency(scope.row.total_cost) }}
-            </template>
-          </el-table-column>
-
-          <el-table-column label="PnL">
-            <template #default="scope">
-              <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ formatCurrency(scope.row.pnl) }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
     </div>
   </MainLayout>
 </template>
