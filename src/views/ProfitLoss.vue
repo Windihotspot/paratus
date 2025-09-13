@@ -65,6 +65,7 @@ async function fetchData() {
       p_merchant_id: merchantId.value,
       p_facility_id: facility.value.id
     })
+    console.log("facility pnl:", facData)
     if (facErr) throw facErr
     facilityPnl.value = facData?.[0] ?? null
 
@@ -73,6 +74,7 @@ async function fetchData() {
       p_merchant_id: merchantId.value,
       p_facility_id: facility.value.id
     })
+    console.log("loan pnl:", loanData)
     if (loanErr) throw loanErr
     loans.value = loanData ?? []
 
@@ -80,7 +82,9 @@ async function fetchData() {
     const { data: custData, error: custErr } = await supabase.rpc('customer_pnl', {
       p_merchant_id: merchantId.value,
       p_facility_id: facility.value.id
+      
     })
+    console.log("customer pnl:", custData)
     if (custErr) throw custErr
     customers.value = custData ?? []
   } catch (err) {

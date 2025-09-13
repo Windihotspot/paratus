@@ -399,30 +399,21 @@ onMounted(() => {
             v-model="customer.email"
             label="Email"
             type="email"
-            :rules="[
-              (v) => !!v || 'Email is required',
-              (v) => /.+@.+\..+/.test(v) || 'E-mail must be valid'
-            ]"
+          
           />
           <v-text-field
             variant="outlined"
             color="#27bfa0"
             v-model="customer.phone"
             label="Phone"
-            :rules="[
-              (v) => !!v || 'Phone number is required',
-              (v) => /^[0-9]{10,15}$/.test(v) || 'Enter a valid phone number'
-            ]"
+           
           />
           <v-text-field
             variant="outlined"
             color="#27bfa0"
             v-model="customer.account_number"
             label="Account Number"
-            :rules="[
-              (v) => !!v || 'Account number is required',
-              (v) => v.length >= 8 || 'Must be at least 8 digits'
-            ]"
+           
           />
           <v-select
           :disabled="isEditingCustomer"

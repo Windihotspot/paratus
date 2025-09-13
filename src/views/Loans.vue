@@ -303,6 +303,7 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate(%) Initial</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Interest Payable</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Profit</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Dy</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Expiry Date</th>
@@ -341,6 +342,14 @@ onMounted(() => {
                   {{
                     loan.interest_payable != null
                       ? formatCurrency(loan.interest_payable)
+                      : formatCurrency(0)
+                  }}
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{
+                    loan.profit != null
+                      ? formatCurrency(loan.profit)
                       : formatCurrency(0)
                   }}
                 </td>
@@ -518,6 +527,8 @@ onMounted(() => {
         </v-form>
       </div>
     </v-dialog>
+
+
   </MainLayout>
 </template>
 
