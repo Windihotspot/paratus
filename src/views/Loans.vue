@@ -298,10 +298,11 @@ onMounted(() => {
             <thead class="bg-green-50 font-semibold sticky top-0 z-10">
               <tr>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate (%)</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate(%) Initial</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Interest</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Interest Payable</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Dy</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Expiry Date</th>
@@ -315,6 +316,9 @@ onMounted(() => {
                 <!-- Customer -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {{ loan.customer_name || 'N/A' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ loan.customer_account_number|| 'N/A' }}
                 </td>
 
                 <!-- Loan Amount -->
@@ -364,8 +368,8 @@ onMounted(() => {
                     :class="{
                       'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
                       'bg-green-100 text-green-800': loan.status === 'active',
-                      'bg-blue-100 text-blue-800': loan.status === 'completed',
-                      'bg-red-100 text-red-800': loan.status === 'defaulted'
+                      'bg-red-100 text-red-800': loan.status === 'completed',
+                      'bg-blue-100 text-blue-800': loan.status === 'defaulted'
                     }"
                   >
                     {{ loan.status }}
