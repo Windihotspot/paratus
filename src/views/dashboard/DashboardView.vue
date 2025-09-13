@@ -311,7 +311,7 @@ const fetchFinancialKPIs = async (merchantId, facilityId) => {
 
   const row = data[0]
   return {
-    total_disbursed_loans: formatCurrency(row.gross_disbursed || 0),
+    total_disbursed_loans: formatCurrency(row.net_disbursed_to_customers || 0),
     total_facilities_from_banks: formatCurrency(row.received_from_bank || 0),
     outstanding_facility_balance: formatCurrency(row.balance || 0),
     total_customer_repayments: formatCurrency(row.total_repayments || 0),

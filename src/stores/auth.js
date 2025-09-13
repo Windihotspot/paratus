@@ -56,6 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { data, error } = await supabase.rpc('get_merchant_facilities', {
       p_merchant_id: merchant.value.id
     })
+    console.log("merchant facillities:", data)
     if (error) throw error
     setFacilities(data || [])
   }

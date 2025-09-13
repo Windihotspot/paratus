@@ -89,8 +89,8 @@ const submitCustomer = async () => {
     p_middle_name: customer.value.middle_name ?? null,
     p_gender: customer.value.gender ?? null,
     p_dob: customer.value.dob ?? null,
-    p_phone: customer.value.phone,
-    p_email: customer.value.email,
+     p_email: customer.value.email?.trim() || null,
+  p_phone: customer.value.phone?.trim() || null,
     p_national_id_type: customer.value.national_id_type ?? null,
     p_national_id_number: customer.value.national_id_number ?? null,
     p_marital_status: customer.value.marital_status ?? null,
@@ -115,8 +115,8 @@ const submitCustomer = async () => {
         p_merchant_id: merchantId,
         p_first_name: customer.value.first_name,
         p_last_name: customer.value.last_name,
-        p_email: customer.value.email,
-        p_phone: customer.value.phone,
+          p_email: customer.value.email?.trim() || null,
+  p_phone: customer.value.phone?.trim() || null,
         p_account_number: customer.value.account_number,
         p_facility_id: customer.value.facility_id
       })
