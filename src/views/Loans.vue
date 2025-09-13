@@ -25,8 +25,7 @@ const loan = ref({
   loan_amount: '',
   agreed_rate: '',
   tenure_days: '',
-  disbursed_at: '',
- 
+  disbursed_at: ''
 })
 // const fetchFacilities = async () => {
 //   loading.value = true
@@ -55,14 +54,13 @@ const editLoan = (loanData) => {
   isEditing.value = true
   editingLoanId.value = loanData.id
   loan.value = {
-  customer_id: loanData.customer_id,
-  facility_id: loanData.facility_id,
-  loan_amount: loanData.loan_amount,
-  agreed_rate: loanData.agreed_rate,
-  tenure_days: loanData.tenure_days,
-  disbursed_at: loanData.disbursed_at,
-  
-}
+    customer_id: loanData.customer_id,
+    facility_id: loanData.facility_id,
+    loan_amount: loanData.loan_amount,
+    agreed_rate: loanData.agreed_rate,
+    tenure_days: loanData.tenure_days,
+    disbursed_at: loanData.disbursed_at
+  }
 
   showModal.value = true
 }
@@ -300,9 +298,13 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate(%) Initial</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
+                  Rate(%) Initial
+                </th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Interest Payable</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
+                  Interest Payable
+                </th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Profit</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Dy</th>
@@ -319,7 +321,7 @@ onMounted(() => {
                   {{ loan.customer_name || 'N/A' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.customer_account_number|| 'N/A' }}
+                  {{ loan.customer_account_number || 'N/A' }}
                 </td>
 
                 <!-- Loan Amount -->
@@ -347,18 +349,12 @@ onMounted(() => {
                 </td>
 
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{
-                    loan.profit != null
-                      ? formatCurrency(loan.profit)
-                      : formatCurrency(0)
-                  }}
+                  {{ loan.profit != null ? formatCurrency(loan.profit) : formatCurrency(0) }}
                 </td>
-
-               
 
                 <!-- Duration -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.tenure_days}} days
+                  {{ loan.tenure_days }} days
                 </td>
 
                 <!-- Rate / Day -->
@@ -437,7 +433,7 @@ onMounted(() => {
 
         <v-form ref="formRef" v-model="valid" lazy-validation>
           <v-select
-          :disabled="isEditing"
+            :disabled="isEditing"
             variant="outlined"
             color="#27bfa0"
             v-model="loan.customer_id"
@@ -448,7 +444,7 @@ onMounted(() => {
             required
           ></v-select>
           <v-select
-          :disabled="isEditing"
+            :disabled="isEditing"
             variant="outlined"
             color="#27bfa0"
             v-model="loan.facility_id"
@@ -505,7 +501,14 @@ onMounted(() => {
               :model-value="loan.disbursed_at ? new Date(loan.disbursed_at) : null"
               @update:model-value="
                 (val) => {
-                  loan.disbursed_at = val ? val.toISOString().split('T')[0] : null
+                  if (val) {
+                    const year = val.getFullYear()
+                    const month = String(val.getMonth() + 1).padStart(2, '0')
+                    const day = String(val.getDate()).padStart(2, '0')
+                    loan.disbursed_at = `${year}-${month}-${day}` // stays correct, no UTC shift
+                  } else {
+                    loan.disbursed_at = null
+                  }
                   disburseMenu = false
                 }
               "
@@ -527,8 +530,6 @@ onMounted(() => {
         </v-form>
       </div>
     </v-dialog>
-
-
   </MainLayout>
 </template>
 
