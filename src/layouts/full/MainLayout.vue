@@ -17,16 +17,19 @@ onMounted(() => {
     <!--- Header -->
     <!-- ---------------------------------------------- -->
     <v-app-bar app elevation="1" class="pa-2">
-     
       <v-btn class="hidden-md-and-up" icon @click="drawer = !drawer">
         <v-icon>fa-solid fa-bars</v-icon>
       </v-btn>
-      <div class="logo pa-4">
+
+      <img src="/src/assets/New Logo_with_Paratus.png" alt="Logo" class="w-24 h-24 mb-2" />
+
+      <div class="logo pa-4 flex items-center space-x-2">
         <p class="font-semibold text-lg">Paratus</p>
-        <!-- <img src="/src/assets/images/white.png" class="" /> -->
+        <span class="text-sm text-gray-600">Powered By: Uppertech One Ltd</span>
       </div>
+
       <v-spacer></v-spacer>
-     <HeaderView/>
+      <HeaderView />
     </v-app-bar>
     <!-- ---------------------------------------------- -->
     <!--- Sidebar -->
@@ -62,11 +65,9 @@ onMounted(() => {
   overflow: hidden !important;
 }
 
-
 .side-bar::-webkit-scrollbar {
   display: none; /* Chrome, Safari */
 }
-
 
 .page-wrapper {
   background-color: #f5f7f9;
