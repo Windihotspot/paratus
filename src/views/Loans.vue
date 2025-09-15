@@ -382,7 +382,7 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
-                  Rate(%) Initial
+                  Bank Rate
                 </th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
