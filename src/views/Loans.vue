@@ -16,6 +16,52 @@ const formRef = ref(null)
 const valid = ref(false)
 const merchant = authStore.merchant
 const errorMessage = ref(null)
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
+
+const downloadLoanExcel = (loan) => {
+  const data = [
+    {
+      'Loan ID': loan.id,
+      'Customer Name': loan.customer_name || 'N/A',
+      'Customer ID': loan.customer_id,
+      'Customer Email': loan.customer_email || 'N/A',
+      'Customer Phone': loan.customer_phone || 'N/A',
+      'Account Number': loan.customer_account_number || 'N/A',
+      'Facility Name': loan.facility_name || 'N/A',
+      'Facility ID': loan.facility_id,
+      'Facility Amount': loan.facility_amount,
+      'Facility Status': loan.facility_status,
+      'Facility Rate (%)': loan.facility_rate,
+      'Facility Tenure (Days)': loan.facility_tenure_days,
+      'Facility Drawdown Date': loan.facility_drawdown_date,
+      'Loan Amount': loan.loan_amount,
+      'Agreed Rate (%)': loan.agreed_rate,
+      'Profit Rate (%)': loan.profit_rate,
+      'Rate/Day': loan.rate_day,
+      'Rate/Month': loan.rate_month,
+      'Rate/Year': loan.rate_year,
+      Profit: loan.profit,
+      'Interest Payable': loan.interest_payable,
+      'Tenure (Days)': loan.tenure_days,
+      'Disbursed At': loan.disbursed_at,
+      'Expiry Date': loan.expiry_date,
+      Status: loan.status,
+      'Created At': loan.created_at,
+      'Updated At': loan.updated_at
+    }
+  ]
+
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Loan')
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `${loan.customer_name || 'Unknown'}.xlsx`
+  )
+}
 
 const disburseMenu = ref(false)
 
@@ -331,7 +377,7 @@ onMounted(() => {
 
                 <!-- Agreed Rate -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.agreed_rate != null ? loan.agreed_rate.toFixed(2) : '0.00' }}%
+                  {{ loan.agreed_rate != null ? loan.agreed_rate.toFixed(1) : '0.00' }}%
                 </td>
 
                 <!-- Disbursement Date -->
@@ -382,7 +428,14 @@ onMounted(() => {
                 </td>
 
                 <!-- Actions -->
-                <td class="px-8 flex gap-2 py-4 whitespace-nowrap text-center text-sm font-medium">
+                <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <button
+                    class="text-green-600 hover:text-green-900"
+                    @click="downloadLoanExcel(loan)"
+                  >
+                    <i class="fas fa-download"></i>
+                  </button>
+
                   <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editLoan(loan)">
                     <i class="fas fa-edit"></i>
                   </button>
