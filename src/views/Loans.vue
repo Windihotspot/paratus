@@ -93,6 +93,43 @@ const loan = ref({
 //   loading.value = false // set loading to false when done
 // }
 
+const getLoanStatusWithDays = (loan) => {
+  if (!loan.expiry_date || !loan.status) return loan.status || 'N/A'
+
+  const today = new Date()
+  const expiry = new Date(loan.expiry_date)
+
+  const diffTime = expiry - today // milliseconds
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) // convert to days
+
+  if (diffDays > 0) {
+    return `${loan.status} - less ${diffDays} day${diffDays > 1 ? 's' : ''}`
+  } else {
+    return `${loan.status} - expired`
+  }
+}
+
+const getStatusBadge = (loan) => {
+  if (!loan.status || !loan.expiry_date) return { text: 'N/A', color: 'gray' }
+
+  const today = new Date()
+  const expiry = new Date(loan.expiry_date)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+
+  if (loan.status === 'active') {
+    if (diffDays > 0) {
+      return { text: `active < ${diffDays} day${diffDays > 1 ? 's' : ''}`, color: 'green' }
+    } else {
+      return { text: 'closed', color: 'red' } // expired → closed
+    }
+  }
+
+  if (loan.status === 'completed') return { text: 'completed', color: 'red' }
+  if (loan.status === 'defaulted') return { text: 'defaulted', color: 'blue' }
+
+  return { text: loan.status, color: 'gray' }
+}
+
 const isEditing = ref(false)
 const editingLoanId = ref(null)
 
@@ -418,12 +455,13 @@ onMounted(() => {
                   <span
                     :class="{
                       'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                      'bg-green-100 text-green-800': loan.status === 'active',
-                      'bg-red-100 text-red-800': loan.status === 'completed',
-                      'bg-blue-100 text-blue-800': loan.status === 'defaulted'
+                      'bg-green-100 text-green-800': getStatusBadge(loan).color === 'green',
+                      'bg-red-100 text-red-800': getStatusBadge(loan).color === 'red',
+                      'bg-blue-100 text-blue-800': getStatusBadge(loan).color === 'blue',
+                      'bg-gray-100 text-gray-800': getStatusBadge(loan).color === 'gray'
                     }"
                   >
-                    {{ loan.status }}
+                    {{ getStatusBadge(loan).text }}
                   </span>
                 </td>
 
