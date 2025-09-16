@@ -165,7 +165,11 @@ const getStatusBadge = (loan) => {
 
   if (loan.status === 'active') {
     if (diffDays > 0) {
-      return { text: `active < ${diffDays} day${diffDays > 1 ? 's' : ''}`, color: 'green' }
+      if (diffDays <= 5) {
+        return { text: `active < ${diffDays} day${diffDays > 1 ? 's' : ''}`, color: 'red' }
+      } else {
+        return { text: 'active', color: 'green' } // more than 5 days left
+      }
     } else {
       return { text: 'closed', color: 'red' } // expired → closed
     }
