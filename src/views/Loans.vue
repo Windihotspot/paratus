@@ -63,6 +63,53 @@ const downloadLoanExcel = (loan) => {
   )
 }
 
+const downloadAllLoansExcel = () => {
+  if (!loans.value || loans.value.length === 0) {
+    ElMessage({ message: 'No loans available to export', type: 'warning' })
+    return
+  }
+
+  const data = loans.value.map((loan) => ({
+    'Loan ID': loan.id,
+    'Customer Name': loan.customer_name || 'N/A',
+    'Customer ID': loan.customer_id,
+    'Customer Email': loan.customer_email || 'N/A',
+    'Customer Phone': loan.customer_phone || 'N/A',
+    'Account Number': loan.customer_account_number || 'N/A',
+    'Facility Name': loan.facility_name || 'N/A',
+    'Facility ID': loan.facility_id,
+    'Facility Amount': loan.facility_amount,
+    'Facility Status': loan.facility_status,
+    'Facility Rate (%)': loan.facility_rate,
+    'Facility Tenure (Days)': loan.facility_tenure_days,
+    'Facility Drawdown Date': loan.facility_drawdown_date,
+    'Loan Amount': loan.loan_amount,
+    'Agreed Rate (%)': loan.agreed_rate,
+    'Profit Rate (%)': loan.profit_rate,
+    'Rate/Day': loan.rate_day,
+    'Rate/Month': loan.rate_month,
+    'Rate/Year': loan.rate_year,
+    Profit: loan.profit,
+    'Interest Payable': loan.interest_payable,
+    'Tenure (Days)': loan.tenure_days,
+    'Disbursed At': loan.disbursed_at,
+    'Expiry Date': loan.expiry_date,
+    Status: loan.status,
+    'Created At': loan.created_at,
+    'Updated At': loan.updated_at
+  }))
+
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Loans Report')
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `Loans_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+  )
+}
+
 const disburseMenu = ref(false)
 
 const loan = ref({
@@ -374,16 +421,27 @@ onMounted(() => {
 
       <!-- Loans Table -->
       <div v-else-if="loans.length > 0" class="overflow-x-auto">
+        <v-btn
+          color="green"
+          @click="downloadAllLoansExcel"
+          size="medium"
+          class="mb-4 normal-case bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
+        >
+          <span class="p-1 flex items-center justify-center w-4 h-4 mr-2">
+            <i class="fas fa-file-excel text-sm text-white"></i>
+          </span>
+          Export Loans
+        </v-btn>
         <div class="overflow-y-auto max-h-[500px] bg-white shadow rounded-lg">
+          <!-- Export All Loans -->
+
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-green-50 font-semibold sticky top-0 z-10">
               <tr>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
-                  Bank Rate
-                </th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Bank Rate</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
                   Interest Payable
