@@ -118,8 +118,11 @@ const loan = ref({
   loan_amount: '',
   agreed_rate: '',
   tenure_days: '',
-  disbursed_at: ''
+  disbursed_at: '',
+  agent_name: ''
 })
+
+
 // const fetchFacilities = async () => {
 //   loading.value = true
 //   const { data, error } = await supabase.rpc('get_merchant_facilities', {
@@ -225,7 +228,8 @@ const submitLoan = async () => {
         p_status: loan.value.status || 'active', // default if not set
         p_tenure_days: loan.value.tenure_days,
         p_customer_id: loan.value.customer_id,
-        p_facility_id: loan.value.facility_id
+        p_facility_id: loan.value.facility_id,
+         p_agent_name: loan.value.agent_name 
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
@@ -238,7 +242,8 @@ const submitLoan = async () => {
         p_loan_amount: loan.value.loan_amount,
         p_agreed_rate: loan.value.agreed_rate,
         p_tenure_days: loan.value.tenure_days,
-        p_disbursed_at: loan.value.disbursed_at
+        p_disbursed_at: loan.value.disbursed_at,
+         p_agent_name: loan.value.agent_name 
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan added successfully!', type: 'success' })
@@ -253,7 +258,8 @@ const submitLoan = async () => {
       loan_amount: null,
       agreed_rate: null,
       tenure_days: null,
-      disbursed_at: null
+      disbursed_at: null,
+      agent_name: null
     }
     isEditing.value = false
     editingLoanId.value = null
@@ -388,6 +394,22 @@ const cancelDelete = () => {
   loanToDelete.value = null
 }
 
+const searchQuery = ref('')
+
+const filteredLoans = computed(() => {
+  if (!searchQuery.value) return loans.value
+
+  const query = searchQuery.value.toLowerCase()
+
+  return loans.value.filter((loan) =>
+    Object.values(loan).some((val) =>
+      String(val || '')
+        .toLowerCase()
+        .includes(query)
+    )
+  )
+})
+
 onMounted(() => {
   fetchLoans()
   fetchCustomers()
@@ -425,17 +447,41 @@ onMounted(() => {
 
       <!-- Loans Table -->
       <div v-else-if="loans.length > 0" class="overflow-x-auto">
-        <v-btn
-          color="green"
-          @click="downloadAllLoansExcel"
-          size="medium"
-          class="mb-4 normal-case bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
-        >
-          <span class="p-1 flex items-center justify-center w-4 h-4 mr-2">
-            <i class="fas fa-file-excel text-sm text-white"></i>
-          </span>
-          Export Loans
-        </v-btn>
+        <div class="flex justify-between items-center mb-4 mt-4">
+          <!-- Export Button -->
+          <v-btn
+            color="green"
+            @click="downloadAllLoansExcel"
+            size="medium"
+            class="normal-case bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
+          >
+            <span class="p-1 flex items-center justify-center w-4 h-4 mr-2">
+              <i class="fas fa-file-excel text-sm text-white"></i>
+            </span>
+            Export Loans
+          </v-btn>
+
+          <!-- Search Field -->
+          <div class="w-64">
+            <v-text-field
+              v-model="searchQuery"
+              rounded
+              placeholder="Search for a loan"
+              density="compact"
+              hide-details
+              variant="outlined"
+              class="max-w-xs rounded-md"
+              label="Search"
+               color="#27bfa0"
+              append-inner-icon=""
+            >
+              <!-- FontAwesome Search Icon inside append-inner slot -->
+              <template #append-inner>
+                <i class="fas fa-search text-[#27bfa0]"></i>
+              </template>
+            </v-text-field>
+          </div>
+        </div>
         <div class="overflow-y-auto max-h-[500px] bg-white shadow rounded-lg">
           <!-- Export All Loans -->
 
@@ -445,6 +491,7 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Agent name</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Bank Rate</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
@@ -460,7 +507,7 @@ onMounted(() => {
             </thead>
 
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="loan in loans" :key="loan.id">
+              <tr v-for="loan in filteredLoans" :key="loan.id">
                 <!-- Customer -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {{ loan.customer_name || 'N/A' }}
@@ -472,6 +519,9 @@ onMounted(() => {
                 <!-- Loan Amount -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {{ formatCurrency(loan.loan_amount) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ loan.agent_name }}
                 </td>
 
                 <!-- Agreed Rate -->
@@ -614,6 +664,13 @@ onMounted(() => {
             color="#27bfa0"
             label="Loan Amount"
             :rules="[(v) => !!v || 'Loan amount is required']"
+          />
+          <v-text-field
+            variant="outlined"
+            v-model="loan.agent_name"
+            color="#27bfa0"
+            label="Agent name"
+            :rules="[(v) => !!v || 'Agent name is required']"
           />
           <v-text-field
             variant="outlined"
