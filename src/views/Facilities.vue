@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
@@ -220,6 +220,17 @@ const confirmDeleteFacility = async () => {
     facilityToDelete.value = null
   }
 }
+
+const selectedFacility = computed(() => authStore.selectedFacility)
+
+watch(
+  () => selectedFacility.value?.id,
+  async (newVal, oldVal) => {
+    if (newVal && newVal !== oldVal) {
+      await fetchBanks()
+    }
+  }
+)
 
 // Submit facility form
 

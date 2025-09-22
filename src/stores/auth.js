@@ -34,13 +34,6 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('merchant', JSON.stringify(m))
     if (t) localStorage.setItem('token', t)
   }
-  const setFacilities = (list) => {
-    facilities.value = list || []
-    localStorage.setItem('facilities', JSON.stringify(list || []))
-    if (list?.length > 0) {
-      setSelectedFacility(list[0].id) // default to first
-    }
-  }
 
   const setSelectedFacility = (facilityId) => {
     const found = facilities.value.find((f) => f.id === facilityId) || null
@@ -52,11 +45,32 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const setFacilities = (list) => {
+    facilities.value = list || []
+    localStorage.setItem('facilities', JSON.stringify(list || []))
+
+    // Preserve selected if still in the new list
+    if (selectedFacility.value) {
+      const stillExists = facilities.value.find((f) => f.id === selectedFacility.value.id)
+      if (stillExists) {
+        setSelectedFacility(stillExists.id)
+        return
+      }
+    }
+
+    // Otherwise fallback to first one
+    if (list?.length > 0) {
+      setSelectedFacility(list[0].id)
+    } else {
+      setSelectedFacility(null)
+    }
+  }
+
   const fetchFacilities = async () => {
     const { data, error } = await supabase.rpc('get_merchant_facilities', {
       p_merchant_id: merchant.value.id
     })
-    console.log("merchant facillities:", data)
+    console.log('merchant facillities:', data)
     if (error) throw error
     setFacilities(data || [])
   }
