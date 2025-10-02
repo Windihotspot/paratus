@@ -124,21 +124,21 @@ watch(
 
       <!-- Facility Summary -->
       <div v-if="facilityPnl" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="p-4 rounded-2xl shadow bg-white">
+        <!-- <div class="p-4 rounded-2xl shadow bg-white">
           <p class="text-gray-500">Total Income</p>
           <p class="text-xl font-semibold text-green-600">
             {{ formatCurrency(facilityPnl.total_income) }}
           </p>
-        </div>
+        </div> -->
 
         <div class="p-4 rounded-2xl shadow bg-white">
-          <p class="text-gray-500">Total Cost</p>
-          <p class="text-xl font-semibold text-red-600">
+          <p class="text-gray-500">Total Profit</p>
+          <p class="text-xl font-semibold text-green-600">
             {{ formatCurrency(facilityPnl.total_cost) }}
           </p>
         </div>
 
-        <div class="p-4 rounded-2xl shadow bg-white">
+        <!-- <div class="p-4 rounded-2xl shadow bg-white">
           <p class="text-gray-500">Profit / Loss</p>
           <p
             class="text-xl font-bold"
@@ -146,7 +146,7 @@ watch(
           >
             {{ formatCurrency(facilityPnl.pnl) }}
           </p>
-        </div>
+        </div> -->
       </div>
 
       <!-- By Loan -->
@@ -159,20 +159,20 @@ watch(
               {{ formatCurrency(scope.row.loan_amount) }}
             </template>
           </el-table-column>
-          <el-table-column label="Income">
+          <!-- <el-table-column label="Income">
             <template #default="scope">
               {{ formatCurrency(scope.row.total_income) }}
             </template>
-          </el-table-column>
-          <el-table-column label="Cost">
+          </el-table-column> -->
+          <!-- <el-table-column label="Cost">
             <template #default="scope">
               {{ formatCurrency(scope.row.funding_cost) }}
             </template>
-          </el-table-column>
-          <el-table-column label="PnL">
+          </el-table-column> -->
+          <el-table-column label="Profit">
             <template #default="scope">
-              <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ formatCurrency(scope.row.pnl) }}
+              <span :class="scope.row.funding_cost >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatCurrency(scope.row.funding_cost) }}
               </span>
             </template>
           </el-table-column>
@@ -195,7 +195,7 @@ watch(
         <h2 class="text-lg font-semibold mb-4">👤 By Customer</h2>
         <el-table :data="pagedCustomers" stripe style="width: 100%">
           <el-table-column prop="customer_name" label="Customer" />
-          <el-table-column label="Income">
+          <!-- <el-table-column label="Income">
             <template #default="scope">
               {{ formatCurrency(scope.row.total_income) }}
             </template>
@@ -204,11 +204,11 @@ watch(
             <template #default="scope">
               {{ formatCurrency(scope.row.total_cost) }}
             </template>
-          </el-table-column>
+          </el-table-column> -->
           <el-table-column label="PnL">
             <template #default="scope">
-              <span :class="scope.row.pnl >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ formatCurrency(scope.row.pnl) }}
+              <span :class="scope.row.total_cost >= 0 ? 'text-green-600' : 'text-red-600'">
+                {{ formatCurrency(scope.row.total_cost) }}
               </span>
             </template>
           </el-table-column>
