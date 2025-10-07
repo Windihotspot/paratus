@@ -65,7 +65,7 @@ const downloadLoanPDF = async (loan) => {
       {
         columns: [
           { text: `Name: ${loan.customer_name || 'N/A'}`, width: '50%' },
-          { text: `Customer ID: ${loan.customer_id || 'N/A'}`, width: '50%' }
+          // { text: `Customer ID: ${loan.customer_id || 'N/A'}`, width: '50%' }
         ]
       },
       {
