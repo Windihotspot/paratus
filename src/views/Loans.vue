@@ -18,6 +18,158 @@ const merchant = authStore.merchant
 const errorMessage = ref(null)
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
+import * as pdfMake from 'pdfmake/build/pdfmake'
+import * as pdfFonts from 'pdfmake/build/vfs_fonts'
+import logoImage from '@/assets/New Logo_with_Paratus.png' // ✅ correct way for Vite
+pdfMake.vfs = pdfFonts.vfs
+
+// Helper: convert imported logo to base64
+const getBase64FromUrl = async (url) => {
+  const res = await fetch(url)
+  const blob = await res.blob()
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.readAsDataURL(blob)
+  })
+}
+
+const downloadLoanPDF = async (loan) => {
+  const logo = await getBase64FromUrl(logoImage)
+
+  const docDefinition = {
+    content: [
+      // HEADER — logo on far right, title on left
+      {
+        columns: [
+          {
+            text: 'PoF Due-Date Notification',
+            style: 'header',
+            alignment: 'left',
+            margin: [0, 20, 0, 0]
+          },
+          {
+            image: logo,
+            width: 80,
+            alignment: 'right'
+          }
+        ],
+        margin: [0, 0, 0, 20]
+      },
+
+      // CUSTOMER INFORMATION
+      {
+        text: 'Customer Information',
+        style: 'sectionHeader'
+      },
+      {
+        columns: [
+          { text: `Name: ${loan.customer_name || 'N/A'}`, width: '50%' },
+          { text: `Customer ID: ${loan.customer_id || 'N/A'}`, width: '50%' }
+        ]
+      },
+      {
+        columns: [
+          { text: `Email: ${loan.customer_email || 'N/A'}`, width: '50%' },
+          { text: `Phone: ${loan.customer_phone || 'N/A'}`, width: '50%' }
+        ]
+      },
+      {
+        text: `Account Number: ${loan.customer_account_number || 'N/A'}`,
+        margin: [0, 0, 0, 15]
+      },
+
+      // FACILITY INFORMATION
+      // {
+      //   text: 'Facility Information',
+      //   style: 'sectionHeader'
+      // },
+      // {
+      //   columns: [
+      //     { text: `Facility Name: ${loan.facility_name || 'N/A'}`, width: '50%' },
+      //     // { text: `Facility Amount: ${formatCurrency(loan.facility_amount)}`, width: '50%' }
+      //   ]
+      // },
+      {
+        text: '',
+        margin: [0, 0, 0, 15]
+      },
+
+      // POF DETAILS
+      {
+        text: 'PoF Details',
+        style: 'sectionHeader'
+      },
+      {
+        style: 'loanTable',
+        table: {
+          widths: ['40%', '60%'],
+          body: [
+            ['Loan Amount', formatCurrency(loan.loan_amount)],
+            ['Agreed Rate', `${loan.agreed_rate || 0}%`],
+            ['Tenure (Days)', loan.tenure_days],
+            ['Disbursed At', loan.disbursed_at || 'N/A'],
+            ['Expiry Date', loan.expiry_date || 'N/A'],
+            ['Status', loan.status || 'N/A'],
+            ['Agent Name', loan.agent_name || 'N/A']
+          ]
+        },
+        layout: {
+          fillColor: (rowIndex) => (rowIndex % 2 === 0 ? '#f9f9f9' : null)
+        }
+      },
+
+      // IMPORTANT INFORMATION
+      {
+        text: 'Important Information',
+        style: 'sectionHeader'
+      },
+      {
+        ol: [
+          'The tenure date already accounts for the date of disbursement. Please add one day to the tenure date displayed above.',
+          'Renewal: Kindly make every effort to renew your PoF facility before the expiration date to avoid undue urgency or last-minute pressure.'
+        ],
+        margin: [0, 0, 0, 15]
+      },
+      {
+        text: 'Please act fast!',
+        bold: true,
+        color: '#d32f2f',
+        margin: [0, 5, 0, 10]
+      },
+      {
+        text: 'Signed,\nManagement',
+        alignment: 'left',
+        italics: true
+      },
+
+      // FOOTER
+      {
+        text: `Generated on ${new Date().toLocaleString()}`,
+        style: 'footer',
+        alignment: 'right',
+        margin: [0, 30, 0, 0]
+      }
+    ],
+
+    styles: {
+      header: { fontSize: 18, bold: true, color: '#1f5aa3' },
+      sectionHeader: {
+        fontSize: 13,
+        bold: true,
+        color: '#27bfa0',
+        margin: [0, 10, 0, 5]
+      },
+      loanTable: { margin: [0, 0, 0, 15], fontSize: 11 },
+      footer: { fontSize: 9, italics: true, color: '#777' }
+    },
+
+    pageMargins: [40, 50, 40, 40]
+  }
+
+  pdfMake.createPdf(docDefinition).download(`${loan.customer_name || 'PoF'}.pdf`)
+}
+
 
 const downloadLoanExcel = (loan) => {
   const data = [
@@ -121,7 +273,6 @@ const loan = ref({
   disbursed_at: '',
   agent_name: ''
 })
-
 
 // const fetchFacilities = async () => {
 //   loading.value = true
@@ -229,7 +380,7 @@ const submitLoan = async () => {
         p_tenure_days: loan.value.tenure_days,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
-         p_agent_name: loan.value.agent_name 
+        p_agent_name: loan.value.agent_name
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
@@ -243,7 +394,7 @@ const submitLoan = async () => {
         p_agreed_rate: loan.value.agreed_rate,
         p_tenure_days: loan.value.tenure_days,
         p_disbursed_at: loan.value.disbursed_at,
-         p_agent_name: loan.value.agent_name 
+        p_agent_name: loan.value.agent_name
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan added successfully!', type: 'success' })
@@ -472,7 +623,7 @@ onMounted(() => {
               variant="outlined"
               class="max-w-xs rounded-md"
               label="Search"
-               color="#27bfa0"
+              color="#27bfa0"
               append-inner-icon=""
             >
               <!-- FontAwesome Search Icon inside append-inner slot -->
@@ -583,6 +734,14 @@ onMounted(() => {
                     @click="downloadLoanExcel(loan)"
                   >
                     <i class="fas fa-download"></i>
+                  </button>
+
+                  <button
+                    class="text-red-600 hover:text-red-900"
+                    @click="downloadLoanPDF(loan)"
+                    title="Download PDF"
+                  >
+                    <i class="fas fa-file-pdf"></i>
                   </button>
 
                   <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editLoan(loan)">

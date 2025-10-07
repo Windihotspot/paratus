@@ -11,11 +11,11 @@ const userInitials = computed(() => {
   if (!authStore.merchant?.business_name) return ''
   return authStore.merchant.business_name
     .split(' ')
-    .map(n => n[0])
+    .map((n) => n[0])
     .join('')
     .toUpperCase()
 })
-console.log("store:", authStore)
+console.log('store:', authStore)
 const displayName = computed(() => {
   return authStore.merchant?.business_name || authStore.user?.full_name || ''
 })
@@ -25,41 +25,37 @@ const displayRole = computed(() => {
 })
 
 const logFacilityChange = (facility) => {
-  console.log("🏦 Facility switched:", facility)
-  console.log("🔎 Selected Facility in store:", authStore.selectedFacility)
+  console.log('🏦 Facility switched:', facility)
+  console.log('🔎 Selected Facility in store:', authStore.selectedFacility)
 }
 const selectedFacilityId = computed({
   get: () => authStore.selectedFacility?.id || null,
-  set: (val) => authStore.setSelectedFacility(val),
+  set: (val) => authStore.setSelectedFacility(val)
 })
-
 
 // Logout function
 const logout = async () => {
-  authStore.logout()  // call the correct Pinia store method
+  authStore.logout() // call the correct Pinia store method
   router.push('/')
 }
 </script>
-
-
 
 <template>
   <div class="header items-center px-4 py-4 bg-white">
     <!-- Facility Dropdown -->
     <div class="w-60">
-     <v-select
-  v-model="selectedFacilityId"
-  :items="authStore.facilities"
-  item-title="bank_name"
-  item-value="id"
-  label="Select Facility"
-  variant="outlined"
-  density="compact"
-  hide-details
-  color="#27bfa0"
-  @update:modelValue="logFacilityChange"
-/>
-
+      <v-select
+        v-model="selectedFacilityId"
+        :items="authStore.facilities"
+        item-title="bank_name"
+        item-value="id"
+        label="Select Facility"
+        variant="outlined"
+        density="compact"
+        hide-details
+        color="#27bfa0"
+        @update:modelValue="logFacilityChange"
+      />
     </div>
 
     <!-- User Menu -->
