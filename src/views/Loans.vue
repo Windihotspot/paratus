@@ -36,6 +36,7 @@ const getBase64FromUrl = async (url) => {
 
 const downloadLoanPDF = async (loan) => {
   const logo = await getBase64FromUrl(logoImage)
+  const statusBadge = getStatusBadge(loan)
 
   const docDefinition = {
     content: [
@@ -110,7 +111,14 @@ const downloadLoanPDF = async (loan) => {
             ['Tenure (Days)', loan.tenure_days],
             ['Disbursed At', loan.disbursed_at || 'N/A'],
             ['Expiry Date', loan.expiry_date || 'N/A'],
-            ['Status', loan.status || 'N/A'],
+              [
+              'Status',
+              {
+                text: statusBadge.text,
+                color: statusBadge.color,
+                bold: true
+              }
+            ],
             ['Agent Name', loan.agent_name || 'N/A']
           ]
         },
