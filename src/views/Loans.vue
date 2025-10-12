@@ -33,6 +33,14 @@ const getBase64FromUrl = async (url) => {
     reader.readAsDataURL(blob)
   })
 }
+const statusCategories = [
+  'All',
+  'Active',
+  'Active < 5 days',
+
+]
+
+const selectedStatus = ref('All')
 
 const downloadLoanPDF = async (loan) => {
   const logo = await getBase64FromUrl(logoImage)
@@ -65,7 +73,7 @@ const downloadLoanPDF = async (loan) => {
       },
       {
         columns: [
-          { text: `Name: ${loan.customer_name || 'N/A'}`, width: '50%' },
+          { text: `Name: ${loan.customer_name || 'N/A'}`, width: '50%' }
           // { text: `Customer ID: ${loan.customer_id || 'N/A'}`, width: '50%' }
         ]
       },
@@ -111,7 +119,7 @@ const downloadLoanPDF = async (loan) => {
             ['Tenure (Days)', loan.tenure_days],
             ['Disbursed At', loan.disbursed_at || 'N/A'],
             ['Expiry Date', loan.expiry_date || 'N/A'],
-              [
+            [
               'Status',
               {
                 text: statusBadge.text,
@@ -177,7 +185,6 @@ const downloadLoanPDF = async (loan) => {
 
   pdfMake.createPdf(docDefinition).download(`${loan.customer_name || 'PoF'}.pdf`)
 }
-
 
 const downloadLoanExcel = (loan) => {
   const data = [
@@ -498,6 +505,10 @@ const fetchLoans = async () => {
     loading.value = false
   }
 }
+const availableStatuses = computed(() => {
+  const statuses = new Set(loans.value.map((l) => l.status || 'N/A'))
+  return ['All', ...Array.from(statuses)]
+})
 
 const formatCurrency = (value) => {
   if (!value) return '₦0.00'
@@ -556,18 +567,54 @@ const cancelDelete = () => {
 const searchQuery = ref('')
 
 const filteredLoans = computed(() => {
-  if (!searchQuery.value) return loans.value
+  let filtered = loans.value
 
-  const query = searchQuery.value.toLowerCase()
+  if (selectedStatus.value !== 'All') {
+    filtered = filtered.filter((loan) => {
+      const badge = getStatusBadge(loan).text.toLowerCase()
+      const selected = selectedStatus.value.toLowerCase()
 
-  return loans.value.filter((loan) =>
-    Object.values(loan).some((val) =>
-      String(val || '')
-        .toLowerCase()
-        .includes(query)
+      if (selected === 'active') return badge === 'active'
+      if (selected === 'active < 5 days') return badge.startsWith('active <')
+      if (selected === 'closed') return badge === 'closed'
+      if (selected === 'completed') return badge === 'completed'
+      if (selected === 'defaulted') return badge === 'defaulted'
+      if (selected === 'n/a') return badge === 'n/a'
+
+      return false
+    })
+  }
+
+  // Search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter((loan) =>
+      Object.values(loan).some((val) =>
+        String(val || '')
+          .toLowerCase()
+          .includes(query)
+      )
     )
-  )
+  }
+
+  return filtered
 })
+const getStatusColor = (status) => {
+  switch (status.toLowerCase()) {
+    case 'active':
+      return 'green'
+    case 'active < 5 days':
+      return 'red'
+    case 'closed':
+      return 'red'
+    case 'completed':
+      return 'blue'
+    case 'defaulted':
+      return 'blue'
+    default:
+      return 'gray'
+  }
+}
 
 onMounted(() => {
   fetchLoans()
@@ -606,21 +653,36 @@ onMounted(() => {
 
       <!-- Loans Table -->
       <div v-else-if="loans.length > 0" class="overflow-x-auto">
-        <div class="flex justify-between items-center mb-4 mt-4">
-          <!-- Export Button -->
-          <v-btn
-            color="green"
-            @click="downloadAllLoansExcel"
-            size="medium"
-            class="normal-case bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
-          >
-            <span class="p-1 flex items-center justify-center w-4 h-4 mr-2">
-              <i class="fas fa-file-excel text-sm text-white"></i>
-            </span>
-            Export Loans
-          </v-btn>
+        <div class="flex items-center justify-between pt-2">
+          <!-- LEFT SIDE -->
+          <div class="flex items-center space-x-6">
+            <v-btn
+              color="green"
+              @click="downloadAllLoansExcel"
+              size="medium"
+              class="normal-case bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-6 py-3 rounded-md shadow-md"
+            >
+              <span class="p-1 flex items-center justify-center w-4 h-4 mr-2">
+                <i class="fas fa-file-excel text-sm text-white"></i>
+              </span>
+              Export Loans
+            </v-btn>
 
-          <!-- Search Field -->
+            <i class="fa-solid fa-filter text-green"></i>
+
+            <v-select
+              v-model="selectedStatus"
+              :items="statusCategories"
+              label="Status"
+              density="compact"
+              hide-details
+              variant="outlined"
+              class="w-40"
+              color="green"
+            />
+          </div>
+
+          <!-- RIGHT SIDE -->
           <div class="w-64">
             <v-text-field
               v-model="searchQuery"
@@ -632,15 +694,14 @@ onMounted(() => {
               class="max-w-xs rounded-md"
               label="Search"
               color="#27bfa0"
-              append-inner-icon=""
             >
-              <!-- FontAwesome Search Icon inside append-inner slot -->
               <template #append-inner>
                 <i class="fas fa-search text-[#27bfa0]"></i>
               </template>
             </v-text-field>
           </div>
         </div>
+
         <div class="overflow-y-auto max-h-[500px] bg-white shadow rounded-lg">
           <!-- Export All Loans -->
 
