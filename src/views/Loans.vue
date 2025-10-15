@@ -33,12 +33,7 @@ const getBase64FromUrl = async (url) => {
     reader.readAsDataURL(blob)
   })
 }
-const statusCategories = [
-  'All',
-  'Active',
-  'Active < 5 days',
-
-]
+const statusCategories = ['All', 'Active', 'Active < 5 days', 'Closed']
 
 const selectedStatus = ref('All')
 
@@ -616,12 +611,15 @@ const getStatusColor = (status) => {
   }
 }
 
+
+
 onMounted(() => {
   fetchLoans()
   fetchCustomers()
   authStore.fetchFacilities()
 })
 </script>
+
 
 <template>
   <MainLayout>
@@ -653,7 +651,7 @@ onMounted(() => {
 
       <!-- Loans Table -->
       <div v-else-if="loans.length > 0" class="overflow-x-auto">
-        <div class="flex items-center justify-between pt-2">
+        <div class="flex items-center justify-between pt-2 pb-4">
           <!-- LEFT SIDE -->
           <div class="flex items-center space-x-6">
             <v-btn
@@ -970,6 +968,8 @@ onMounted(() => {
   </MainLayout>
 </template>
 
+
+
 <style scoped>
 .el-message.el-message-top-left {
   left: 20px; /* push from the left */
@@ -1012,3 +1012,5 @@ onMounted(() => {
   opacity: 0;
 }
 </style>
+
+
