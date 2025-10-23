@@ -118,31 +118,35 @@ const submitAgent = async () => {
   loading.value = true
   try {
     if (isEditing.value) {
-      const { error } = await supabase.rpc('update_agent', {
-        p_id: editingAgentId.value,
-        p_full_name: agent.value.full_name,
-        p_alias: agent.value.alias,
-        p_phone: agent.value.phone,
-        p_email: agent.value.email,
-        p_location: agent.value.location,
-        p_agreed_rate: agent.value.agreed_rate,
-        p_remark: agent.value.remark,
-        p_status: agent.value.status
-      })
+      const { error } = await supabase.rpc('add_agent', {
+  p_merchant_id: merchantId,
+  p_full_name: agent.value.full_name,
+  p_alias: agent.value.alias || null,
+  p_phone: agent.value.phone || null,
+  p_email: agent.value.email || null,
+  p_location: agent.value.location || null,
+  // Convert empty string to null for numeric fields
+  p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
+  p_remark: agent.value.remark || null,
+  p_status: agent.value.status || 'active'
+})
+
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Agent updated successfully!', type: 'success' })
     } else {
       const { error } = await supabase.rpc('add_agent', {
-        p_merchant_id: merchantId,
-        p_full_name: agent.value.full_name,
-        p_alias: agent.value.alias,
-        p_phone: agent.value.phone,
-        p_email: agent.value.email,
-        p_location: agent.value.location,
-        p_agreed_rate: agent.value.agreed_rate,
-        p_remark: agent.value.remark,
-        p_status: agent.value.status
-      })
+  p_merchant_id: merchantId,
+  p_full_name: agent.value.full_name,
+  p_alias: agent.value.alias || null,
+  p_phone: agent.value.phone || null,
+  p_email: agent.value.email || null,
+  p_location: agent.value.location || null,
+  // Convert empty string to null for numeric fields
+  p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
+  p_remark: agent.value.remark || null,
+  p_status: agent.value.status || 'active'
+})
+
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Agent added successfully!', type: 'success' })
     }
@@ -463,7 +467,6 @@ onMounted(() => {
             v-model="agent.phone"
             color="#27bfa0"
             label="Phone number"
-            :rules="[(v) => !!v || 'Phone is required']"
             required
           />
 
@@ -508,7 +511,7 @@ onMounted(() => {
 
           <div class="flex justify-end mt-6">
             <v-btn text @click="closeModal">Cancel</v-btn>
-            <v-btn color="green" class="ml-3" :disabled="!valid" :loading="loading" @click="submitAgent">
+            <v-btn color="green" class="ml-3" :loading="loading" @click="submitAgent">
               {{ isEditing ? 'Update' : 'Save' }}
             </v-btn>
           </div>

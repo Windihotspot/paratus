@@ -122,7 +122,7 @@ const downloadLoanPDF = async (loan) => {
           body: [
             ['Loan Amount', formatCurrency(loan.loan_amount)],
             ['Agreed Rate', `${loan.agreed_rate || 0}%`],
-            ['Tenure (Days)', loan.tenure_days],
+            // ['Tenure (Days)', loan.tenure_days],
             ['Disbursed At', loan.disbursed_at || 'N/A'],
             ['Expiry Date', loan.expiry_date || 'N/A'],
             [
