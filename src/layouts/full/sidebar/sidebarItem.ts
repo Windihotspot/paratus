@@ -19,6 +19,11 @@ const sidebarItems = [
     path: '/customers',
     icon: 'fa-solid fa-users', // Users icon
   },
+    {
+  title: 'Agents',
+  path: '/agents',
+  icon: 'fa solid fa-user-tie',
+},
   {
   title: 'Profit & Loss',
   path: '/profit-loss',
@@ -29,6 +34,7 @@ const sidebarItems = [
   path: '/repayments',
   icon: 'fa solid fa-arrows-rotate',
 },
+
 
 ]
 

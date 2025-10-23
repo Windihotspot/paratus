@@ -23,6 +23,17 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/New Logo_with_Paratus.png' // ✅ correct way for Vite
 pdfMake.vfs = pdfFonts.vfs
 
+const loadingAgents = ref(false)
+
+const agents = ref([])
+const fetchAgents = async () => {
+  loadingAgents.value = true
+  const { data, error } = await supabase.rpc('get_merchant_agents', { p_merchant_id: merchantId })
+  if (error) console.error('Error fetching agents:', error)
+  else agents.value = data || []
+  loadingAgents.value = false
+}
+
 // Helper: convert imported logo to base64
 const getBase64FromUrl = async (url) => {
   const res = await fetch(url)
@@ -281,7 +292,7 @@ const loan = ref({
   agreed_rate: '',
   tenure_days: '',
   disbursed_at: '',
-  agent_name: ''
+  agent_id: ''
 })
 
 // const fetchFacilities = async () => {
@@ -390,7 +401,7 @@ const submitLoan = async () => {
         p_tenure_days: loan.value.tenure_days,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
-        p_agent_name: loan.value.agent_name
+        p_agent_id: loan.value.agent_id
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
@@ -404,7 +415,7 @@ const submitLoan = async () => {
         p_agreed_rate: loan.value.agreed_rate,
         p_tenure_days: loan.value.tenure_days,
         p_disbursed_at: loan.value.disbursed_at,
-        p_agent_name: loan.value.agent_name
+        p_agent_id: loan.value.agent_id
       })
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Loan added successfully!', type: 'success' })
@@ -611,15 +622,13 @@ const getStatusColor = (status) => {
   }
 }
 
-
-
 onMounted(() => {
+  fetchAgents()
   fetchLoans()
   fetchCustomers()
   authStore.fetchFacilities()
 })
 </script>
-
 
 <template>
   <MainLayout>
@@ -890,13 +899,20 @@ onMounted(() => {
             label="Loan Amount"
             :rules="[(v) => !!v || 'Loan amount is required']"
           />
-          <v-text-field
+          <v-select
+            v-model="loan.agent_id"
+            :items="agents"
+            item-title="full_name"
+            item-value="id"
+            label="Select Agent"
             variant="outlined"
-            v-model="loan.agent_name"
             color="#27bfa0"
-            label="Agent name"
-            :rules="[(v) => !!v || 'Agent name is required']"
+            hide-details
+            :loading="loadingAgents"
+            class="mb-3"
+           :rules="[(v) => !!v || 'Agent is required']"
           />
+
           <v-text-field
             variant="outlined"
             color="#27bfa0"
@@ -968,8 +984,6 @@ onMounted(() => {
   </MainLayout>
 </template>
 
-
-
 <style scoped>
 .el-message.el-message-top-left {
   left: 20px; /* push from the left */
@@ -1012,5 +1026,3 @@ onMounted(() => {
   opacity: 0;
 }
 </style>
-
-
