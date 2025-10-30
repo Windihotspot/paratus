@@ -64,7 +64,11 @@ const fetchAgents = async () => {
     agents.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   } catch (err) {
     console.error('Error fetching agents:', err)
-    ElNotification({ title: 'Error', message: err.message || 'Failed to fetch agents', type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to fetch agents',
+      type: 'error'
+    })
   } finally {
     loading.value = false
   }
@@ -75,6 +79,7 @@ const openModal = () => {
   isEditing.value = false
   editingAgentId.value = null
   agent.value = {
+    id: null,
     full_name: '',
     alias: '',
     phone: '',
@@ -91,8 +96,8 @@ const openModal = () => {
 const editAgent = (a) => {
   isEditing.value = true
   editingAgentId.value = a.id
-  // map server fields to form fields (names used in seed/schema)
   agent.value = {
+    id: a.id, // ✅ include this
     full_name: a.full_name || a.name || '',
     alias: a.alias || '',
     phone: a.phone || '',
@@ -118,34 +123,37 @@ const submitAgent = async () => {
   loading.value = true
   try {
     if (isEditing.value) {
-      const { error } = await supabase.rpc('add_agent', {
-  p_merchant_id: merchantId,
-  p_full_name: agent.value.full_name,
-  p_alias: agent.value.alias || null,
-  p_phone: agent.value.phone || null,
-  p_email: agent.value.email || null,
-  p_location: agent.value.location || null,
-  // Convert empty string to null for numeric fields
-  p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
-  p_remark: agent.value.remark || null,
-  p_status: agent.value.status || 'active'
-})
+      // 👇 Log payload for update
+      const updatePayload = {
+        p_id: agent.value.id,
+        p_full_name: agent.value.full_name?.trim() || null,
+        p_alias: agent.value.alias?.trim() || null,
+        p_phone: agent.value.phone?.trim() || null,
+        p_email: agent.value.email?.trim() || null,
+        p_location: agent.value.location?.trim() || null,
+        p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
+        p_remark: agent.value.remark?.trim() || null,
+        p_status: agent.value.status || 'active'
+      }
+
+      console.log('🧾 Update Agent Payload:', updatePayload)
+      const { error } = await supabase.rpc('update_agent', updatePayload)
 
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Agent updated successfully!', type: 'success' })
     } else {
       const { error } = await supabase.rpc('add_agent', {
-  p_merchant_id: merchantId,
-  p_full_name: agent.value.full_name,
-  p_alias: agent.value.alias || null,
-  p_phone: agent.value.phone || null,
-  p_email: agent.value.email || null,
-  p_location: agent.value.location || null,
-  // Convert empty string to null for numeric fields
-  p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
-  p_remark: agent.value.remark || null,
-  p_status: agent.value.status || 'active'
-})
+        p_merchant_id: merchantId,
+        p_full_name: agent.value.full_name,
+        p_alias: agent.value.alias || null,
+        p_phone: agent.value.phone || null,
+        p_email: agent.value.email || null,
+        p_location: agent.value.location || null,
+        // Convert empty string to null for numeric fields
+        p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
+        p_remark: agent.value.remark || null,
+        p_status: agent.value.status || 'active'
+      })
 
       if (error) throw error
       ElNotification({ title: 'Success', message: 'Agent added successfully!', type: 'success' })
@@ -154,7 +162,11 @@ const submitAgent = async () => {
     closeModal()
   } catch (err) {
     console.error('Error saving agent:', err)
-    ElNotification({ title: 'Error', message: err.message || 'Failed to save agent', type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to save agent',
+      type: 'error'
+    })
   } finally {
     loading.value = false
   }
@@ -188,7 +200,11 @@ const confirmDeleteAgent = async () => {
     await fetchAgents()
   } catch (err) {
     console.error('Error deleting agent:', err)
-    ElNotification({ title: 'Error', message: err.message || 'Failed to delete agent', type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to delete agent',
+      type: 'error'
+    })
   } finally {
     loading.value = false
     showDeleteModal.value = false
@@ -218,7 +234,10 @@ const downloadAllAgentsExcel = () => {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Agents Report')
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  saveAs(new Blob([wbout], { type: 'application/octet-stream' }), `Agents_Report_${new Date().toISOString().split('T')[0]}.xlsx`)
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `Agents_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+  )
 }
 
 // single agent pdf
@@ -281,7 +300,11 @@ const filteredAgents = computed(() => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
     list = list.filter((x) =>
-      Object.values(x).some((v) => String(v || '').toLowerCase().includes(q))
+      Object.values(x).some((v) =>
+        String(v || '')
+          .toLowerCase()
+          .includes(q)
+      )
     )
   }
 
@@ -387,7 +410,9 @@ onMounted(() => {
 
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="a in filteredAgents" :key="a.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ a.full_name || a.name }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ a.full_name || a.name }}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ a.alias }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ a.phone }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ a.location }}</td>
@@ -427,7 +452,9 @@ onMounted(() => {
       <v-card>
         <v-card-title class="text-lg font-bold">Delete Agent</v-card-title>
         <v-card-text>
-          Are you sure you want to delete agent <strong>{{ agentToDelete?.full_name || agentToDelete?.name }}</strong>?
+          Are you sure you want to delete agent
+          <strong>{{ agentToDelete?.full_name || agentToDelete?.name }}</strong
+          >?
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn text color="gray" @click="cancelDelete">Cancel</v-btn>
@@ -438,7 +465,7 @@ onMounted(() => {
 
     <!-- Add / Edit Agent Modal -->
     <v-dialog v-model="showModal" persistent max-width="800px" scrollable>
-     <v-card class="pa-6 max-h-[90vh] overflow-y-auto">
+      <v-card class="pa-6 max-h-[90vh] overflow-y-auto">
         <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
           <i class="fas fa-times fa-lg"></i>
         </button>
@@ -491,15 +518,12 @@ onMounted(() => {
             color="#27bfa0"
             label="Agreed Rate (%)"
             type="number"
-            :rules="[(v) => v === '' || v === null || (!isNaN(v) && Number(v) >= 0) || 'Invalid rate']"
+            :rules="[
+              (v) => v === '' || v === null || (!isNaN(v) && Number(v) >= 0) || 'Invalid rate'
+            ]"
           />
 
-          <v-text-field
-            variant="outlined"
-            v-model="agent.remark"
-            color="#27bfa0"
-            label="Remark"
-          />
+          <v-text-field variant="outlined" v-model="agent.remark" color="#27bfa0" label="Remark" />
 
           <v-select
             variant="outlined"
@@ -516,7 +540,7 @@ onMounted(() => {
             </v-btn>
           </div>
         </v-form>
-    </v-card>
+      </v-card>
     </v-dialog>
   </MainLayout>
 </template>
