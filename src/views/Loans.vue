@@ -133,7 +133,7 @@ const downloadLoanPDF = async (loan) => {
                 bold: true
               }
             ],
-            ['Agent Name', loan.agent_name || 'N/A']
+            ['Primary Contact', loan.agent_name || 'N/A']
           ]
         },
         layout: {
@@ -718,7 +718,7 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Agent name</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Pry-contact</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Bank Rate</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
