@@ -53,6 +53,16 @@ const downloadLoanPDF = async (loan) => {
   const statusBadge = getStatusBadge(loan)
 
   const docDefinition = {
+     // ✅ Add watermark as a background image
+    background: (currentPage, pageSize) => {
+      return {
+        image: logo,
+        width: 300, // adjust size
+        opacity: 0.08, // make it faint
+        absolutePosition: { x: (pageSize.width - 300) / 2, y: (pageSize.height - 300) / 2 }
+      }
+    },
+
     content: [
       // HEADER — logo on far right, title on left
       {
