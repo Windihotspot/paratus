@@ -147,10 +147,7 @@ const downloadLoanPDF = async (loan) => {
         style: 'sectionHeader'
       },
       {
-        ol: [
-          'The tenure date already accounts for the date of disbursement. Please add one day to the tenure date displayed above.',
-          'Renewal: Kindly make every effort to renew your PoF facility before the expiration date to avoid undue urgency or last-minute pressure.'
-        ],
+        text: 'Renewal: Kindly make every effort to renew your PoF facility before the expiration date to avoid undue urgency or last-minute pressure.',
         margin: [0, 0, 0, 15]
       },
       {
@@ -910,7 +907,7 @@ onMounted(() => {
             hide-details
             :loading="loadingAgents"
             class="mb-3"
-           :rules="[(v) => !!v || 'Agent is required']"
+            :rules="[(v) => !!v || 'Agent is required']"
           />
 
           <v-text-field
