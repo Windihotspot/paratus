@@ -104,27 +104,14 @@ const downloadLoanPDF = async (loan) => {
         margin: [0, 0, 0, 15]
       },
 
-      // FACILITY INFORMATION
-      // {
-      //   text: 'Facility Information',
-      //   style: 'sectionHeader'
-      // },
-      // {
-      //   columns: [
-      //     { text: `Facility Name: ${loan.facility_name || 'N/A'}`, width: '50%' },
-      //     // { text: `Facility Amount: ${formatCurrency(loan.facility_amount)}`, width: '50%' }
-      //   ]
-      // },
-      {
-        text: '',
-        margin: [0, 0, 0, 15]
-      },
+     
 
       // POF DETAILS
       {
         text: 'PoF Details',
         style: 'sectionHeader'
       },
+
       {
         style: 'loanTable',
         table: {
@@ -149,6 +136,22 @@ const downloadLoanPDF = async (loan) => {
         layout: {
           fillColor: (rowIndex) => (rowIndex % 2 === 0 ? '#f9f9f9' : null)
         }
+      },
+
+       // FACILITY INFORMATION
+       {
+         text: 'Bank Information',
+         style: 'sectionHeader'
+       },
+       {
+         columns: [
+           { text: `Bank Name: ${loan.facility_name || 'N/A'}`, width: '50%' },
+           // { text: `Facility Amount: ${formatCurrency(loan.facility_amount)}`, width: '50%' }
+         ]
+       },
+      {
+        text: '',
+        margin: [0, 0, 0, 15]
       },
 
       // IMPORTANT INFORMATION
