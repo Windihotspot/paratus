@@ -3,8 +3,8 @@ import { ref, onMounted, computed, watch } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage, ElNotification } from 'element-plus'
-
+import { ElMessage, ElNotification, ElMessageBox } from 'element-plus'
+import { usePhoneNumber } from '@/composables/usePhoneNumber.js'
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
 const errorMessage = ref(null)
@@ -22,6 +22,19 @@ const customer = ref({
   phone: '',
   account_number: '',
   facility_id: null
+})
+
+const { phone, validate: validatePhone } = usePhoneNumber(customer.value.phone)
+
+watch(
+  () => customer.value.phone,
+  (val) => {
+    if (val !== phone.value) phone.value = val
+  }
+)
+
+watch(phone, (val) => {
+  if (customer.value.phone !== val) customer.value.phone = val
 })
 
 const facilities = computed(() => authStore.facilities)
@@ -80,34 +93,33 @@ const submitCustomer = async () => {
   loading.value = true
 
   try {
-   if (isEditingCustomer.value) {
-    ElMessage({ message: 'Updating customer...', type: 'info', duration: 1500 })
-  const { data, error } = await supabase.rpc('update_customer', {
-    p_customer_id: editingCustomerId.value,
-    p_first_name: customer.value.first_name,
-    p_last_name: customer.value.last_name,
-    p_middle_name: customer.value.middle_name ?? null,
-    p_gender: customer.value.gender ?? null,
-    p_dob: customer.value.dob ?? null,
-     p_email: customer.value.email?.trim() || null,
-  p_phone: customer.value.phone?.trim() || null,
-    p_national_id_type: customer.value.national_id_type ?? null,
-    p_national_id_number: customer.value.national_id_number ?? null,
-    p_marital_status: customer.value.marital_status ?? null,
-    p_account_number: customer.value.account_number,
-    p_status: customer.value.status || 'active',
-    p_address: customer.value.address ?? null,
-    p_bank_id: customer.value.bank_id ?? null
-  })
+    if (isEditingCustomer.value) {
+      ElMessage({ message: 'Updating customer...', type: 'info', duration: 1500 })
+      const { data, error } = await supabase.rpc('update_customer', {
+        p_customer_id: editingCustomerId.value,
+        p_first_name: customer.value.first_name,
+        p_last_name: customer.value.last_name,
+        p_middle_name: customer.value.middle_name ?? null,
+        p_gender: customer.value.gender ?? null,
+        p_dob: customer.value.dob ?? null,
+        p_email: customer.value.email?.trim() || null,
+        p_phone: customer.value.phone?.trim() || null,
+        p_national_id_type: customer.value.national_id_type ?? null,
+        p_national_id_number: customer.value.national_id_number ?? null,
+        p_marital_status: customer.value.marital_status ?? null,
+        p_account_number: customer.value.account_number,
+        p_status: customer.value.status || 'active',
+        p_address: customer.value.address ?? null,
+        p_bank_id: customer.value.bank_id ?? null
+      })
 
-  if (error) throw error
-  ElNotification({
+      if (error) throw error
+      ElNotification({
         title: 'Success',
         message: 'Customer updated successfully!',
         type: 'success'
       })
-}
- else {
+    } else {
       // 🟢 Add new customer
       ElMessage({ message: 'Adding customer...', type: 'info', duration: 1500 })
 
@@ -115,8 +127,8 @@ const submitCustomer = async () => {
         p_merchant_id: merchantId,
         p_first_name: customer.value.first_name,
         p_last_name: customer.value.last_name,
-          p_email: customer.value.email?.trim() || null,
-  p_phone: customer.value.phone?.trim() || null,
+        p_email: customer.value.email?.trim() || null,
+        p_phone: customer.value.phone?.trim() || null,
         p_account_number: customer.value.account_number,
         p_facility_id: customer.value.facility_id
       })
@@ -144,7 +156,6 @@ const submitCustomer = async () => {
   }
 }
 
-
 const fetchCustomers = async () => {
   loading.value = true
   errorMessage.value = null
@@ -156,10 +167,7 @@ const fetchCustomers = async () => {
     })
     console.log('merchant customers:', data)
     if (error) throw error
-    customers.value = (data || []).sort(
-  (a, b) => new Date(b.created_at) - new Date(a.created_at)
-)
-
+    customers.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   } catch (err) {
     console.error('fetchCustomers error:', err)
     errorMessage.value = 'Failed to load customers'
@@ -246,6 +254,98 @@ watch(
   { immediate: true }
 )
 
+const sendExpirySMS = async (customer) => {
+  if (!customer.phone) {
+    ElMessage({
+      message: 'Customer has no phone number',
+      type: 'warning'
+    })
+    return
+  }
+
+  await ElMessageBox.confirm(`Send expiry SMS to ${customer.full_name}?`, 'Confirm SMS', {
+    type: 'warning'
+  })
+
+  try {
+    ElMessage({
+      message: 'Sending SMS...',
+      type: 'info',
+      duration: 1500
+    })
+
+    const response = await fetch('http://localhost:4000/sms/send-expiry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_id: customer.id
+      })
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.error || 'SMS failed')
+    }
+
+    ElNotification({
+      title: 'SMS Sent',
+      message: `Expiry reminder sent successfully (${result.daysLeft} days left)`,
+      type: 'success'
+    })
+  } catch (err) {
+    console.error(err)
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to send SMS',
+      type: 'error'
+    })
+  }
+}
+
+const sendTestSMS = async () => {
+  try {
+    ElMessage({
+      message: 'Sending test SMS...',
+      type: 'info',
+      duration: 1500
+    })
+
+    const response = await fetch('http://localhost:4000/sms/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        phone: '2349132378328'
+      })
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.error || 'SMS failed')
+    }
+
+    ElNotification({
+      title: 'Success',
+      message: 'Test SMS sent successfully!',
+      type: 'success'
+    })
+
+    console.log('SMS response:', result)
+  } catch (err) {
+    console.error(err)
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to send test SMS',
+      type: 'error'
+    })
+  }
+}
+
 onMounted(() => {
   fetchCustomers()
   authStore.fetchFacilities()
@@ -282,6 +382,8 @@ onMounted(() => {
 
       <!-- Customers Table -->
       <div v-else-if="customers.length > 0" class="overflow-x-auto">
+        <!-- <v-btn color="green" class="ml-3" @click="sendTestSMS"> Send Test SMS </v-btn> -->
+
         <div class="overflow-x-auto bg-white shadow rounded-lg">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-green-50 font-semibold">
@@ -333,6 +435,14 @@ onMounted(() => {
                     @click="openDeleteModal(customer)"
                   >
                     <i class="fas fa-trash"></i>
+                  </button>
+
+                  <button
+                    class="text-green-600 hover:text-green-900"
+                    @click="sendExpirySMS(customer)"
+                    title="Send Expiry SMS"
+                  >
+                    <i class="fas fa-sms"></i>
                   </button>
                 </td>
               </tr>
@@ -399,24 +509,27 @@ onMounted(() => {
             v-model="customer.email"
             label="Email"
             type="email"
-          
           />
           <v-text-field
+          class="mb-4"
             variant="outlined"
             color="#27bfa0"
-            v-model="customer.phone"
+            v-model="phone"
             label="Phone"
-           
+            :rules="[
+              (v) => !!v || 'Phone number is required',
+              (v) => validatePhone() || 'Phone must start with 234 and be 13 digits'
+            ]"
           />
+
           <v-text-field
             variant="outlined"
             color="#27bfa0"
             v-model="customer.account_number"
             label="Account Number"
-           
           />
           <v-select
-          :disabled="isEditingCustomer"
+            :disabled="isEditingCustomer"
             variant="outlined"
             color="#27bfa0"
             v-model="customer.facility_id"
