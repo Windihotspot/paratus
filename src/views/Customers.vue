@@ -259,51 +259,61 @@ const sendExpirySMS = async (customer) => {
     ElMessage({
       message: 'Customer has no phone number',
       type: 'warning'
-    })
-    return
+    });
+    return;
   }
 
-  await ElMessageBox.confirm(`Send expiry SMS to ${customer.full_name}?`, 'Confirm SMS', {
-    type: 'warning'
-  })
+  // Confirm sending SMS
+  const confirmed = await ElMessageBox.confirm(
+    `Send expiry SMS to ${customer.full_name}?`,
+    'Confirm SMS',
+    { type: 'warning' }
+  ).catch(() => false); // cancel returns false
+
+  if (!confirmed) return;
 
   try {
     ElMessage({
       message: 'Sending SMS...',
       type: 'info',
       duration: 1500
-    })
+    });
 
-    const response = await fetch('http://localhost:4000/sms/send-expiry', {
+    // Replace URL with your deployed Supabase Edge Function
+    const EDGE_FUNCTION_URL = 'https://ytvqldflnqwflahxjjzu.functions.supabase.co/send-sms-on-demand';
+
+    const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        customer_id: customer.id
-      })
-    })
+      body: JSON.stringify({ customer_id: customer.id })
+    });
 
-    const result = await response.json()
+    const result = await response.json();
 
-    if (!response.ok) {
-      throw new Error(result.error || 'SMS failed')
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to send SMS');
     }
 
     ElNotification({
       title: 'SMS Sent',
-      message: `Expiry reminder sent successfully (${result.daysLeft} days left)`,
+      message: `Expiry reminder sent successfully (${result.daysLeft} day${result.daysLeft !== 1 ? 's' : ''} left)`,
       type: 'success'
-    })
+    });
+
+    console.log('SMS response:', result.smsResponse);
+
   } catch (err) {
-    console.error(err)
+    console.error(err);
     ElNotification({
       title: 'Error',
       message: err.message || 'Failed to send SMS',
       type: 'error'
-    })
+    });
   }
-}
+};
+
 
 const sendTestSMS = async () => {
   try {

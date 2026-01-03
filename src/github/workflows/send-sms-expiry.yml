@@ -18,4 +18,4 @@ jobs:
           KUDISMS_SENDER_ID: ${{ secrets.KUDISMS_SENDER_ID }}
           KUDISMS_API_URL: ${{ secrets.KUDISMS_API_URL }}
         run: |
-          curl -X POST https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-facility-expiry
+          curl -X POST https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-sms
