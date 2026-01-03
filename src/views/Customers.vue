@@ -518,7 +518,7 @@ onMounted(() => {
             label="Phone"
             :rules="[
               (v) => !!v || 'Phone number is required',
-              (v) => validatePhone() || 'Phone must start with 234 and be 13 digits'
+              (v) => validatePhone() || 'Phone must start with 234'
             ]"
           />
 
@@ -548,7 +548,7 @@ onMounted(() => {
               class="ml-3"
               @click="submitCustomer"
               :loading="loading"
-              :disabled="loading"
+              :disabled="loading || customer.phone"
             >
               {{ isEditingCustomer ? 'Update' : 'Save' }}
             </v-btn>
