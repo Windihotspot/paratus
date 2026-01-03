@@ -447,13 +447,7 @@ onMounted(() => {
                     <i class="fas fa-trash"></i>
                   </button>
 
-                  <button
-                    class="text-green-600 hover:text-green-900"
-                    @click="sendExpirySMS(customer)"
-                    title="Send Expiry SMS"
-                  >
-                    <i class="fas fa-sms"></i>
-                  </button>
+                 
                 </td>
               </tr>
             </tbody>
@@ -558,7 +552,7 @@ onMounted(() => {
               class="ml-3"
               @click="submitCustomer"
               :loading="loading"
-              :disabled="loading || customer.phone"
+              :disabled="loading"
             >
               {{ isEditingCustomer ? 'Update' : 'Save' }}
             </v-btn>

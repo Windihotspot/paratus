@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, watch, computed, reactive } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
@@ -53,7 +53,7 @@ const downloadLoanPDF = async (loan) => {
   const statusBadge = getStatusBadge(loan)
 
   const docDefinition = {
-     // ✅ Add watermark as a background image
+    // ✅ Add watermark as a background image
     background: (currentPage, pageSize) => {
       return {
         image: logo,
@@ -104,8 +104,6 @@ const downloadLoanPDF = async (loan) => {
         margin: [0, 0, 0, 15]
       },
 
-     
-
       // POF DETAILS
       {
         text: 'PoF Details',
@@ -138,17 +136,17 @@ const downloadLoanPDF = async (loan) => {
         }
       },
 
-       // FACILITY INFORMATION
-       {
-         text: 'Bank Information',
-         style: 'sectionHeader'
-       },
-       {
-         columns: [
-           { text: `Bank Name: ${loan.facility_name || 'N/A'}`, width: '50%' },
-           // { text: `Facility Amount: ${formatCurrency(loan.facility_amount)}`, width: '50%' }
-         ]
-       },
+      // FACILITY INFORMATION
+      {
+        text: 'Bank Information',
+        style: 'sectionHeader'
+      },
+      {
+        columns: [
+          { text: `Bank Name: ${loan.facility_name || 'N/A'}`, width: '50%' }
+          // { text: `Facility Amount: ${formatCurrency(loan.facility_amount)}`, width: '50%' }
+        ]
+      },
       {
         text: '',
         margin: [0, 0, 0, 15]
@@ -632,6 +630,69 @@ const getStatusColor = (status) => {
   }
 }
 
+import { ElMessageBox } from 'element-plus'
+
+const sendingSMS = reactive({})
+
+const sendLoanSMS = async (loan) => {
+  // 1️⃣ Check if phone exists
+  if (!loan.customer_phone) {
+    ElNotification({
+      title: 'No Phone Number',
+      message: `Customer ${loan.customer_name} does not have a phone number.`,
+      type: 'warning'
+    })
+    return
+  }
+
+  try {
+    // 2️⃣ Confirm via Message Box
+    await ElMessageBox.confirm(
+      `Are you sure you want to send an SMS to ${loan.customer_name} (${loan.customer_phone})?`,
+      'Confirm SMS',
+      {
+        confirmButtonText: 'Yes, Send',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }
+    )
+
+    sendingSMS[loan.id] = true
+
+    // 3️⃣ Call Edge Function
+    const res = await fetch(
+      'http://localhost:4000/sms/send-loan-sms-manual',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ loan_id: loan.id })
+      }
+    )
+
+    const result = await res.json()
+
+    if (res.ok && result.success) {
+      ElNotification({ title: 'SMS Sent', message: 'SMS sent successfully!', type: 'success' })
+    } else {
+      ElNotification({
+        title: 'Error',
+        message: result.error || 'Failed to send SMS',
+        type: 'error'
+      })
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      console.error(err)
+      ElNotification({ title: 'Error', message: 'Failed to send SMS', type: 'error' })
+    }
+  } finally {
+    sendingSMS[loan.id] = false
+  }
+}
+
 onMounted(() => {
   fetchAgents()
   fetchLoans()
@@ -815,6 +876,15 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <button
+                    class="text-purple-600 hover:text-purple-900"
+                    :disabled="sendingSMS[loan.id]"
+                    @click="sendLoanSMS(loan)"
+                    title="Send SMS"
+                  >
+                    <i class="fas fa-sms"></i>
+                  </button>
+
                   <button
                     class="text-green-600 hover:text-green-900"
                     @click="downloadLoanExcel(loan)"
