@@ -673,9 +673,10 @@ const sendLoanSMS = async (loan) => {
     )
 
     const result = await res.json()
+    console.log("sms send response:", result)
 
     if (res.ok && result.success) {
-      ElNotification({ title: 'SMS Sent', message: 'SMS sent successfully!', type: 'success' })
+      ElNotification({ message: 'SMS sent successfully!', type: 'success' })
     } else {
       ElNotification({
         title: 'Error',
@@ -686,7 +687,7 @@ const sendLoanSMS = async (loan) => {
   } catch (err) {
     if (err !== 'cancel') {
       console.error(err)
-      ElNotification({ title: 'Error', message: 'Failed to send SMS', type: 'error' })
+      ElNotification({ message: 'Failed to send SMS', type: 'error' })
     }
   } finally {
     sendingSMS[loan.id] = false
@@ -876,14 +877,14 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button
+                  <!-- <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
                     <i class="fas fa-sms"></i>
-                  </button>
+                  </button> -->
 
                   <button
                     class="text-green-600 hover:text-green-900"
@@ -1051,7 +1052,7 @@ onMounted(() => {
             <v-btn
               color="green"
               class="ml-3"
-              :disabled="!valid"
+              
               :loading="loading"
               @click="submitLoan"
             >

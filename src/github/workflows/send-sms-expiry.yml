@@ -1,21 +1,26 @@
-name: Send Facility Expiry SMS
+name: Send Facility/Loan Expiry SMS
 
+# Trigger every day at 9 AM Lagos time (UTC+1 = 8 AM UTC)
 on:
   schedule:
-    # Runs every day at 9 AM Lagos time (UTC+1 = 8 AM UTC)
     - cron: '0 8 * * *'
   workflow_dispatch: # allows manual trigger
 
 jobs:
-  send_sms:
+  trigger_edge_function:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Call Supabase Edge Function
+      - name: Trigger Supabase Edge Function
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          KUDISMS_TOKEN: ${{ secrets.KUDISMS_TOKEN }}
-          KUDISMS_SENDER_ID: ${{ secrets.KUDISMS_SENDER_ID }}
-          KUDISMS_API_URL: ${{ secrets.KUDISMS_API_URL }}
         run: |
-          curl -X POST https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-sms
+          echo "Triggering Supabase Edge Function to send facility/loan expiry SMS..."
+          curl -X POST \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            $SUPABASE_URL/functions/v1/send-loan-expiry-sms \
+            -d '{}' \
+            --fail
