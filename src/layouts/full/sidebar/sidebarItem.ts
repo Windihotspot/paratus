@@ -30,8 +30,8 @@ const sidebarItems = [
   icon: 'fa-solid fa-chart-line', // Line chart icon to represent financial performance
   },
   {
-  title: 'Repayments',
-  path: '/repayments',
+  title: 'Logs',
+  path: '/logs',
   icon: 'fa solid fa-arrows-rotate',
 },
 
