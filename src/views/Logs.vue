@@ -45,7 +45,7 @@
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                Loan Expiry Date
+                SMS Status
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Actions
@@ -74,7 +74,20 @@
                 {{ log.metadata?.loan_days_left ?? '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ log.metadata?.loan_expiry_date || '-' }}
+                <v-chip
+            color="green"
+            text-color="white"
+            v-if="log.metadata?.sms_response?.status === 'success'"
+          >
+            {{ log.metadata?.sms_response?.status }}
+          </v-chip>
+          <v-chip
+            color="red"
+            text-color="white"
+            v-else
+          >
+            {{ log.metadata?.sms_response?.status || 'failed' }}
+          </v-chip>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <v-btn size="small" variant="outlined" color="primary" @click="openViewDialog(log)">
