@@ -635,7 +635,6 @@ import { ElMessageBox } from 'element-plus'
 const sendingSMS = reactive({})
 
 const sendLoanSMS = async (loan) => {
-  // 1️⃣ Check if phone exists
   if (!loan.customer_phone) {
     ElNotification({
       title: 'No Phone Number',
@@ -646,9 +645,8 @@ const sendLoanSMS = async (loan) => {
   }
 
   try {
-    // 2️⃣ Confirm via Message Box
     await ElMessageBox.confirm(
-      `Are you sure you want to send an SMS to ${loan.customer_name} (${loan.customer_phone})?`,
+      `Send SMS to ${loan.customer_name} (${loan.customer_phone})?`,
       'Confirm SMS',
       {
         confirmButtonText: 'Yes, Send',
@@ -659,9 +657,10 @@ const sendLoanSMS = async (loan) => {
 
     sendingSMS[loan.id] = true
 
-    // 3️⃣ Call Edge Function
+    const session = authStore.session
+
     const res = await fetch(
-      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-sms',
+      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-sms-manual',
       {
         method: 'POST',
         headers: {
@@ -672,26 +671,30 @@ const sendLoanSMS = async (loan) => {
     )
 
     const result = await res.json()
-    console.log("sms send response:", result)
 
     if (res.ok && result.success) {
-      ElNotification({ message: 'SMS sent successfully!', type: 'success' })
-    } else {
       ElNotification({
-        title: 'Error',
-        message: result.error || 'Failed to send SMS',
-        type: 'error'
+        title: 'Success',
+        message: 'SMS sent successfully!',
+        type: 'success'
       })
+    } else {
+      throw new Error(result.error || 'Failed to send SMS')
     }
   } catch (err) {
     if (err !== 'cancel') {
       console.error(err)
-      ElNotification({ message: 'Failed to send SMS', type: 'error' })
+      ElNotification({
+        title: 'Error',
+        message: err.message || 'Failed to send SMS',
+        type: 'error'
+      })
     }
   } finally {
     sendingSMS[loan.id] = false
   }
 }
+
 
 onMounted(() => {
   fetchAgents()
@@ -876,14 +879,14 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button
+                  <!-- <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
                     <i class="fas fa-sms"></i>
-                  </button>
+                  </button> -->
 
                   <button
                     class="text-green-600 hover:text-green-900"
