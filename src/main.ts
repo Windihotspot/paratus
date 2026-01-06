@@ -7,11 +7,11 @@ import App from './App.vue'
 import router from './router'
 import 'aos/dist/aos.css'
 import AOS from 'aos'
-
+import './assets/fonts.css'
 // Import Element Plus and its styles
 import ElementPlus from 'element-plus';
 import 'element-plus/dist/index.css';
-
+import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'

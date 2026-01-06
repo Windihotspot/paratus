@@ -2,40 +2,38 @@ const sidebarItems = [
   {
     title: 'Dashboard',
     path: '/dashboard',
-    icon: 'fa-solid fa-bar-chart', // Dashboard icon
+    icon: 'mdi-view-dashboard', // Dashboard icon
   },
   {
     title: 'Facilities',
     path: '/facilities',
-    icon: 'fa-solid fa-building', // Building/Database icon
+    icon: 'mdi-domain', // Building / Database icon
   },
   {
     title: 'Loans',
     path: '/loans',
-    icon: 'fa-solid fa-hand-holding-usd', // Loans / Money icon
+    icon: 'mdi-cash-multiple', // Loans / Money icon
   },
   {
     title: 'Customers',
     path: '/customers',
-    icon: 'fa-solid fa-users', // Users icon
-  },
-    {
-  title: 'Agents',
-  path: '/agents',
-  icon: 'fa solid fa-user-tie',
-},
-  {
-  title: 'Profit & Loss',
-  path: '/profit-loss',
-  icon: 'fa-solid fa-chart-line', // Line chart icon to represent financial performance
+    icon: 'mdi-account-group', // Users icon
   },
   {
-  title: 'Logs',
-  path: '/logs',
-  icon: 'fa solid fa-arrows-rotate',
-},
-
-
+    title: 'Agents',
+    path: '/agents',
+    icon: 'mdi-account-tie', // User with tie icon
+  },
+  {
+    title: 'Profit & Loss',
+    path: '/profit-loss',
+    icon: 'mdi-chart-line', // Line chart icon to represent financial performance
+  },
+  {
+    title: 'Logs',
+    path: '/logs',
+    icon: 'mdi-history', // Logs / Activity icon
+  },
 ]
 
 export default sidebarItems

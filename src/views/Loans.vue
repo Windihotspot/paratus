@@ -661,12 +661,11 @@ const sendLoanSMS = async (loan) => {
 
     // 3️⃣ Call Edge Function
     const res = await fetch(
-      'http://localhost:4000/sms/send-loan-sms-manual',
+      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-sms',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY
         },
         body: JSON.stringify({ loan_id: loan.id })
       }
@@ -877,14 +876,14 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <!-- <button
+                  <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
                     <i class="fas fa-sms"></i>
-                  </button> -->
+                  </button>
 
                   <button
                     class="text-green-600 hover:text-green-900"
