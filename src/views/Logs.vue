@@ -68,7 +68,7 @@
                 {{ log.metadata?.customer_phone || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ log.metadata?.loan_amount ?? '-' }}
+                {{ formatCurrency(log.metadata?.loan_amount ?? '-')  }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                 {{ log.metadata?.loan_days_left ?? '-' }}
@@ -176,7 +176,7 @@
         <v-col cols="12" md="6">
           <v-text-field
             label="Loan Amount"
-            :model-value="selectedLog.metadata?.loan_amount"
+            :model-value="formatCurrency(selectedLog.metadata?.loan_amount)"
             readonly outlined
             variant="outlined"
             color="#27bfa0"
@@ -305,6 +305,16 @@
 import { ref, onMounted } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
+
+const formatCurrency = (amount) => {
+  if (amount === null || amount === undefined || amount === '') return '-'
+
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    minimumFractionDigits: 2,
+  }).format(Number(amount))
+}
 
 const logs = ref([])
 const loading = ref(false)
