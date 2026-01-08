@@ -664,7 +664,7 @@ const sendLoanSMS = async (loan) => {
       {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ loan_id: loan.id })
       }
@@ -695,6 +695,67 @@ const sendLoanSMS = async (loan) => {
   }
 }
 
+const sendingEmail = reactive({})
+
+const sendLoanEmail = async (loan) => {
+  if (!loan.customer_email) {
+    ElNotification({
+      title: 'No Email',
+      message: `Customer ${loan.customer_name} does not have an email address.`,
+      type: 'warning'
+    })
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `Send Email to ${loan.customer_name} (${loan.customer_email})?`,
+      'Confirm Email',
+      {
+        confirmButtonText: 'Yes, Send',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }
+    )
+
+    sendingEmail[loan.id] = true
+
+    const res = await fetch(
+      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ loan_id: loan.id })
+      }
+    )
+
+    const result = await res.json()
+
+    if (res.ok && result.success) {
+      ElNotification({
+        title: 'Success',
+        message: 'Email sent successfully!',
+        type: 'success'
+      })
+    } else {
+      throw new Error(result.error || 'Failed to send email')
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      console.log(err)
+      ElNotification({
+        title: 'Error',
+        message: err.message || 'Failed to send email',
+        type: 'error'
+      })
+    }
+  } finally {
+    sendingEmail[loan.id] = false
+  }
+}
 
 onMounted(() => {
   fetchAgents()
@@ -887,6 +948,14 @@ onMounted(() => {
                   >
                     <i class="fas fa-sms"></i>
                   </button> -->
+                  <button
+                    class="text-indigo-600 hover:text-indigo-900"
+                    :disabled="sendingEmail[loan.id]"
+                    @click="sendLoanEmail(loan)"
+                    title="Send Email"
+                  >
+                    <i class="fas fa-envelope"></i>
+                  </button>
 
                   <button
                     class="text-green-600 hover:text-green-900"
@@ -1051,13 +1120,7 @@ onMounted(() => {
 
           <div class="flex justify-end mt-6">
             <v-btn text @click="closeModal">Cancel</v-btn>
-            <v-btn
-              color="green"
-              class="ml-3"
-              
-              :loading="loading"
-              @click="submitLoan"
-            >
+            <v-btn color="green" class="ml-3" :loading="loading" @click="submitLoan">
               {{ isEditing ? 'Update' : 'Save' }}
             </v-btn>
           </div>
