@@ -630,7 +630,7 @@ const getStatusColor = (status) => {
   }
 }
 
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox, ElLoading } from 'element-plus'
 
 const sendingSMS = reactive({})
 
@@ -706,7 +706,7 @@ const sendLoanEmail = async (loan) => {
     })
     return
   }
-
+  let loadingInstance = null
   try {
     await ElMessageBox.confirm(
       `Send Email to ${loan.customer_name} (${loan.customer_email})?`,
@@ -720,13 +720,25 @@ const sendLoanEmail = async (loan) => {
 
     sendingEmail[loan.id] = true
 
+    // ✅ Start full-page loading
+    loadingInstance = ElLoading.service({
+      lock: true,
+      text: 'Sending Email...',
+      background: 'rgba(0, 0, 0, 0.5)'
+    })
+
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    console.log('🔑 Using anon key:', anonKey)
+
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}` // 👈 important
         },
         body: JSON.stringify({ loan_id: loan.id })
       }
@@ -754,6 +766,9 @@ const sendLoanEmail = async (loan) => {
     }
   } finally {
     sendingEmail[loan.id] = false
+
+    // ✅ Stop full-page loading
+    if (loadingInstance) loadingInstance.close()
   }
 }
 
