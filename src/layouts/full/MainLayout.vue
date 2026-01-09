@@ -17,9 +17,14 @@ onMounted(() => {
     <!--- Header -->
     <!-- ---------------------------------------------- -->
     <v-app-bar app elevation="1" class="pa-2">
-      <v-btn class="hidden-md-and-up" icon @click="drawer = !drawer">
-        <v-icon>fa-solid fa-bars</v-icon>
-      </v-btn>
+     <v-btn
+  class="hidden-md-and-up"
+  icon
+  @click="drawer = !drawer"
+>
+  <v-icon icon="mdi-menu" />
+</v-btn>
+
 
       <img src="/src/assets/New Logo_with_Paratus.png" alt="Logo" class="w-24 h-24 mb-2" />
 
