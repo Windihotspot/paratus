@@ -115,21 +115,25 @@
               type="donut"
               height="300"
               :options="{
-                labels:
-                  merchantFacilitychartData.loan_status_distribution?.map((d) => d.status) || [],
-                colors: ['#10B981', '#EF4444', '#F59E0B', '#6366F1', '#14B8A6'],
+                labels: loanExpiryStats.labels,
+                colors: ['#10B981', '#F59E0B', '#EF4444'],
                 legend: { position: 'bottom' },
-                title: { text: 'Loan Status Distribution', style: { fontSize: '12px' } },
+                title: { text: 'Loan Expiry Status', style: { fontSize: '12px' } },
                 noData: {
                   text: 'No data available',
                   align: 'center',
                   verticalAlign: 'middle',
                   style: { color: '#9CA3AF', fontSize: '14px' }
+                },
+                dataLabels: {
+                  enabled: true,
+                  formatter: (val, opts) => {
+                    const value = opts.w.config.series[opts.seriesIndex]
+                    return value
+                  }
                 }
               }"
-              :series="
-                merchantFacilitychartData.loan_status_distribution?.map((d) => d.count) || []
-              "
+              :series="loanExpiryStats.series"
             />
           </div>
 
@@ -161,7 +165,7 @@
                 dataLabels: { enabled: false },
                 stroke: { show: true, width: 2, colors: ['transparent'] },
                 legend: { position: 'top' },
-                title: { text: 'Repayments vs Disbursements', style: { fontSize: '12px' } },
+                title: { text: 'Disbursements', style: { fontSize: '12px' } },
                 tooltip: {
                   y: {
                     formatter: (val) =>
@@ -186,13 +190,13 @@
                     merchantFacilitychartData.repayments_vs_disbursements?.map(
                       (d) => d.disbursed
                     ) || []
-                },
-                {
-                  name: 'Repaid',
-                  data:
-                    merchantFacilitychartData.repayments_vs_disbursements?.map((d) => d.repaid) ||
-                    []
                 }
+                // {
+                //   name: 'Repaid',
+                //   data:
+                //     merchantFacilitychartData.repayments_vs_disbursements?.map((d) => d.repaid) ||
+                //     []
+                // }
               ]"
             />
           </div>
@@ -305,7 +309,7 @@ const fetchFinancialKPIs = async (merchantId, facilityId) => {
     p_merchant_id: merchantId,
     p_facility_id: facilityId
   })
-  console.log("financial kpi data:", data)
+  console.log('financial kpi data:', data)
   if (error) throw error
   if (!data || data.length === 0) return kpis.value
 
@@ -316,9 +320,7 @@ const fetchFinancialKPIs = async (merchantId, facilityId) => {
     outstanding_facility_balance: formatCurrency(row.balance || 0),
     total_customer_repayments: formatCurrency(row.total_repayments || 0),
     customer_default_rate_percent:
-      row.customer_default_rate !== null
-        ? `${(row.customer_default_rate * 100).toFixed(2)}%`
-        : '0%'
+      row.customer_default_rate !== null ? `${(row.customer_default_rate * 100).toFixed(2)}%` : '0%'
   }
 }
 
@@ -327,15 +329,30 @@ const fetchMerchantFacilityStats = async (merchantId, facilityId) => {
     p_merchant_id: merchantId,
     p_facility_id: facilityId
   })
+  console.log('dashboard loan customers:', data)
   if (error) throw error
   return {
     loan_disbursement_trend: data?.loan_disbursement_trend || [],
     loan_status_distribution: data?.loan_status_distribution || [],
     repayments_vs_disbursements: data?.repayments_vs_disbursements || [],
     customer_growth_trend: data?.customer_growth_trend || [],
-    customer_status_distribution: data?.customer_status_distribution || []
+    customer_status_distribution: data?.customer_status_distribution || [],
+    loan_expiry_stats: data?.loan_expiry_stats || {}
   }
 }
+
+const loanExpiryStats = computed(() => {
+  const stats = merchantFacilitychartData.value.loan_expiry_stats || {}
+
+  return {
+    labels: ['Active Loans', 'Active (≤ 5 days to expiry)', 'Closed Loans'],
+    series: [
+      stats.active_loans || 0,
+      stats.active_loans_less_than_5_days || 0,
+      stats.closed_loans || 0
+    ]
+  }
+})
 
 const loadAllData = async () => {
   if (!authStore.merchant?.id || !authStore.selectedFacility?.id) {
@@ -397,4 +414,3 @@ onMounted(async () => {
   await loadAllData()
 })
 </script>
-
