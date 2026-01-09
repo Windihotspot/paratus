@@ -17,6 +17,8 @@
               >
                 Performed By
               </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
@@ -32,6 +34,8 @@
               >
                 Customer Phone
               </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
@@ -45,7 +49,7 @@
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                SMS Status
+                Delivery Status
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Actions
@@ -57,6 +61,28 @@
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                 {{ log.performed_by || '-' }}
               </td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <v-chip
+                  variant="text"
+                  v-if="isSmsLog(log)"
+                  color="blue"
+                  text-color="white"
+                  size="small"
+                >
+                  SMS
+                </v-chip>
+
+                <v-chip
+                  v-else-if="isEmailLog(log)"
+                  variant="text"
+                  color="purple"
+                  text-color="white"
+                  size="small"
+                >
+                  EMAIL
+                </v-chip>
+              </td>
+
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                 {{ formatDate(log.created_at) }}
               </td>
@@ -68,27 +94,42 @@
                 {{ log.metadata?.customer_phone || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ formatCurrency(log.metadata?.loan_amount ?? '-')  }}
+                <span v-if="isEmailLog(log)">
+                  {{ log.metadata?.customer_email || '-' }}
+                </span>
+                <span v-else>-</span>
+              </td>
+
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                {{ formatCurrency(log.metadata?.loan_amount ?? '-') }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                 {{ log.metadata?.loan_days_left ?? '-' }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                <v-chip
-            color="green"
-            text-color="white"
-            v-if="log.metadata?.sms_response?.status === 'success'"
-          >
-            {{ log.metadata?.sms_response?.status }}
-          </v-chip>
-          <v-chip
-            color="red"
-            text-color="white"
-            v-else
-          >
-            {{ log.metadata?.sms_response?.status || 'failed' }}
-          </v-chip>
+              <td class="px-6 py-4 whitespace-nowrap text-sm">
+                <!-- SMS -->
+                <template v-if="isSmsLog(log)">
+                  <v-chip
+                    v-if="log.metadata?.sms_response?.status === 'success'"
+                    color="green"
+                    text-color="white"
+                  >
+                    success
+                  </v-chip>
+                  <v-chip v-else color="red" text-color="white"> failed </v-chip>
+                </template>
+
+                <!-- EMAIL -->
+                <template v-else-if="isEmailLog(log)">
+                  <v-chip
+                    :color="getEmailStatus(selectedLog) === 'sent' ? 'green' : 'red'"
+                    text-color="white"
+                  >
+                    {{ getEmailStatus(selectedLog) }}
+                  </v-chip>
+                </template>
               </td>
+
               <td class="px-6 py-4 whitespace-nowrap">
                 <v-btn size="small" variant="outlined" color="primary" @click="openViewDialog(log)">
                   View
@@ -98,198 +139,225 @@
           </tbody>
         </table>
 
-       <v-dialog v-model="viewDialog" max-width="900">
-  <v-card>
-    <v-card-title class="font-semibold">Audit Log Details</v-card-title>
+        <v-dialog v-model="viewDialog" max-width="900">
+          <v-card>
+            <v-card-title class="font-semibold"> Audit Log Details </v-card-title>
 
-    <v-card-text v-if="selectedLog">
-      <v-row dense>
-        <!-- Core -->
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Action"
-            :model-value="selectedLog.action"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-flash"
-          />
-        </v-col>
+            <v-card-text v-if="selectedLog">
+              <v-row dense>
+                <!-- ================= SHARED INFO ================= -->
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Action"
+                    :model-value="selectedLog.action"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-flash"
+                  />
+                </v-col>
 
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Performed By"
-            :model-value="selectedLog.performed_by"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-account"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Performed By"
+                    :model-value="selectedLog.performed_by"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-account"
+                  />
+                </v-col>
 
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Entity"
-            :model-value="selectedLog.entity"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-database"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Entity"
+                    :model-value="selectedLog.entity"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-database"
+                  />
+                </v-col>
 
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Created At"
-            :model-value="formatDate(selectedLog.created_at)"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-calendar"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Created At"
+                    :model-value="formatDate(selectedLog.created_at)"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-calendar"
+                  />
+                </v-col>
 
-        <!-- Customer -->
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Customer Name"
-            :model-value="selectedLog.metadata?.customer_name"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-account-circle"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Customer Name"
+                    :model-value="selectedLog.metadata?.customer_name"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-account-circle"
+                  />
+                </v-col>
 
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Customer Phone"
-            :model-value="selectedLog.metadata?.customer_phone"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-phone"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Loan Amount"
+                    :model-value="formatCurrency(selectedLog.metadata?.loan_amount)"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-cash"
+                  />
+                </v-col>
 
-        <!-- Loan -->
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Loan Amount"
-            :model-value="formatCurrency(selectedLog.metadata?.loan_amount)"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-cash"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Days Left"
+                    :model-value="selectedLog.metadata?.loan_days_left"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-timer"
+                  />
+                </v-col>
 
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Days Left"
-            :model-value="selectedLog.metadata?.loan_days_left"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-timer"
-          />
-        </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    label="Expiry Date"
+                    :model-value="selectedLog.metadata?.loan_expiry_date"
+                    readonly
+                    variant="outlined"
+                    prepend-inner-icon="mdi-calendar-alert"
+                  />
+                </v-col>
 
-        <v-col cols="12" md="6">
-          <v-text-field
-            label="Expiry Date"
-            :model-value="selectedLog.metadata?.loan_expiry_date"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-calendar-alert"
-          />
-        </v-col>
+                <!-- ================= SMS SECTION ================= -->
+                <template v-if="isSmsLog(selectedLog)">
+                  <v-col cols="12">
+                    <v-divider class="my-4" />
+                    <h3 class="font-semibold mb-2">SMS Details</h3>
+                  </v-col>
 
-        <!-- SMS -->
-        <v-col cols="12">
-          <v-textarea
-            label="SMS Message"
-            :model-value="selectedLog.metadata?.sms_message"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            auto-grow
-            prepend-inner-icon="mdi-message-text"
-          />
-        </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      label="Customer Phone"
+                      :model-value="selectedLog.metadata?.customer_phone"
+                      readonly
+                      variant="outlined"
+                      prepend-inner-icon="mdi-phone"
+                    />
+                  </v-col>
 
-        <v-col cols="12" md="4">
-          <v-chip
-            color="green"
-            text-color="white"
-            v-if="selectedLog.metadata?.sms_response?.status === 'success'"
-          >
-            {{ selectedLog.metadata?.sms_response?.status }}
-          </v-chip>
-          <v-chip
-            color="red"
-            text-color="white"
-            v-else
-          >
-            {{ selectedLog.metadata?.sms_response?.status || 'error' }}
-          </v-chip>
-        </v-col>
+                  <v-col cols="12">
+                    <v-textarea
+                      label="SMS Message"
+                      :model-value="selectedLog.metadata?.sms_message"
+                      readonly
+                      auto-grow
+                      variant="outlined"
+                      prepend-inner-icon="mdi-message-text"
+                    />
+                  </v-col>
 
-        <v-col cols="6" md="6">
-          <v-textarea
-            label="Provider Message"
-            :model-value="selectedLog.metadata?.sms_response?.msg"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-information-outline"
-          />
-        </v-col>
+                  <v-col cols="12" md="4">
+                    <v-chip
+                      v-if="selectedLog.metadata?.sms_response?.status === 'success'"
+                      color="green"
+                      text-color="white"
+                    >
+                      success
+                    </v-chip>
+                    <v-chip v-else color="red" text-color="white"> failed </v-chip>
+                  </v-col>
 
-        <v-col cols="12" md="4">
-          <v-text-field
-            label="SMS Cost"
-            :model-value="selectedLog.metadata?.sms_response?.cost"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-currency-ngn"
-          />
-        </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      label="SMS Cost"
+                      :model-value="selectedLog.metadata?.sms_response?.cost"
+                      readonly
+                      variant="outlined"
+                      prepend-inner-icon="mdi-currency-ngn"
+                    />
+                  </v-col>
 
-        <v-col cols="12" md="4">
-          <v-text-field
-            label="Balance"
-            :model-value="selectedLog.metadata?.sms_response?.balance"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            prepend-inner-icon="mdi-wallet"
-          />
-        </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      label="Balance"
+                      :model-value="selectedLog.metadata?.sms_response?.balance"
+                      readonly
+                      variant="outlined"
+                      prepend-inner-icon="mdi-wallet"
+                    />
+                  </v-col>
 
-        <v-col cols="12">
-          <v-textarea
-            label="Raw Provider Data"
-            :model-value="JSON.stringify(selectedLog.metadata?.sms_response?.data, null, 2)"
-            readonly outlined
-            variant="outlined"
-            color="#27bfa0"
-            auto-grow
-            prepend-inner-icon="mdi-code-json"
-          />
-        </v-col>
-      </v-row>
-    </v-card-text>
+                  <v-col cols="12">
+                    <v-textarea
+                      label="Raw Provider Data"
+                      :model-value="
+                        JSON.stringify(selectedLog.metadata?.sms_response?.data, null, 2)
+                      "
+                      readonly
+                      auto-grow
+                      variant="outlined"
+                      prepend-inner-icon="mdi-code-json"
+                    />
+                  </v-col>
+                </template>
 
-    <v-card-actions>
-      <v-spacer />
-      <v-btn variant="text" @click="viewDialog = false">Close</v-btn>
-    </v-card-actions>
-  </v-card>
-</v-dialog>
+                <!-- ================= EMAIL SECTION ================= -->
+                <template v-if="isEmailLog(selectedLog)">
+                  <v-col cols="12">
+                    <v-divider class="my-4" />
+                    <h3 class="font-semibold mb-2">Email Details</h3>
+                  </v-col>
 
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      label="Customer Email"
+                      :model-value="selectedLog.metadata?.customer_email"
+                      readonly
+                      variant="outlined"
+                      prepend-inner-icon="mdi-email"
+                    />
+                  </v-col>
+
+                  <v-col cols="12">
+                    <v-textarea
+                      label="Email Message"
+                      :model-value="selectedLog.metadata?.email_message"
+                      readonly
+                      auto-grow
+                      variant="outlined"
+                      prepend-inner-icon="mdi-email-outline"
+                    />
+                  </v-col>
+
+                  <v-col cols="12" md="4">
+                    <v-chip
+                      :color="getEmailStatus(selectedLog) === 'sent' ? 'green' : 'red'"
+                      text-color="white"
+                    >
+                      {{ getEmailStatus(selectedLog) }}
+                    </v-chip>
+                  </v-col>
+
+                  <v-col cols="12" md="8">
+                    <v-textarea
+                      label="Provider Response"
+                      :model-value="
+                        JSON.stringify(selectedLog.metadata?.email_response?.response, null, 2)
+                      "
+                      readonly
+                      auto-grow
+                      variant="outlined"
+                      prepend-inner-icon="mdi-information-outline"
+                    />
+                  </v-col>
+                </template>
+              </v-row>
+            </v-card-text>
+
+            <v-card-actions>
+              <v-spacer />
+              <v-btn variant="text" @click="viewDialog = false"> Close </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
       </div>
       <!-- Empty State -->
       <div v-else class="fill-height align-center justify-center">
@@ -312,7 +380,7 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 2
   }).format(Number(amount))
 }
 
@@ -329,7 +397,7 @@ const fetchLogs = async () => {
       .from('audit_logs')
       .select('*')
       .order('created_at', { ascending: false })
-    console.log("logs:", data)
+    console.log('logs:', data)
     if (error) throw error
     logs.value = data || []
   } catch (err) {
@@ -347,6 +415,16 @@ const openViewDialog = (log) => {
 const formatDate = (dateString) => {
   if (!dateString) return '-'
   return new Date(dateString).toLocaleString()
+}
+
+const isSmsLog = (log) => log?.action?.includes('SMS') || !!log?.metadata?.sms_response
+
+const isEmailLog = (log) => log?.action?.includes('EMAIL') || !!log?.metadata?.email_response
+
+const getEmailStatus = (log) => {
+  const res = log?.metadata?.email_response?.response
+  if (!res) return 'failed'
+  return res.status === 'success' ? 'sent' : 'failed'
 }
 
 onMounted(fetchLogs)
