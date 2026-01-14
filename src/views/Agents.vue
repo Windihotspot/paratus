@@ -9,8 +9,6 @@ import { saveAs } from 'file-saver'
 import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/New Logo_with_Paratus.png'
-
-pdfMake.vfs = pdfFonts.vfs
 const authStore = useAuthStore()
 const merchantId = authStore.merchant?.id
 

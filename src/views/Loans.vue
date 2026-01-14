@@ -21,7 +21,7 @@ import { saveAs } from 'file-saver'
 import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/New Logo_with_Paratus.png' // ✅ correct way for Vite
-pdfMake.vfs = pdfFonts.vfs
+
 
 const loadingAgents = ref(false)
 
@@ -657,18 +657,18 @@ const sendLoanSMS = async (loan) => {
 
     sendingSMS[loan.id] = true
 
-    const session = authStore.session
+      
+   const res = await fetch(
+  'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-sms',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ loan_id: loan.id })
+  }
+)
 
-    const res = await fetch(
-      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-sms-manual',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ loan_id: loan.id })
-      }
-    )
 
     const result = await res.json()
 
@@ -955,14 +955,14 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <!-- <button
+                  <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
                     <i class="fas fa-sms"></i>
-                  </button> -->
+                  </button>
                   <button
                     class="text-indigo-600 hover:text-indigo-900"
                     :disabled="sendingEmail[loan.id]"

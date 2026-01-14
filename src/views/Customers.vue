@@ -21,8 +21,16 @@ const customer = ref({
   email: '',
   phone: '',
   account_number: '',
-  facility_id: null
+  facility_id: null,
+  notification_preference: 'none'
 })
+
+const notificationOptions = [
+  { label: 'SMS', value: 'sms' },
+  { label: 'Email', value: 'email' },
+  { label: 'Email & SMS', value: 'email_sms' },
+  { label: 'None', value: 'none' }
+]
 
 const { phone, validate: validatePhone } = usePhoneNumber(customer.value.phone)
 
@@ -110,7 +118,8 @@ const submitCustomer = async () => {
         p_account_number: customer.value.account_number,
         p_status: customer.value.status || 'active',
         p_address: customer.value.address ?? null,
-        p_bank_id: customer.value.bank_id ?? null
+        p_bank_id: customer.value.bank_id ?? null,
+        p_notification_preference: customer.value.notification_preference
       })
 
       if (error) throw error
@@ -130,7 +139,8 @@ const submitCustomer = async () => {
         p_email: customer.value.email?.trim() || null,
         p_phone: customer.value.phone?.trim() || null,
         p_account_number: customer.value.account_number,
-        p_facility_id: customer.value.facility_id
+        p_facility_id: customer.value.facility_id,
+        p_notification_preference: customer.value.notification_preference
       })
 
       if (error) throw error
@@ -259,8 +269,8 @@ const sendExpirySMS = async (customer) => {
     ElMessage({
       message: 'Customer has no phone number',
       type: 'warning'
-    });
-    return;
+    })
+    return
   }
 
   // Confirm sending SMS
@@ -268,19 +278,20 @@ const sendExpirySMS = async (customer) => {
     `Send expiry SMS to ${customer.full_name}?`,
     'Confirm SMS',
     { type: 'warning' }
-  ).catch(() => false); // cancel returns false
+  ).catch(() => false) // cancel returns false
 
-  if (!confirmed) return;
+  if (!confirmed) return
 
   try {
     ElMessage({
       message: 'Sending SMS...',
       type: 'info',
       duration: 1500
-    });
+    })
 
     // Replace URL with your deployed Supabase Edge Function
-    const EDGE_FUNCTION_URL = 'https://ytvqldflnqwflahxjjzu.functions.supabase.co/send-sms-on-demand';
+    const EDGE_FUNCTION_URL =
+      'https://ytvqldflnqwflahxjjzu.functions.supabase.co/send-sms-on-demand'
 
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
@@ -288,32 +299,30 @@ const sendExpirySMS = async (customer) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ customer_id: customer.id })
-    });
+    })
 
-    const result = await response.json();
+    const result = await response.json()
 
     if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Failed to send SMS');
+      throw new Error(result.error || 'Failed to send SMS')
     }
 
     ElNotification({
       title: 'SMS Sent',
       message: `Expiry reminder sent successfully (${result.daysLeft} day${result.daysLeft !== 1 ? 's' : ''} left)`,
       type: 'success'
-    });
+    })
 
-    console.log('SMS response:', result.smsResponse);
-
+    console.log('SMS response:', result.smsResponse)
   } catch (err) {
-    console.error(err);
+    console.error(err)
     ElNotification({
       title: 'Error',
       message: err.message || 'Failed to send SMS',
       type: 'error'
-    });
+    })
   }
-};
-
+}
 
 const sendTestSMS = async () => {
   try {
@@ -402,6 +411,8 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Email</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Phone</th>
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Created Date</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Notifications</th>
+
                 <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Status</th>
                 <th class="px-6 py-3 text-center text-xs uppercase tracking-wider">Actions</th>
               </tr>
@@ -420,6 +431,21 @@ onMounted(() => {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                   {{ customer.created_at }}
                 </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span
+                    :class="{
+                      'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                      'bg-blue-100 text-blue-800': customer.notification_preference === 'sms',
+                      'bg-yellow-100 text-yellow-800': customer.notification_preference === 'email',
+                      'bg-green-100 text-green-800':
+                        customer.notification_preference === 'email_sms',
+                      'bg-gray-100 text-gray-800': customer.notification_preference === 'none'
+                    }"
+                  >
+                    {{ customer.notification_preference.replace('_', ' & ').toUpperCase() }}
+                  </span>
+                </td>
+
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span
                     :class="{
@@ -446,8 +472,6 @@ onMounted(() => {
                   >
                     <i class="fas fa-trash"></i>
                   </button>
-
-                 
                 </td>
               </tr>
             </tbody>
@@ -515,7 +539,7 @@ onMounted(() => {
             type="email"
           />
           <v-text-field
-          class="mb-4"
+            class="mb-4"
             variant="outlined"
             color="#27bfa0"
             v-model="phone"
@@ -543,6 +567,18 @@ onMounted(() => {
             label="Facility"
             :rules="[(v) => !!v || 'Bank is required']"
             required
+          />
+
+          <v-select
+            v-model="customer.notification_preference"
+            :items="notificationOptions"
+            label="Notification Preference"
+            item-title="label"
+            item-value="value"
+            variant="outlined"
+            color="#27bfa0"
+            dense
+            class="mb-4 mt-4"
           />
 
           <div class="flex justify-end mt-6">
