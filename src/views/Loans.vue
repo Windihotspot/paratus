@@ -631,6 +631,7 @@ const getStatusColor = (status) => {
 }
 
 import { ElMessageBox, ElLoading } from 'element-plus'
+const sendingEmail = reactive({})
 
 const sendingSMS = reactive({})
 
@@ -656,14 +657,15 @@ const sendLoanSMS = async (loan) => {
     )
 
     sendingSMS[loan.id] = true
-
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
       
    const res = await fetch(
   'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-sms',
   {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+        
     },
     body: JSON.stringify({ loan_id: loan.id })
   }
@@ -695,9 +697,18 @@ const sendLoanSMS = async (loan) => {
   }
 }
 
-const sendingEmail = reactive({})
 
 const sendLoanEmail = async (loan) => {
+    if (
+    !["email", "sms_and_email"].includes(loan.notification_preference)
+  ) {
+    ElNotification({
+      title: "Email Disabled",
+      message: `Email notifications are disabled for ${loan.customer_name}.`,
+      type: "info"
+    })
+    return
+  }
   if (!loan.customer_email) {
     ElNotification({
       title: 'No Email',
@@ -955,14 +966,14 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button
+                  <!-- <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
                     <i class="fas fa-sms"></i>
-                  </button>
+                  </button> -->
                   <button
                     class="text-indigo-600 hover:text-indigo-900"
                     :disabled="sendingEmail[loan.id]"
