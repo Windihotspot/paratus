@@ -699,16 +699,7 @@ const sendLoanSMS = async (loan) => {
 
 
 const sendLoanEmail = async (loan) => {
-    if (
-    !["email", "sms_and_email"].includes(loan.notification_preference)
-  ) {
-    ElNotification({
-      title: "Email Disabled",
-      message: `Email notifications are disabled for ${loan.customer_name}.`,
-      type: "info"
-    })
-    return
-  }
+  
   if (!loan.customer_email) {
     ElNotification({
       title: 'No Email',
