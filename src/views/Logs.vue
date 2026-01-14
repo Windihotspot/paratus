@@ -122,10 +122,10 @@
                 <!-- EMAIL -->
                 <template v-else-if="isEmailLog(log)">
                   <v-chip
-                    :color="getEmailStatus(selectedLog) === 'sent' ? 'green' : 'red'"
+                    :color="getEmailStatus(log) === 'sent' ? 'green' : 'red'"
                     text-color="white"
                   >
-                    {{ getEmailStatus(selectedLog) }}
+                    {{ getEmailStatus(log) }}
                   </v-chip>
                 </template>
               </td>
@@ -422,9 +422,17 @@ const isSmsLog = (log) => log?.action?.includes('SMS') || !!log?.metadata?.sms_r
 const isEmailLog = (log) => log?.action?.includes('EMAIL') || !!log?.metadata?.email_response
 
 const getEmailStatus = (log) => {
-  const res = log?.metadata?.email_response?.response
-  if (!res) return 'failed'
-  return res.status === 'success' ? 'sent' : 'failed'
+  const status =
+    log?.metadata?.email_response?.response?.status ||
+    log?.metadata?.email_response?.status
+
+  if (!status) return 'failed'
+
+  if (['sent', 'success', 'ok'].includes(status.toLowerCase())) {
+    return 'sent'
+  }
+
+  return 'failed'
 }
 
 onMounted(fetchLogs)

@@ -311,6 +311,8 @@ const filteredAgents = computed(() => {
   return list
 })
 
+
+
 // initial load
 onMounted(() => {
   fetchAgents()
