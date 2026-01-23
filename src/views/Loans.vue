@@ -22,7 +22,6 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/New Logo_with_Paratus.png' // ✅ correct way for Vite
 
-
 const loadingAgents = ref(false)
 
 const agents = ref([])
@@ -657,35 +656,35 @@ const sendLoanSMS = async (loan) => {
     )
 
     sendingSMS[loan.id] = true
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-      
-   const res = await fetch(
-  'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-sms',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-        
-    },
-    body: JSON.stringify({ loan_id: loan.id })
-  }
-)
 
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    const res = await fetch('https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-sms-service', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}` // 🔴 REQUIRED
+      },
+      body: JSON.stringify({
+        loan_id: loan.id
+      })
+    })
 
     const result = await res.json()
 
-    if (res.ok && result.success) {
-      ElNotification({
-        title: 'Success',
-        message: 'SMS sent successfully!',
-        type: 'success'
-      })
-    } else {
+    if (!res.ok) {
       throw new Error(result.error || 'Failed to send SMS')
     }
+
+    ElNotification({
+      title: 'Success',
+      message: 'SMS sent successfully!',
+      type: 'success'
+    })
   } catch (err) {
     if (err !== 'cancel') {
-      console.error(err)
+      console.log(err)
       ElNotification({
         title: 'Error',
         message: err.message || 'Failed to send SMS',
@@ -697,9 +696,7 @@ const sendLoanSMS = async (loan) => {
   }
 }
 
-
 const sendLoanEmail = async (loan) => {
-  
   if (!loan.customer_email) {
     ElNotification({
       title: 'No Email',
@@ -957,14 +954,14 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <!-- <button
+                  <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
-                    <i class="fas fa-sms"></i>
-                  </button> -->
+                    <i  :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
+                  </button>
                   <button
                     class="text-indigo-600 hover:text-indigo-900"
                     :disabled="sendingEmail[loan.id]"

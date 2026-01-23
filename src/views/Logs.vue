@@ -110,13 +110,11 @@
                 <!-- SMS -->
                 <template v-if="isSmsLog(log)">
                   <v-chip
-                    v-if="log.metadata?.sms_response?.status === 'success'"
-                    color="green"
+                    :color="getSmsStatus(log) === 'sent' ? 'green' : 'red'"
                     text-color="white"
                   >
-                    success
+                    {{ getSmsStatus(log) }}
                   </v-chip>
-                  <v-chip v-else color="red" text-color="white"> failed </v-chip>
                 </template>
 
                 <!-- EMAIL -->
@@ -256,23 +254,29 @@
 
                   <v-col cols="12" md="4">
                     <v-chip
-                      v-if="selectedLog.metadata?.sms_response?.status === 'success'"
-                      color="green"
+                      :color="getSmsStatus(selectedLog) === 'sent' ? 'green' : 'red'"
                       text-color="white"
                     >
-                      success
+                      {{ getSmsStatus(selectedLog) }}
                     </v-chip>
-                    <v-chip v-else color="red" text-color="white"> failed </v-chip>
                   </v-col>
 
                   <v-col cols="12" md="4">
                     <v-text-field
+                      label="Balance After SMS"
+                      :model-value="selectedLog.metadata?.sms_response?.balance"
+                      readonly
+                      variant="outlined"
+                      prepend-inner-icon="mdi-wallet"
+                    />
+
+                    <!-- <v-text-field
                       label="SMS Cost"
                       :model-value="selectedLog.metadata?.sms_response?.cost"
                       readonly
                       variant="outlined"
                       prepend-inner-icon="mdi-currency-ngn"
-                    />
+                    /> -->
                   </v-col>
 
                   <v-col cols="12" md="4">
@@ -287,6 +291,15 @@
 
                   <v-col cols="12">
                     <v-textarea
+                      label="Raw Provider Response"
+                      :model-value="JSON.stringify(selectedLog.metadata?.sms_response, null, 2)"
+                      readonly
+                      auto-grow
+                      variant="outlined"
+                      prepend-inner-icon="mdi-code-json"
+                    />
+
+                    <!-- <v-textarea
                       label="Raw Provider Data"
                       :model-value="
                         JSON.stringify(selectedLog.metadata?.sms_response?.data, null, 2)
@@ -295,7 +308,7 @@
                       auto-grow
                       variant="outlined"
                       prepend-inner-icon="mdi-code-json"
-                    />
+                    /> -->
                   </v-col>
                 </template>
 
@@ -423,12 +436,28 @@ const isEmailLog = (log) => log?.action?.includes('EMAIL') || !!log?.metadata?.e
 
 const getEmailStatus = (log) => {
   const status =
-    log?.metadata?.email_response?.response?.status ||
-    log?.metadata?.email_response?.status
+    log?.metadata?.email_response?.response?.status || log?.metadata?.email_response?.status
 
   if (!status) return 'failed'
 
   if (['sent', 'success', 'ok'].includes(status.toLowerCase())) {
+    return 'sent'
+  }
+
+  return 'failed'
+}
+
+const getSmsStatus = (log) => {
+  const res = log?.metadata?.sms_response
+  if (!res) return 'failed'
+
+  // Termii
+  if (res.code && ['ok', 'success'].includes(res.code.toLowerCase())) {
+    return 'sent'
+  }
+
+  // Kudi / others fallback
+  if (res.status && ['success', 'sent', 'ok'].includes(res.status.toLowerCase())) {
     return 'sent'
   }
 
