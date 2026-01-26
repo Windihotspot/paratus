@@ -128,7 +128,7 @@
                   {{ formatCurrency(log.metadata?.loan_amount ?? '-') }}
                 </div>
                 <div class="text-xs text-gray-500">
-                  {{ log.metadata?.loan_days_left ?? '-' }} days left
+                  {{ log.metadata?.days_left ?? '-' }} days left
                 </div>
               </td>
 
