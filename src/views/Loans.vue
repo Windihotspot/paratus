@@ -1053,7 +1053,7 @@ onMounted(() => {
                  
                    <el-tooltip content="Send email by kudi" placement="top">
                     <button
-                    class="text-green-600 hover:text-indigo-900"
+                    class="text-green-600 hover:text-green-900"
                     :disabled="sendingEmail[loan.id]"
                     @click="sendLoanKudiEmail(loan)"
                     title="Send Email"
