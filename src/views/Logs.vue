@@ -10,7 +10,7 @@
 
       <div v-else-if="logs.length > 0" class="overflow-x-auto bg-white rounded-lg shadow-md">
         <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+          <!-- <thead class="bg-gray-50">
             <tr>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -55,81 +55,101 @@
                 Actions
               </th>
             </tr>
-          </thead>
+          </thead> -->
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ log.performed_by || '-' }}
+              <!-- Performed By + Entity -->
+              <td class="px-4 py-3 text-sm">
+                <div class="font-medium text-gray-900 line-clamp-1">
+                  {{ log.performed_by || '-' }}
+                </div>
+               
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm">
-                <v-chip
-                  variant="text"
-                  v-if="isSmsLog(log)"
-                  color="blue"
-                  text-color="white"
-                  size="small"
-                >
+              <td class="px-4 py-3 text-xs">
+                <div class="text-gray-500 line-clamp-1">
+                  <div class="text-gray-500 line-clamp-1 mt-2">
+                    <v-chip v-if="isSmsLog(log)" size="x-small" variant="text" color="blue">
                   SMS
                 </v-chip>
 
-                <v-chip
-                  v-else-if="isEmailLog(log)"
-                  variant="text"
-                  color="purple"
-                  text-color="white"
-                  size="small"
-                >
+                <v-chip v-else-if="isEmailLog(log)" size="x-small" variant="text" color="purple">
                   EMAIL
+                </v-chip>
+                </div>
+                  {{ log.metadata?.provider || '-' }}
+                </div>
+                
+              </td>
+
+              <!-- Date + Time -->
+              <td class="px-4 py-3 text-sm">
+                <div class="font-medium text-gray-900">
+                  {{ new Date(log.created_at).toLocaleDateString() }}
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ new Date(log.created_at).toLocaleTimeString() }}
+                </div>
+              </td>
+
+              <!-- Customer (Name + Phone) -->
+              <td class="px-4 py-3 text-sm">
+                <div class="font-medium text-gray-900 line-clamp-1">
+                  {{ log.metadata?.customer_name || '-' }}
+                </div>
+                <div class="text-xs text-gray-500 line-clamp-1">
+                  {{ log.metadata?.customer_phone || '-' }}
+                </div>
+              </td>
+
+              <!-- Email (only for email logs) -->
+              <td class="px-4 py-3 text-sm">
+                
+                <div  class="text-xs text-gray-500 break-all line-clamp-2">
+                  <div class="font-medium text-gray-900 line-clamp-1">
+                  {{ log.metadata?.customer_name || '-' }}
+                </div>
+                  {{ log.metadata?.customer_email || '-' }}
+                </div>
+                
+              </td>
+
+              <!-- Loan (Amount + Days Left) -->
+              <td class="px-4 py-3 text-sm">
+                <div class="font-medium text-gray-900">
+                  {{ formatCurrency(log.metadata?.loan_amount ?? '-') }}
+                </div>
+                <div class="text-xs text-gray-500">
+                  {{ log.metadata?.loan_days_left ?? '-' }} days left
+                </div>
+              </td>
+
+              <!-- Status -->
+              <td class="px-4 py-3 text-sm">
+                <v-chip
+                  size="x-small"
+                  :color="
+                    isSmsLog(log)
+                      ? getSmsStatus(log) === 'sent'
+                        ? 'green'
+                        : 'red'
+                      : getEmailStatus(log) === 'sent'
+                        ? 'green'
+                        : 'red'
+                  "
+                  text-color="white"
+                >
+                  {{ isSmsLog(log) ? getSmsStatus(log) : getEmailStatus(log) }}
                 </v-chip>
               </td>
 
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ formatDate(log.created_at) }}
-              </td>
-
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ log.metadata?.customer_name || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ log.metadata?.customer_phone || '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                <span v-if="isEmailLog(log)">
-                  {{ log.metadata?.customer_email || '-' }}
-                </span>
-                <span v-else>-</span>
-              </td>
-
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ formatCurrency(log.metadata?.loan_amount ?? '-') }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                {{ log.metadata?.loan_days_left ?? '-' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm">
-                <!-- SMS -->
-                <template v-if="isSmsLog(log)">
-                  <v-chip
-                    :color="getSmsStatus(log) === 'sent' ? 'green' : 'red'"
-                    text-color="white"
-                  >
-                    {{ getSmsStatus(log) }}
-                  </v-chip>
-                </template>
-
-                <!-- EMAIL -->
-                <template v-else-if="isEmailLog(log)">
-                  <v-chip
-                    :color="getEmailStatus(log) === 'sent' ? 'green' : 'red'"
-                    text-color="white"
-                  >
-                    {{ getEmailStatus(log) }}
-                  </v-chip>
-                </template>
-              </td>
-
-              <td class="px-6 py-4 whitespace-nowrap">
-                <v-btn size="small" variant="outlined" color="primary" @click="openViewDialog(log)">
+              <!-- Action -->
+              <td class="px-4 py-3 text-sm">
+                <v-btn
+                  size="x-small"
+                  variant="outlined"
+                  color="primary"
+                  @click="openViewDialog(log)"
+                >
                   View
                 </v-btn>
               </td>
@@ -270,19 +290,19 @@
                       prepend-inner-icon="mdi-wallet"
                     />
 
-                    <!-- <v-text-field
+                    <v-text-field
                       label="SMS Cost"
-                      :model-value="selectedLog.metadata?.sms_response?.cost"
+                      :model-value="normalizeSmsDelivery(selectedLog).cost || '-'"
                       readonly
                       variant="outlined"
                       prepend-inner-icon="mdi-currency-ngn"
-                    /> -->
+                    />
                   </v-col>
 
                   <v-col cols="12" md="4">
                     <v-text-field
                       label="Balance"
-                      :model-value="selectedLog.metadata?.sms_response?.balance"
+                      :model-value="normalizeSmsDelivery(selectedLog).balance"
                       readonly
                       variant="outlined"
                       prepend-inner-icon="mdi-wallet"
@@ -292,7 +312,7 @@
                   <v-col cols="12">
                     <v-textarea
                       label="Raw Provider Response"
-                      :model-value="JSON.stringify(selectedLog.metadata?.sms_response, null, 2)"
+                      :model-value="JSON.stringify(normalizeSmsDelivery(selectedLog).raw, null, 2)"
                       readonly
                       auto-grow
                       variant="outlined"
@@ -353,7 +373,7 @@
                     <v-textarea
                       label="Provider Response"
                       :model-value="
-                        JSON.stringify(selectedLog.metadata?.email_response?.response, null, 2)
+                        JSON.stringify(normalizeEmailDelivery(selectedLog).raw, null, 2)
                       "
                       readonly
                       auto-grow
@@ -434,34 +454,111 @@ const isSmsLog = (log) => log?.action?.includes('SMS') || !!log?.metadata?.sms_r
 
 const isEmailLog = (log) => log?.action?.includes('EMAIL') || !!log?.metadata?.email_response
 
-const getEmailStatus = (log) => {
-  const status =
-    log?.metadata?.email_response?.response?.status || log?.metadata?.email_response?.status
+const normalizeMetadata = (log) => {
+  const m = log?.metadata || {}
 
-  if (!status) return 'failed'
+  return {
+    customer_name: m.customer_name || '-',
+    customer_email: m.customer_email || '-',
+    customer_phone: m.customer_phone || '-',
+    loan_amount: m.loan_amount ?? null,
+    loan_days_left: m.loan_days_left ?? m.days_left ?? null,
+    loan_expiry_date: m.loan_expiry_date ?? null
+  }
+}
 
-  if (['sent', 'success', 'ok'].includes(status.toLowerCase())) {
-    return 'sent'
+const normalizeEmailDelivery = (log) => {
+  const res = log?.metadata?.email_response
+  const response = res?.response || {}
+
+  const provider = log?.metadata?.provider || 'unknown'
+
+  // TERMII
+  if (provider === 'termii') {
+    const success = ['ok', 'success'].includes(String(response.code).toLowerCase())
+
+    return {
+      provider,
+      channel: 'email',
+      status: success ? 'sent' : 'failed',
+      messageId: response.message_id,
+      balance: response.balance,
+      raw: response
+    }
   }
 
-  return 'failed'
+  // KUDI
+  if (provider === 'kudi') {
+    const success = ['success', 'sent'].includes(String(response.status).toLowerCase())
+
+    return {
+      provider,
+      channel: 'email',
+      status: success ? 'sent' : 'failed',
+      messageId: response.data,
+      balance: response.balance,
+      raw: response
+    }
+  }
+
+  // FALLBACK
+  return {
+    provider,
+    channel: 'email',
+    status: 'failed',
+    raw: response
+  }
+}
+const getEmailStatus = (log) => {
+  return normalizeEmailDelivery(log).status
+}
+
+const normalizeSmsDelivery = (log) => {
+  const provider = log?.metadata?.provider || 'unknown'
+  const res = log?.metadata?.sms_response || {}
+
+  // TERMII
+  if (provider === 'termii') {
+    const success = ['ok', 'success'].includes(String(res.code).toLowerCase())
+
+    return {
+      provider,
+      channel: 'sms',
+      status: success ? 'sent' : 'failed',
+      messageId: res.message_id || res.message_id_str,
+      balance: res.balance,
+      cost: null,
+      raw: res
+    }
+  }
+
+  // KUDI
+  if (provider === 'kudi') {
+    const success =
+      ['success', 'sent'].includes(String(res.status).toLowerCase()) && res.error_code === '000'
+
+    return {
+      provider,
+      channel: 'sms',
+      status: success ? 'sent' : 'failed',
+      messageId: log?.metadata?.sms_message_id || null,
+      balance: res.balance || log?.metadata?.sms_balance,
+      cost: res.cost || log?.metadata?.sms_cost,
+      raw: res
+    }
+  }
+
+  // FALLBACK
+  return {
+    provider,
+    channel: 'sms',
+    status: 'failed',
+    raw: res
+  }
 }
 
 const getSmsStatus = (log) => {
-  const res = log?.metadata?.sms_response
-  if (!res) return 'failed'
-
-  // Termii
-  if (res.code && ['ok', 'success'].includes(res.code.toLowerCase())) {
-    return 'sent'
-  }
-
-  // Kudi / others fallback
-  if (res.status && ['success', 'sent', 'ok'].includes(res.status.toLowerCase())) {
-    return 'sent'
-  }
-
-  return 'failed'
+  return normalizeSmsDelivery(log).status
 }
 
 onMounted(fetchLogs)
