@@ -63,22 +63,28 @@
                 <div class="font-medium text-gray-900 line-clamp-1">
                   {{ log.performed_by || '-' }}
                 </div>
-               
               </td>
               <td class="px-4 py-3 text-xs">
                 <div class="text-gray-500 line-clamp-1">
                   <div class="text-gray-500 line-clamp-1 mt-2">
                     <v-chip v-if="isSmsLog(log)" size="x-small" variant="text" color="blue">
-                  SMS
-                </v-chip>
+                      SMS
+                    </v-chip>
 
-                <v-chip v-else-if="isEmailLog(log)" size="x-small" variant="text" color="purple">
-                  EMAIL
-                </v-chip>
+                    <v-chip
+                      v-else-if="isEmailLog(log)"
+                      size="x-small"
+                      variant="text"
+                      color="purple"
+                    >
+                      EMAIL
+                    </v-chip>
+                  </div>
+
+                  <div>
+                    {{ log.metadata?.provider || '-' }}
+                  </div>
                 </div>
-                  {{ log.metadata?.provider || '-' }}
-                </div>
-                
               </td>
 
               <!-- Date + Time -->
@@ -93,24 +99,27 @@
 
               <!-- Customer (Name + Phone) -->
               <td class="px-4 py-3 text-sm">
-                <div class="font-medium text-gray-900 line-clamp-1">
+                <div v-if="isSmsLog(log)">
+                  <div class="font-medium text-gray-900 line-clamp-1">
                   {{ log.metadata?.customer_name || '-' }}
                 </div>
                 <div class="text-xs text-gray-500 line-clamp-1">
                   {{ log.metadata?.customer_phone || '-' }}
                 </div>
+                </div>
+                
               </td>
 
               <!-- Email (only for email logs) -->
               <td class="px-4 py-3 text-sm">
-                
-                <div  class="text-xs text-gray-500 break-all line-clamp-2">
-                  <div class="font-medium text-gray-900 line-clamp-1">
-                  {{ log.metadata?.customer_name || '-' }}
+                <div v-if="isEmailLog(log)">
+                  <div class="text-xs text-gray-500 break-all line-clamp-2">
+                    <div class="font-medium text-gray-900 line-clamp-1">
+                      {{ log.metadata?.customer_name || '-' }}
+                    </div>
+                    {{ log.metadata?.customer_email || '-' }}
+                  </div>
                 </div>
-                  {{ log.metadata?.customer_email || '-' }}
-                </div>
-                
               </td>
 
               <!-- Loan (Amount + Days Left) -->
