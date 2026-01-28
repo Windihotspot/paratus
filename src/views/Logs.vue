@@ -101,13 +101,12 @@
               <td class="px-4 py-3 text-sm">
                 <div v-if="isSmsLog(log)">
                   <div class="font-medium text-gray-900 line-clamp-1">
-                  {{ log.metadata?.customer_name || '-' }}
+                    {{ log.metadata?.customer_name || '-' }}
+                  </div>
+                  <div class="text-xs text-gray-500 line-clamp-1">
+                    {{ log.metadata?.customer_phone || '-' }}
+                  </div>
                 </div>
-                <div class="text-xs text-gray-500 line-clamp-1">
-                  {{ log.metadata?.customer_phone || '-' }}
-                </div>
-                </div>
-                
               </td>
 
               <!-- Email (only for email logs) -->
@@ -128,7 +127,7 @@
                   {{ formatCurrency(log.metadata?.loan_amount ?? '-') }}
                 </div>
                 <div class="text-xs text-gray-500">
-                  {{ log.metadata?.days_left ?? '-' }} days left
+                  {{ normalizeMetadata(log).loan_days_left ?? '-' }} days left
                 </div>
               </td>
 
@@ -236,7 +235,7 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     label="Days Left"
-                    :model-value="selectedLog.metadata?.loan_days_left"
+                    :model-value="normalizeMetadata(selectedLog).loan_days_left"
                     readonly
                     variant="outlined"
                     prepend-inner-icon="mdi-timer"
@@ -439,6 +438,7 @@ const fetchLogs = async () => {
       .from('audit_logs')
       .select('*')
       .order('created_at', { ascending: false })
+      
     console.log('logs:', data)
     if (error) throw error
     logs.value = data || []
@@ -477,94 +477,83 @@ const normalizeMetadata = (log) => {
 }
 
 const normalizeEmailDelivery = (log) => {
-  const res = log?.metadata?.email_response
-  const response = res?.response || {}
+  const metadata = log?.metadata || {}
+  const provider = (metadata.provider || 'unknown').toLowerCase()
+  const emailResp = metadata.email_response || {}
 
-  const provider = log?.metadata?.provider || 'unknown'
+  // Use inner response if it exists, else fallback to emailResp itself
+  const innerRes = emailResp.response || emailResp
 
-  // TERMII
+  let status = 'failed'
+  let messageId = innerRes.message_id || innerRes.data || null
+  let balance = innerRes.balance ?? 0
+
   if (provider === 'termii') {
-    const success = ['ok', 'success'].includes(String(response.code).toLowerCase())
-
-    return {
-      provider,
-      channel: 'email',
-      status: success ? 'sent' : 'failed',
-      messageId: response.message_id,
-      balance: response.balance,
-      raw: response
-    }
+    // Termii: code ok/success => sent
+    status = ['ok', 'success'].includes(String(innerRes.code).toLowerCase()) ? 'sent' : 'failed'
+  } else if (provider === 'kudi') {
+    // Kudi: success === true && status === 'success'
+    const success = emailResp.success === true && innerRes.status === 'success'
+    status = success ? 'sent' : 'failed'
+    balance = innerRes.balance ?? balance
+    messageId = innerRes.data ?? messageId
+  } else {
+    // fallback
+    if (metadata.email_status) status = metadata.email_status
   }
 
-  // KUDI
-  if (provider === 'kudi') {
-    const success = ['success', 'sent'].includes(String(response.status).toLowerCase())
-
-    return {
-      provider,
-      channel: 'email',
-      status: success ? 'sent' : 'failed',
-      messageId: response.data,
-      balance: response.balance,
-      raw: response
-    }
-  }
-
-  // FALLBACK
   return {
     provider,
     channel: 'email',
-    status: 'failed',
-    raw: response
+    status,
+    messageId,
+    balance,
+    raw: emailResp
   }
 }
+
+
+
 const getEmailStatus = (log) => {
   return normalizeEmailDelivery(log).status
 }
 
 const normalizeSmsDelivery = (log) => {
-  const provider = log?.metadata?.provider || 'unknown'
-  const res = log?.metadata?.sms_response || {}
+  const metadata = log?.metadata || {}
+  const provider = metadata.provider || 'unknown'
+  const res = metadata.sms_response || {}
 
-  // TERMII
-  if (provider === 'termii') {
-    const success = ['ok', 'success'].includes(String(res.code).toLowerCase())
+  let status = 'failed'
+  let messageId = metadata.sms_message_id || null
+  let balance = res.balance ?? metadata.sms_balance ?? 0
+  let cost = res.cost ?? metadata.sms_cost ?? 0
 
-    return {
-      provider,
-      channel: 'sms',
-      status: success ? 'sent' : 'failed',
-      messageId: res.message_id || res.message_id_str,
-      balance: res.balance,
-      cost: null,
-      raw: res
-    }
+  // Provider-specific logic
+  switch (provider.toLowerCase()) {
+    case 'termii':
+      status = ['ok', 'success'].includes(String(res.code).toLowerCase()) ? 'sent' : 'failed'
+      messageId = res.message_id || res.message_id_str || messageId
+      balance = res.balance ?? balance
+      cost = res.cost ?? cost
+      break
+
+    case 'kudi':
+      const success = (res.status === 'success' || res.success === true) && (res.error_code === '000' || res.response?.status === 'success')
+      status = success ? 'sent' : 'failed'
+      messageId = res.message_id || res.response?.data || messageId
+      balance = res.balance ?? res.response?.balance ?? balance
+      cost = res.cost ?? cost
+      break
+
+    default:
+      // fallback: use metadata.sms_status if present
+      if (metadata.sms_status) status = metadata.sms_status
+      break
   }
 
-  // KUDI
-  if (provider === 'kudi') {
-    const success =
-      ['success', 'sent'].includes(String(res.status).toLowerCase()) && res.error_code === '000'
-
-    return {
-      provider,
-      channel: 'sms',
-      status: success ? 'sent' : 'failed',
-      messageId: log?.metadata?.sms_message_id || null,
-      balance: res.balance || log?.metadata?.sms_balance,
-      cost: res.cost || log?.metadata?.sms_cost,
-      raw: res
-    }
-  }
-
-  // FALLBACK
-  return {
-    provider,
-    channel: 'sms',
-    status: 'failed',
-    raw: res
-  }
+  return { provider, channel: 'sms', status, messageId, balance, cost, raw: res }
 }
+
 
 const getSmsStatus = (log) => {
   return normalizeSmsDelivery(log).status
