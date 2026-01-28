@@ -748,6 +748,81 @@ const sendLoanEmail = async (loan) => {
     console.log('🔑 Using anon key:', anonKey)
 
     const res = await fetch(
+      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-email-service',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}` // 👈 important
+        },
+        body: JSON.stringify({ loan_id: loan.id })
+      }
+    )
+
+    const result = await res.json()
+
+    if (res.ok && result.success) {
+      ElNotification({
+        title: 'Success',
+        message: 'Email sent successfully!',
+        type: 'success'
+      })
+    } else {
+      throw new Error(result.error || 'Failed to send email')
+    }
+  } catch (err) {
+    if (err !== 'cancel') {
+      console.log(err)
+      ElNotification({
+        title: 'Error',
+        message: err.message || 'Failed to send email',
+        type: 'error'
+      })
+    }
+  } finally {
+    sendingEmail[loan.id] = false
+
+    // ✅ Stop full-page loading
+    if (loadingInstance) loadingInstance.close()
+  }
+}
+
+const sendLoanKudiEmail = async (loan) => {
+  if (!loan.customer_email) {
+    ElNotification({
+      title: 'No Email',
+      message: `Customer ${loan.customer_name} does not have an email address.`,
+      type: 'warning'
+    })
+    return
+  }
+  let loadingInstance = null
+  try {
+    await ElMessageBox.confirm(
+      `Send Email to ${loan.customer_name} (${loan.customer_email})?`,
+      'Confirm Email',
+      {
+        confirmButtonText: 'Yes, Send',
+        cancelButtonText: 'Cancel',
+        type: 'warning'
+      }
+    )
+
+    sendingEmail[loan.id] = true
+
+    // ✅ Start full-page loading
+    loadingInstance = ElLoading.service({
+      lock: true,
+      text: 'Sending Email...',
+      background: 'rgba(0, 0, 0, 0.5)'
+    })
+
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    console.log('🔑 Using anon key:', anonKey)
+
+    const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
       {
         method: 'POST',
@@ -971,7 +1046,8 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button
+                    <el-tooltip content="Send sms by Termii" placement="top">
+                       <button
                     class="text-purple-600 hover:text-purple-900"
                     :disabled="sendingSMS[loan.id]"
                     @click="sendLoanSMS(loan)"
@@ -979,7 +1055,10 @@ onMounted(() => {
                   >
                     <i :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
                   </button>
-                  <button
+                    </el-tooltip>
+                 
+                  <el-tooltip content="Send email by Termii" placement="top">
+                     <button
                     class="text-indigo-600 hover:text-indigo-900"
                     :disabled="sendingEmail[loan.id]"
                     @click="sendLoanEmail(loan)"
@@ -987,6 +1066,19 @@ onMounted(() => {
                   >
                     <i class="fas fa-envelope"></i>
                   </button>
+                  </el-tooltip>
+                 
+                   <el-tooltip content="Send email by kudi" placement="top">
+                    <button
+                    class="text-green-600 hover:text-green-900"
+                    :disabled="sendingEmail[loan.id]"
+                    @click="sendLoanKudiEmail(loan)"
+                    title="Send Email"
+                  >
+                    <i class="fas fa-envelope"></i>
+                  </button>
+                   </el-tooltip>
+                  
 
                   <button
                     class="text-green-600 hover:text-green-900"
