@@ -166,6 +166,21 @@ const submitCustomer = async () => {
   }
 }
 
+const agent = ref({
+  id: null,
+  full_name: '',
+  email: '',
+  phone: ''
+})
+
+
+
+onMounted(() => {
+  fetchCustomers()
+  authStore.fetchFacilities()
+})
+
+
 const fetchCustomers = async () => {
   loading.value = true
   errorMessage.value = null
@@ -237,7 +252,7 @@ const editCustomer = (customerData) => {
   customer.value = {
     first_name: customerData.first_name,
     last_name: customerData.last_name,
-    email: customerData.email,
+     email: customerData.email,
     phone: customerData.phone,
     account_number: customerData.account_number,
     facility_id: customerData.facility_id
@@ -249,7 +264,10 @@ const openModal = () => {
   isEditingCustomer.value = false
   editingCustomerId.value = null
   showModal.value = true
+
+  
 }
+
 
 const selectedFacility = computed(() => authStore.selectedFacility)
 

@@ -398,23 +398,37 @@ const submitLoan = async () => {
 
   try {
     if (isEditing.value) {
-      // Update existing loan
-      const { data, error } = await supabase.rpc('update_loan', {
+      // Build payload
+      const payload = {
         p_loan_id: editingLoanId.value,
         p_loan_amount: loan.value.loan_amount,
         p_agreed_rate: loan.value.agreed_rate,
         p_disbursed_at: loan.value.disbursed_at,
-        p_status: loan.value.status || 'active', // default if not set
+        p_status: loan.value.status || 'active',
         p_tenure_days: loan.value.tenure_days,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
-        p_agent_id: loan.value.agent_id
-      })
-      if (error) throw error
+        p_agent_id: loan.value.agent_id || null // ensure null if undefined
+      }
+
+      // Log the payload
+      console.log('RPC payload:', payload)
+
+      // Call RPC
+      const { data, error } = await supabase.rpc('update_new_loan', payload)
+
+      // Log the result
+      console.log('RPC result:', data, 'RPC error:', error)
+
+      if (error) {
+        ElNotification({ title: 'Error', message: error.message, type: 'error' })
+        return
+      }
+
       ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
     } else {
       // Add new loan (your existing logic)
-      const { data, error } = await supabase.rpc('add_loan', {
+      const { data, error } = await supabase.rpc('add_new_loan', {
         p_merchant_id: merchantId,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
@@ -659,17 +673,20 @@ const sendLoanSMS = async (loan) => {
 
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-    const res = await fetch('https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-sms-service', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}` // 🔴 REQUIRED
-      },
-      body: JSON.stringify({
-        loan_id: loan.id
-      })
-    })
+    const res = await fetch(
+      'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-sms-service',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}` // 🔴 REQUIRED
+        },
+        body: JSON.stringify({
+          loan_id: loan.id
+        })
+      }
+    )
 
     const result = await res.json()
 
@@ -960,7 +977,7 @@ onMounted(() => {
                     @click="sendLoanSMS(loan)"
                     title="Send SMS"
                   >
-                    <i  :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
+                    <i :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
                   </button>
                   <button
                     class="text-indigo-600 hover:text-indigo-900"
