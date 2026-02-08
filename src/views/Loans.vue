@@ -516,7 +516,7 @@ const fetchLoans = async () => {
   console.log('🏦 With Facility ID:', facilityId)
 
   try {
-    const { data, error } = await supabase.rpc('get_merchant_loans', {
+    const { data, error } = await supabase.rpc('fetch_loans', {
       p_merchant_id: authStore.merchant.id,
       p_facility_id: facilityId
     })
@@ -714,25 +714,35 @@ const sendLoanSMS = async (loan) => {
 }
 
 const sendLoanEmail = async (loan) => {
-  if (!loan.customer_email) {
+   // Make sure there are emails to send to
+  if (!loan.customer_email && (!loan.customer_emails || loan.customer_emails.length === 0)) {
     ElNotification({
       title: 'No Email',
-      message: `Customer ${loan.customer_name} does not have an email address.`,
+      message: `Customer ${loan.customer_name} does not have any email addresses.`,
       type: 'warning'
     })
     return
   }
+
+  // Prepare the list of emails for display
+  const emailsList = loan.customer_emails && loan.customer_emails.length > 0
+    ? loan.customer_emails.map(e => e.email).join(', ')
+    : loan.customer_email // fallback to single email if customer_emails not set
+
   let loadingInstance = null
   try {
     await ElMessageBox.confirm(
-      `Send Email to ${loan.customer_name} (${loan.customer_email})?`,
+      `Send Email to ${loan.customer_name} (${emailsList})?`,
       'Confirm Email',
       {
         confirmButtonText: 'Yes, Send',
         cancelButtonText: 'Cancel',
-        type: 'warning'
+        type: 'warning',
+        dangerouslyUseHTMLString: false
       }
     )
+
+
 
     sendingEmail[loan.id] = true
 
