@@ -460,31 +460,31 @@ onMounted(() => {
 
         <div class="overflow-x-auto bg-white shadow rounded-lg">
           <table class="min-w-full divide-y divide-gray-200">
-  <thead class="bg-green-50 font-semibold">
-    <tr>
-      <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Name</th>
-      <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Primary Email</th>
-      <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Phone</th>
-      <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Created Date</th>
-      <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Notifications</th>
-      <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Status</th>
-      <th class="px-6 py-3 text-center text-xs uppercase tracking-wider">Actions</th>
-    </tr>
-  </thead>
-  <tbody class="bg-white divide-y divide-gray-200">
-    <tr v-for="customer in customers" :key="customer.id">
-      <!-- Name -->
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {{ customer.full_name }}
-      </td>
+            <thead class="bg-green-50 font-semibold">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Name</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Primary Email</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Phone</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Created Date</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Notifications</th>
+                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-center text-xs uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="customer in customers" :key="customer.id">
+                <!-- Name -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ customer.full_name }}
+                </td>
 
-      <!-- Primary Email -->
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {{ customer.email || 'N/A' }}
-      </td>
+                <!-- Primary Email -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ customer.email || 'N/A' }}
+                </td>
 
-      <!-- Other Emails -->
-     <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                <!-- Other Emails -->
+                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
   <div v-if="customer.emails && customer.emails.length > 1">
     <ul class="list-disc list-inside text-xs text-gray-500">
       <li
@@ -498,64 +498,65 @@ onMounted(() => {
   <div v-else class="text-xs text-gray-400">None</div>
 </td> -->
 
+                <!-- Phone -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ customer.phone || 'N/A' }}
+                </td>
 
-      <!-- Phone -->
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {{ customer.phone || 'N/A' }}
-      </td>
+                <!-- Created Date -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  {{ customer.created_at }}
+                </td>
 
-      <!-- Created Date -->
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {{ customer.created_at }}
-      </td>
+                <!-- Notifications -->
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span
+                    :class="{
+                      'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                      'bg-blue-100 text-blue-800': customer.notification_preference === 'sms',
+                      'bg-yellow-100 text-yellow-800': customer.notification_preference === 'email',
+                      'bg-green-100 text-green-800':
+                        customer.notification_preference === 'email_sms',
+                      'bg-gray-100 text-gray-800': customer.notification_preference === 'none'
+                    }"
+                  >
+                    {{ customer.notification_preference.replace('_', ' & ').toUpperCase() }}
+                  </span>
+                </td>
 
-      <!-- Notifications -->
-      <td class="px-6 py-4 whitespace-nowrap text-sm">
-        <span
-          :class="{
-            'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-            'bg-blue-100 text-blue-800': customer.notification_preference === 'sms',
-            'bg-yellow-100 text-yellow-800': customer.notification_preference === 'email',
-            'bg-green-100 text-green-800': customer.notification_preference === 'email_sms',
-            'bg-gray-100 text-gray-800': customer.notification_preference === 'none'
-          }"
-        >
-          {{ customer.notification_preference.replace('_', ' & ').toUpperCase() }}
-        </span>
-      </td>
+                <!-- Status -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span
+                    :class="{
+                      'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                      'bg-green-100 text-green-800': customer.status === 'active',
+                      'bg-red-100 text-red-800': customer.status === 'inactive'
+                    }"
+                  >
+                    {{ customer.status || 'active' }}
+                  </span>
+                </td>
 
-      <!-- Status -->
-      <td class="px-6 py-4 whitespace-nowrap">
-        <span
-          :class="{
-            'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-            'bg-green-100 text-green-800': customer.status === 'active',
-            'bg-red-100 text-red-800': customer.status === 'inactive'
-          }"
-        >
-          {{ customer.status || 'active' }}
-        </span>
-      </td>
-
-      <!-- Actions -->
-      <td class="px-6 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium justify-center">
-        <button
-          class="text-indigo-600 hover:text-indigo-900 font-semibold"
-          @click="editCustomer(customer)"
-        >
-          <i class="fas fa-edit"></i>
-        </button>
-        <button
-          class="text-red-600 hover:text-red-900"
-          @click="openDeleteModal(customer)"
-        >
-          <i class="fas fa-trash"></i>
-        </button>
-      </td>
-    </tr>
-  </tbody>
-</table>
-
+                <!-- Actions -->
+                <td
+                  class="px-6 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium justify-center"
+                >
+                  <button
+                    class="text-indigo-600 hover:text-indigo-900 font-semibold"
+                    @click="editCustomer(customer)"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button
+                    class="text-red-600 hover:text-red-900"
+                    @click="openDeleteModal(customer)"
+                  >
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -584,141 +585,145 @@ onMounted(() => {
     </v-dialog>
 
     <!-- Add/ edit Customer Modal -->
-    <v-dialog v-model="showModal" persistent scrollable max-width="800px">
-      <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
-        <!-- Close button -->
-        <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
-          <i class="fas fa-times fa-lg"></i>
-        </button>
+  <v-dialog v-model="showModal" persistent scrollable max-width="800px">
+  <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
+    <!-- Close button -->
+    <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
+      <i class="fas fa-times fa-lg"></i>
+    </button>
 
-        <h2 class="text-lg font-bold mb-4">
-          {{ isEditingCustomer ? 'Edit Customer' : 'Add a new customer' }}
-        </h2>
-        <v-form ref="formRef" v-model="valid" lazy-validation>
-  <v-row dense>
-    <!-- First Name -->
-    <v-col cols="12" sm="6">
-      <v-text-field
-        variant="outlined"
-        color="#27bfa0"
-        v-model="customer.first_name"
-        label="First Name"
-        :rules="[(v) => !!v || 'First name is required']"
-        required
-      />
-    </v-col>
+    <h2 class="text-lg font-bold mb-4">
+      {{ isEditingCustomer ? 'Edit Customer' : 'Add a new customer' }}
+    </h2>
 
-    <!-- Last Name -->
-    <v-col cols="12" sm="6">
-      <v-text-field
-        variant="outlined"
-        color="#27bfa0"
-        v-model="customer.last_name"
-        label="Last Name"
-        :rules="[(v) => !!v || 'Last name is required']"
-        required
-      />
-    </v-col>
+    <v-form ref="formRef" v-model="valid" lazy-validation>
+      <v-row dense>
+        <!-- First Name -->
+        <v-col cols="6">
+          <v-text-field
+            variant="outlined"
+            color="#27bfa0"
+            v-model="customer.first_name"
+            label="First Name"
+            :rules="[(v) => !!v || 'First name is required']"
+            required
+          />
+        </v-col>
 
-    <!-- Primary Email -->
-    <v-col cols="12" sm="6">
-      <v-text-field
-        variant="outlined"
-        color="#27bfa0"
-        v-model="customer.primary_email"
-        label="Primary Email"
-        type="email"
-      />
-    </v-col>
+        <!-- Last Name -->
+        <v-col cols="6">
+          <v-text-field
+            variant="outlined"
+            color="#27bfa0"
+            v-model="customer.last_name"
+            label="Last Name"
+            :rules="[(v) => !!v || 'Last name is required']"
+            required
+          />
+        </v-col>
 
-    <!-- Phone -->
-    <v-col cols="12" sm="6">
-      <v-text-field
-        variant="outlined"
-        color="#27bfa0"
-        v-model="phone"
-        label="Phone"
-        :rules="[
-          (v) => !!v || 'Phone number is required',
-          (v) => validatePhone() || 'Phone must start with 234'
-        ]"
-      />
-    </v-col>
+        <!-- Primary Email -->
+        <v-col cols="6">
+          <v-text-field
+            variant="outlined"
+            color="#27bfa0"
+            v-model="customer.primary_email"
+            label="Primary Email"
+            type="email"
+          />
+        </v-col>
 
-    <!-- Account Number -->
-    <v-col cols="12" sm="6">
-      <v-text-field
-        variant="outlined"
-        color="#27bfa0"
-        v-model="customer.account_number"
-        label="Account Number"
-      />
-    </v-col>
+        <!-- Phone -->
+        <v-col cols="6">
+          <v-text-field
+            variant="outlined"
+            color="#27bfa0"
+            v-model="phone"
+            label="Phone"
+            :rules="[
+              (v) => !!v || 'Phone number is required',
+              (v) => validatePhone() || 'Phone must start with 234'
+            ]"
+          />
+        </v-col>
 
-    <!-- Facility -->
-    <v-col cols="12" sm="6">
-      <v-select
-        :disabled="isEditingCustomer"
-        variant="outlined"
-        color="#27bfa0"
-        v-model="customer.facility_id"
-        :items="facilities"
-        item-title="bank_name"
-        item-value="id"
-        label="Facility"
-        :rules="[(v) => !!v || 'Bank is required']"
-        required
-      />
-    </v-col>
+        <!-- Account Number -->
+        <v-col cols="6">
+          <v-text-field
+            variant="outlined"
+            color="#27bfa0"
+            v-model="customer.account_number"
+            label="Account Number"
+          />
+        </v-col>
 
-    <!-- Notification Preference -->
-    <v-col cols="12" sm="6">
-      <v-select
-        v-model="customer.notification_preference"
-        :items="notificationOptions"
-        label="Notification Preference"
-        item-title="label"
-        item-value="value"
-        variant="outlined"
-        color="#27bfa0"
-        dense
-        class="mb-4 mt-4"
-      />
-    </v-col>
+        <!-- Facility -->
+        <v-col cols="6">
+          <v-select
+            :disabled="isEditingCustomer"
+            variant="outlined"
+            color="#27bfa0"
+            v-model="customer.facility_id"
+            :items="facilities"
+            item-title="bank_name"
+            item-value="id"
+            label="Facility"
+            :rules="[(v) => !!v || 'Bank is required']"
+            required
+          />
+        </v-col>
 
-    <!-- Other Emails (use combobox for smooth UX) -->
-    <v-col cols="12">
-      <v-combobox
-        v-model="customer.other_emails"
-        label="Other Emails"
-        multiple
-        chips
-        clearable
-        variant="outlined"
-        color="#27bfa0"
-        hint="Press enter after each email"
-        persistent-hint
-      />
-    </v-col>
-  </v-row>
+        <!-- Notification Preference -->
+        <v-col cols="6">
+          <v-select
+            v-model="customer.notification_preference"
+            :items="notificationOptions"
+            label="Notification Preference"
+            item-title="label"
+            item-value="value"
+            variant="outlined"
+            color="#27bfa0"
+            dense
+            class="mb-4 mt-4"
+          />
+        </v-col>
 
-  <!-- Action Buttons -->
-  <div class="flex justify-end mt-6">
-    <v-btn text @click="closeModal">Cancel</v-btn>
-    <v-btn
-      color="green"
-      class="ml-3"
-      @click="submitCustomer"
-      :loading="loading"
-      :disabled="loading"
-    >
-      {{ isEditingCustomer ? 'Update' : 'Save' }}
-    </v-btn>
-  </div>
-</v-form>
+        <!-- Spacer to balance grid if needed -->
+        <v-col cols="6"></v-col>
 
+        <!-- Other Emails (Full width for better UX) -->
+        <v-col cols="12">
+          <v-combobox
+            v-model="customer.other_emails"
+            label="Other Emails"
+            multiple
+            chips
+            clearable
+            variant="outlined"
+            color="#27bfa0"
+            hint="Press enter after each email"
+            persistent-hint
+          />
+        </v-col>
+      </v-row>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-end mt-6">
+        <v-btn text @click="closeModal">Cancel</v-btn>
+        <v-btn
+          color="green"
+          class="ml-3"
+          @click="submitCustomer"
+          :loading="loading"
+          :disabled="loading"
+        >
+          {{ isEditingCustomer ? 'Update' : 'Save' }}
+        </v-btn>
       </div>
-    </v-dialog>
+    </v-form>
+  </div>
+</v-dialog>
+
   </MainLayout>
 </template>
 <style scoped>
