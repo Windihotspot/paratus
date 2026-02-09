@@ -529,58 +529,63 @@ const normalizeMetadata = (log) => {
 /* ================= EMAIL (MULTI) ================= */
 
 const normalizeEmailDeliveries = (log) => {
-  const m = log?.metadata || {}
-  const provider = (m.provider || 'unknown').toLowerCase()
-  let deliveries = []
+  const m = log?.metadata || {};
+  const provider = (m.provider || 'unknown').toLowerCase();
+  let deliveries = [];
 
-  // ===== NEW MULTI EMAIL =====
+  const mapStatus = (res) => {
+    const s = (res?.status || res?.code || '').toString().toLowerCase();
+    return ['ok', 'success'].includes(s) ? 'sent' : 'failed';
+  };
+
+  // Multi-email
   if (Array.isArray(m.email_responses)) {
     deliveries = m.email_responses.map((item) => {
-      const email = item?.email || '-'
-      const wrapper = item?.response || {}
-      const res = wrapper?.response || wrapper || {}
-      const code = res?.code || wrapper?.code || 'failed'
+      const email = item?.email || '-';
+      const wrapper = item?.response || {};
+      const res = wrapper?.response || wrapper || {};
+      const status = mapStatus(res);
 
       return {
         email,
         raw: item,
-        code,
-        message: res?.message,
-        messageId: res?.message_id,
-        balance: res?.balance,
-        // success is purely based on code
-        success: ['ok', 'success'].includes(String(code).toLowerCase())
-      }
-    })
+        code: res?.code || wrapper?.code || status,
+        message: res?.message || res?.msg || '-',
+        messageId: res?.message_id || res?.data || '-',
+        balance: res?.balance ?? null,
+        status,
+        cost: res?.cost ?? null,
+        error_code: res?.error_code ?? null,
+        addresses: res?.addresses ?? [],
+        success: status === 'sent',
+      };
+    });
   }
-
-  // ===== OLD SINGLE EMAIL =====
+  // Single-email
   else if (m.email_response) {
-    const wrapper = m.email_response || {}
-    const res = wrapper.response || wrapper || {}
-    const code = res?.code || wrapper?.code || 'failed'
+    const wrapper = m.email_response || {};
+    const res = wrapper?.response || wrapper || {};
+    const status = mapStatus(res);
 
     deliveries = [
       {
         email: m.customer_email || '-',
         raw: m.email_response,
-        code,
-        message: res?.message,
-        messageId: res?.message_id,
-        balance: res?.balance,
-        // success is now purely based on code
-        success: ['ok', 'success'].includes(String(code).toLowerCase())
+        code: res?.code || wrapper?.code || status,
+        message: res?.message || res?.msg || '-',
+        messageId: res?.message_id || res?.data || '-',
+        balance: res?.balance ?? null,
+        status,
+        cost: res?.cost ?? null,
+        error_code: res?.error_code ?? null,
+        addresses: res?.addresses ?? [],
+        success: status === 'sent',
       }
-    ]
+    ];
   }
 
-  // Map final deliveries with status
-  return deliveries.map((d) => ({
-    ...d,
-    provider,
-    status: d.success ? 'sent' : 'failed'
-  }))
-}
+  return deliveries.map((d) => ({ ...d, provider }));
+};
 
 
 

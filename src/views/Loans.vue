@@ -757,7 +757,6 @@ const sendLoanEmail = async (loan) => {
 
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-    console.log('🔑 Using anon key:', anonKey)
 
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-email-service',
@@ -801,18 +800,28 @@ const sendLoanEmail = async (loan) => {
 }
 
 const sendLoanKudiEmail = async (loan) => {
-  if (!loan.customer_email) {
+     // ✅ Build + deduplicate emails
+  const allEmails = Array.from(
+    new Set([
+      loan.customer_email, // main email
+      ...(loan.customer_emails?.map(e => e.email) || [])
+    ].filter(Boolean)) // remove null/undefined
+  )
+
+  if (allEmails.length === 0) {
     ElNotification({
       title: 'No Email',
-      message: `Customer ${loan.customer_name} does not have an email address.`,
+      message: `Customer ${loan.customer_name} does not have any email addresses.`,
       type: 'warning'
     })
     return
   }
+
+  const emailsListStr = allEmails.join(', ')
   let loadingInstance = null
   try {
-    await ElMessageBox.confirm(
-      `Send Email to ${loan.customer_name} (${loan.customer_email})?`,
+     await ElMessageBox.confirm(
+      `Send Email to ${loan.customer_name} (${emailsListStr})?`,
       'Confirm Email',
       {
         confirmButtonText: 'Yes, Send',
@@ -832,7 +841,6 @@ const sendLoanKudiEmail = async (loan) => {
 
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-    console.log('🔑 Using anon key:', anonKey)
 
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
