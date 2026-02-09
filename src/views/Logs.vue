@@ -70,6 +70,7 @@
                     <v-chip v-if="isSmsLog(log)" size="x-small" variant="text" color="blue">
                       SMS
                     </v-chip>
+                    
 
                     <v-chip
                       v-else-if="isEmailLog(log)"
@@ -110,16 +111,29 @@
               </td>
 
               <!-- Email (only for email logs) -->
-              <td class="px-4 py-3 text-sm">
-                <div v-if="isEmailLog(log)">
-                  <div class="text-xs text-gray-500 break-all line-clamp-2">
-                    <div class="font-medium text-gray-900 line-clamp-1">
-                      {{ log.metadata?.customer_name || '-' }}
-                    </div>
-                    {{ log.metadata?.customer_email || '-' }}
-                  </div>
-                </div>
-              </td>
+<td class="px-4 py-3 text-sm">
+  <div v-if="isEmailLog(log)">
+    <div class="font-medium text-gray-900 line-clamp-1">
+      {{ normalizeMetadata(log).customer_name || '-' }}
+    </div>
+
+    <div
+      v-for="(email, idx) in getAllCustomerEmails(log)"
+      :key="idx"
+      class="text-xs text-gray-500 break-all"
+    >
+      • {{ email }}
+    </div>
+
+    <div
+      v-if="!getAllCustomerEmails(log).length"
+      class="text-xs text-gray-400 italic"
+    >
+      No emails recorded
+    </div>
+  </div>
+</td>
+
 
               <!-- Loan (Amount + Days Left) -->
               <td class="px-4 py-3 text-sm">
@@ -133,22 +147,25 @@
 
               <!-- Status -->
               <td class="px-4 py-3 text-sm">
-                <v-chip
-                  size="x-small"
-                  :color="
-                    isSmsLog(log)
-                      ? getSmsStatus(log) === 'sent'
-                        ? 'green'
-                        : 'red'
-                      : getEmailStatus(log) === 'sent'
-                        ? 'green'
-                        : 'red'
-                  "
-                  text-color="white"
-                >
-                  {{ isSmsLog(log) ? getSmsStatus(log) : getEmailStatus(log) }}
-                </v-chip>
-              </td>
+  <v-chip
+    size="x-small"
+    :color="
+      isSmsLog(log)
+        ? getSmsStatus(log) === 'sent'
+          ? 'green'
+          : 'red'
+        : getEmailStatus(log) === 'sent'
+          ? 'green'
+          : getEmailStatus(log) === 'partial'
+            ? 'orange'
+            : 'red'
+    "
+    text-color="white"
+  >
+    {{ isSmsLog(log) ? getSmsStatus(log) : getEmailStatus(log) }}
+  </v-chip>
+</td>
+
 
               <!-- Action -->
               <td class="px-4 py-3 text-sm">
@@ -341,55 +358,59 @@
                 </template>
 
                 <!-- ================= EMAIL SECTION ================= -->
-                <template v-if="isEmailLog(selectedLog)">
-                  <v-col cols="12">
-                    <v-divider class="my-4" />
-                    <h3 class="font-semibold mb-2">Email Details</h3>
-                  </v-col>
+            <template v-if="isEmailLog(selectedLog)">
+  <v-col cols="12">
+    <v-divider class="my-4" />
+    <h3 class="font-semibold mb-2">Email Details</h3>
+  </v-col>
 
-                  <v-col cols="12" md="6">
-                    <v-text-field
-                      label="Customer Email"
-                      :model-value="selectedLog.metadata?.customer_email"
-                      readonly
-                      variant="outlined"
-                      prepend-inner-icon="mdi-email"
-                    />
-                  </v-col>
+  <v-col cols="12">
+    <v-table density="compact">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Message</th>
+          <th>Message ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="(d, idx) in normalizeEmailDeliveries(selectedLog)"
+          :key="idx"
+        >
+          <td class="text-sm break-all">{{ d.email }}</td>
+          <td>
+            <v-chip
+              size="x-small"
+              :color="d.status === 'sent' ? 'green' : 'red'"
+              text-color="white"
+            >
+              {{ d.status }}
+            </v-chip>
+          </td>
+          <td class="text-xs">{{ d.message || '-' }}</td>
+          <td class="text-xs">{{ d.messageId || '-' }}</td>
+        </tr>
+      </tbody>
+    </v-table>
+  </v-col>
 
-                  <v-col cols="12">
-                    <v-textarea
-                      label="Email Message"
-                      :model-value="selectedLog.metadata?.email_message"
-                      readonly
-                      auto-grow
-                      variant="outlined"
-                      prepend-inner-icon="mdi-email-outline"
-                    />
-                  </v-col>
+  <v-col cols="12">
+    <v-textarea
+      label="Raw Provider Data"
+      :model-value="
+        JSON.stringify(normalizeEmailDeliveries(selectedLog), null, 2)
+      "
+      readonly
+      auto-grow
+      variant="outlined"
+      prepend-inner-icon="mdi-code-json"
+    />
+  </v-col>
+</template>
 
-                  <v-col cols="12" md="4">
-                    <v-chip
-                      :color="getEmailStatus(selectedLog) === 'sent' ? 'green' : 'red'"
-                      text-color="white"
-                    >
-                      {{ getEmailStatus(selectedLog) }}
-                    </v-chip>
-                  </v-col>
 
-                  <v-col cols="12" md="8">
-                    <v-textarea
-                      label="Provider Response"
-                      :model-value="
-                        JSON.stringify(normalizeEmailDelivery(selectedLog).raw, null, 2)
-                      "
-                      readonly
-                      auto-grow
-                      variant="outlined"
-                      prepend-inner-icon="mdi-information-outline"
-                    />
-                  </v-col>
-                </template>
               </v-row>
             </v-card-text>
 
@@ -415,6 +436,12 @@ import { ref, onMounted } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
 
+const logs = ref([])
+const loading = ref(false)
+
+const viewDialog = ref(false)
+const selectedLog = ref(null)
+
 const formatCurrency = (amount) => {
   if (amount === null || amount === undefined || amount === '') return '-'
 
@@ -425,12 +452,6 @@ const formatCurrency = (amount) => {
   }).format(Number(amount))
 }
 
-const logs = ref([])
-const loading = ref(false)
-
-const viewDialog = ref(false)
-const selectedLog = ref(null)
-
 const fetchLogs = async () => {
   loading.value = true
   try {
@@ -438,8 +459,9 @@ const fetchLogs = async () => {
       .from('audit_logs')
       .select('*')
       .order('created_at', { ascending: false })
-      
+
     console.log('logs:', data)
+
     if (error) throw error
     logs.value = data || []
   } catch (err) {
@@ -450,6 +472,7 @@ const fetchLogs = async () => {
 }
 
 const openViewDialog = (log) => {
+  console.log('Selected log:', log)
   selectedLog.value = log
   viewDialog.value = true
 }
@@ -459,64 +482,124 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString()
 }
 
-const isSmsLog = (log) => log?.action?.includes('SMS') || !!log?.metadata?.sms_response
+/* ================= TYPE CHECKERS ================= */
 
-const isEmailLog = (log) => log?.action?.includes('EMAIL') || !!log?.metadata?.email_response
+const isSmsLog = (log) =>
+  log?.action?.includes('SMS') || !!log?.metadata?.sms_response
+
+const isEmailLog = (log) => {
+  const m = log?.metadata || {}
+
+  return (
+    typeof log?.action === 'string' &&
+    log.action.toUpperCase().includes('EMAIL')
+  ) || !!m.email_response || Array.isArray(m.email_responses)
+}
+
+const getAllCustomerEmails = (log) => {
+  const m = log?.metadata || {}
+
+  // NEW STRUCTURE
+  if (Array.isArray(m.customer_emails) && m.customer_emails.length) {
+    return m.customer_emails.filter(Boolean)
+  }
+
+  // OLD STRUCTURE
+  if (m.customer_email) {
+    return [m.customer_email]
+  }
+
+  return []
+}
+
+/* ================= NORMALIZERS ================= */
 
 const normalizeMetadata = (log) => {
   const m = log?.metadata || {}
 
   return {
     customer_name: m.customer_name || '-',
-    customer_email: m.customer_email || '-',
-    customer_phone: m.customer_phone || '-',
+    customer_emails: Array.isArray(m.customer_emails) ? m.customer_emails : [],
     loan_amount: m.loan_amount ?? null,
     loan_days_left: m.loan_days_left ?? m.days_left ?? null,
     loan_expiry_date: m.loan_expiry_date ?? null
   }
 }
 
-const normalizeEmailDelivery = (log) => {
-  const metadata = log?.metadata || {}
-  const provider = (metadata.provider || 'unknown').toLowerCase()
-  const emailResp = metadata.email_response || {}
+/* ================= EMAIL (MULTI) ================= */
 
-  // Use inner response if it exists, else fallback to emailResp itself
-  const innerRes = emailResp.response || emailResp
+const normalizeEmailDeliveries = (log) => {
+  const m = log?.metadata || {}
+  const provider = (m.provider || 'unknown').toLowerCase()
+  let deliveries = []
 
-  let status = 'failed'
-  let messageId = innerRes.message_id || innerRes.data || null
-  let balance = innerRes.balance ?? 0
+  // ===== NEW MULTI EMAIL =====
+  if (Array.isArray(m.email_responses)) {
+    deliveries = m.email_responses.map((item) => {
+      const email = item?.email || '-'
+      const wrapper = item?.response || {}
+      const res = wrapper?.response || wrapper || {}
+      const code = res?.code || wrapper?.code || 'failed'
 
-  if (provider === 'termii') {
-    // Termii: code ok/success => sent
-    status = ['ok', 'success'].includes(String(innerRes.code).toLowerCase()) ? 'sent' : 'failed'
-  } else if (provider === 'kudi') {
-    // Kudi: success === true && status === 'success'
-    const success = emailResp.success === true && innerRes.status === 'success'
-    status = success ? 'sent' : 'failed'
-    balance = innerRes.balance ?? balance
-    messageId = innerRes.data ?? messageId
-  } else {
-    // fallback
-    if (metadata.email_status) status = metadata.email_status
+      return {
+        email,
+        raw: item,
+        code,
+        message: res?.message,
+        messageId: res?.message_id,
+        balance: res?.balance,
+        // success is purely based on code
+        success: ['ok', 'success'].includes(String(code).toLowerCase())
+      }
+    })
   }
 
-  return {
+  // ===== OLD SINGLE EMAIL =====
+  else if (m.email_response) {
+    const wrapper = m.email_response || {}
+    const res = wrapper.response || wrapper || {}
+    const code = res?.code || wrapper?.code || 'failed'
+
+    deliveries = [
+      {
+        email: m.customer_email || '-',
+        raw: m.email_response,
+        code,
+        message: res?.message,
+        messageId: res?.message_id,
+        balance: res?.balance,
+        // success is now purely based on code
+        success: ['ok', 'success'].includes(String(code).toLowerCase())
+      }
+    ]
+  }
+
+  // Map final deliveries with status
+  return deliveries.map((d) => ({
+    ...d,
     provider,
-    channel: 'email',
-    status,
-    messageId,
-    balance,
-    raw: emailResp
-  }
+    status: d.success ? 'sent' : 'failed'
+  }))
 }
 
 
 
+/* Overall email status for table chip */
 const getEmailStatus = (log) => {
-  return normalizeEmailDelivery(log).status
+  const deliveries = normalizeEmailDeliveries(log)
+  if (!deliveries.length) return 'failed'
+
+  const allSent = deliveries.every((d) => d.status === 'sent')
+  const anySent = deliveries.some((d) => d.status === 'sent')
+
+  if (allSent) return 'sent'
+  if (anySent) return 'partial'
+  return 'failed'
 }
+
+
+
+/* ================= SMS (UNCHANGED) ================= */
 
 const normalizeSmsDelivery = (log) => {
   const metadata = log?.metadata || {}
@@ -528,25 +611,17 @@ const normalizeSmsDelivery = (log) => {
   let balance = res.balance ?? metadata.sms_balance ?? 0
   let cost = res.cost ?? metadata.sms_cost ?? 0
 
-  // Provider-specific logic
   switch (provider.toLowerCase()) {
     case 'termii':
-      status = ['ok', 'success'].includes(String(res.code).toLowerCase()) ? 'sent' : 'failed'
-      messageId = res.message_id || res.message_id_str || messageId
+      status = ['ok', 'success'].includes(String(res.code).toLowerCase())
+        ? 'sent'
+        : 'failed'
+      messageId = res.message_id || messageId
       balance = res.balance ?? balance
       cost = res.cost ?? cost
       break
 
-    case 'kudi':
-      const success = (res.status === 'success' || res.success === true) && (res.error_code === '000' || res.response?.status === 'success')
-      status = success ? 'sent' : 'failed'
-      messageId = res.message_id || res.response?.data || messageId
-      balance = res.balance ?? res.response?.balance ?? balance
-      cost = res.cost ?? cost
-      break
-
     default:
-      // fallback: use metadata.sms_status if present
       if (metadata.sms_status) status = metadata.sms_status
       break
   }
@@ -554,10 +629,7 @@ const normalizeSmsDelivery = (log) => {
   return { provider, channel: 'sms', status, messageId, balance, cost, raw: res }
 }
 
-
-const getSmsStatus = (log) => {
-  return normalizeSmsDelivery(log).status
-}
+const getSmsStatus = (log) => normalizeSmsDelivery(log).status
 
 onMounted(fetchLogs)
 </script>

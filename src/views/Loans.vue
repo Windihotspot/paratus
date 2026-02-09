@@ -714,8 +714,15 @@ const sendLoanSMS = async (loan) => {
 }
 
 const sendLoanEmail = async (loan) => {
-   // Make sure there are emails to send to
-  if (!loan.customer_email && (!loan.customer_emails || loan.customer_emails.length === 0)) {
+      // ✅ Build + deduplicate emails
+  const allEmails = Array.from(
+    new Set([
+      loan.customer_email, // main email
+      ...(loan.customer_emails?.map(e => e.email) || [])
+    ].filter(Boolean)) // remove null/undefined
+  )
+
+  if (allEmails.length === 0) {
     ElNotification({
       title: 'No Email',
       message: `Customer ${loan.customer_name} does not have any email addresses.`,
@@ -724,24 +731,19 @@ const sendLoanEmail = async (loan) => {
     return
   }
 
-  // Prepare the list of emails for display
-  const emailsList = loan.customer_emails && loan.customer_emails.length > 0
-    ? loan.customer_emails.map(e => e.email).join(', ')
-    : loan.customer_email // fallback to single email if customer_emails not set
+  const emailsListStr = allEmails.join(', ')
 
   let loadingInstance = null
   try {
     await ElMessageBox.confirm(
-      `Send Email to ${loan.customer_name} (${emailsList})?`,
+      `Send Email to ${loan.customer_name} (${emailsListStr})?`,
       'Confirm Email',
       {
         confirmButtonText: 'Yes, Send',
         cancelButtonText: 'Cancel',
-        type: 'warning',
-        dangerouslyUseHTMLString: false
+        type: 'warning'
       }
     )
-
 
 
     sendingEmail[loan.id] = true
