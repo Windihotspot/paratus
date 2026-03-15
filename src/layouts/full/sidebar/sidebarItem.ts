@@ -5,6 +5,11 @@ const sidebarItems = [
     icon: 'mdi-view-dashboard', // Dashboard icon
   },
   {
+    title: 'Banks',
+    path: '/banks',
+    icon: 'mdi-bank-outline' // bank icon
+  },
+  {
     title: 'Facilities',
     path: '/facilities',
     icon: 'mdi-domain', // Building / Database icon
