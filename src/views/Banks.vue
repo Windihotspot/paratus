@@ -223,7 +223,7 @@ onMounted(fetchBanks)
 
           <tbody>
 
-            <tr v-for="bank in banks" :key="bank.id">
+            <tr v-for="bank in banks" :key="bank.id" class="border-b border-gray-200">
 
               <td class="px-6 py-4">
                 {{ bank.name }}
