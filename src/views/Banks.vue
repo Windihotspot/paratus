@@ -104,20 +104,16 @@ const submitBank = async () => {
         })
         .eq('id', editingBankId.value))
     } else {
-      ;({ error } = await supabase
-        .from('banks')
-        .insert({
-          name: bankForm.value.name
-        }))
+      ;({ error } = await supabase.from('banks').insert({
+        name: bankForm.value.name
+      }))
     }
 
     if (error) throw error
 
     ElNotification({
       title: 'Success',
-      message: isEditing.value
-        ? 'Bank updated successfully'
-        : 'Bank added successfully',
+      message: isEditing.value ? 'Bank updated successfully' : 'Bank added successfully',
       type: 'success'
     })
 
@@ -153,10 +149,27 @@ const confirmDelete = async () => {
   loading.value = true
 
   try {
-    const { error } = await supabase
-      .from('banks')
-      .delete()
-      .eq('id', bankToDelete.value.id)
+    // Check if bank is used in facilities
+    const { data: facilities, error: facilityError } = await supabase
+      .from('bank_facilities')
+      .select('id')
+      .eq('bank_id', bankToDelete.value.id)
+
+    if (facilityError) throw facilityError
+
+    if (facilities.length > 0) {
+      ElNotification({
+        title: 'Cannot Delete',
+        message: 'This bank is already used in one or more facilities.',
+        type: 'warning'
+      })
+
+      loading.value = false
+      return
+    }
+
+    // If not used, perform delete
+    const { error } = await supabase.from('banks').delete().eq('id', bankToDelete.value.id)
 
     if (error) throw error
 
@@ -186,7 +199,6 @@ onMounted(fetchBanks)
 <template>
   <MainLayout>
     <div>
-
       <!-- Header -->
       <div class="bg-white flex rounded shadow justify-between items-center border-b p-4 mb-4">
         <div>
@@ -194,26 +206,20 @@ onMounted(fetchBanks)
           <p class="text-sm text-gray-500">Manage banks in the system</p>
         </div>
 
-        <v-btn
-          @click="openBankModal()"
-          class="custom-btn text-white"
-        >
+        <v-btn @click="openBankModal()" class="custom-btn text-white">
           <i class="fas fa-plus mr-2"></i>
           Add Bank
         </v-btn>
       </div>
-
 
       <!-- Loading -->
       <div v-if="loading" class="flex justify-center p-10">
         <v-progress-circular indeterminate />
       </div>
 
-
       <!-- Table -->
       <div v-else class="bg-white shadow rounded">
         <table class="min-w-full">
-
           <thead class="bg-green-50">
             <tr>
               <th class="px-6 py-3 text-left text-xs uppercase">Bank</th>
@@ -222,90 +228,57 @@ onMounted(fetchBanks)
           </thead>
 
           <tbody>
-
             <tr v-for="bank in banks" :key="bank.id" class="border-b border-gray-200">
-
               <td class="px-6 py-4">
                 {{ bank.name }}
               </td>
 
               <td class="px-6 py-4 text-center space-x-8">
-
-                <button
-                  @click="openBankModal(bank)"
-                  class="text-indigo-600"
-                >
+                <button @click="openBankModal(bank)" class="text-indigo-600">
                   <i class="fas fa-edit"></i>
                 </button>
 
-                <button
-                  @click="openDeleteModal(bank)"
-                  class="text-red-600"
-                >
+                <button @click="openDeleteModal(bank)" class="text-red-600">
                   <i class="fas fa-trash"></i>
                 </button>
-
               </td>
-
             </tr>
-
           </tbody>
         </table>
       </div>
 
-
       <!-- ADD / EDIT MODAL -->
       <v-dialog v-model="showModal" max-width="500px">
         <v-card>
-
           <v-card-title>
             {{ isEditing ? 'Edit Bank' : 'Add Bank' }}
           </v-card-title>
 
           <v-card-text>
-
             <v-form ref="formRef" v-model="valid">
-
               <v-text-field
                 v-model="bankForm.name"
                 label="Bank Name"
                 variant="outlined"
-                :rules="[v => !!v || 'Bank name is required']"
+                :rules="[(v) => !!v || 'Bank name is required']"
               />
-
             </v-form>
-
           </v-card-text>
 
           <v-card-actions class="justify-end">
+            <v-btn text @click="closeBankModal"> Cancel </v-btn>
 
-            <v-btn text @click="closeBankModal">
-              Cancel
-            </v-btn>
-
-            <v-btn
-              color="green"
-              :loading="loading"
-              :disabled="!valid"
-              @click="submitBank"
-            >
+            <v-btn color="green" :loading="loading" :disabled="!valid" @click="submitBank">
               {{ isEditing ? 'Update' : 'Save' }}
             </v-btn>
-
           </v-card-actions>
-
         </v-card>
       </v-dialog>
 
-
       <!-- DELETE MODAL -->
       <v-dialog v-model="showDeleteModal" max-width="420px">
-
         <v-card>
-
-          <v-card-title>
-            Delete Bank
-          </v-card-title>
+          <v-card-title> Delete Bank </v-card-title>
 
           <v-card-text>
             Are you sure you want to delete
@@ -313,25 +286,12 @@ onMounted(fetchBanks)
           </v-card-text>
 
           <v-card-actions class="justify-end">
+            <v-btn text @click="cancelDelete"> Cancel </v-btn>
 
-            <v-btn text @click="cancelDelete">
-              Cancel
-            </v-btn>
-
-            <v-btn
-              color="red"
-              :loading="loading"
-              @click="confirmDelete"
-            >
-              Delete
-            </v-btn>
-
+            <v-btn color="red" :loading="loading" @click="confirmDelete"> Delete </v-btn>
           </v-card-actions>
-
         </v-card>
-
       </v-dialog>
-
     </div>
   </MainLayout>
 </template>
