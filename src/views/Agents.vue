@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import { supabase } from '@/services/supabase.js'
@@ -210,32 +210,50 @@ const confirmDeleteAgent = async () => {
   }
 }
 
-// excel export
-const downloadAllAgentsExcel = () => {
+const downloadAllAgentsExcel = async () => {
   if (!agents.value || agents.value.length === 0) {
     ElMessage({ message: 'No agents available to export', type: 'warning' })
     return
   }
+
+  ElMessage({ message: 'Preparing Excel export...', type: 'info' })
+
+  await nextTick()
+
   const data = agents.value.map((a) => ({
     'Agent ID': a.id,
-    Name: a.full_name || a.name || '',
+    'Merchant ID': a.merchant_id,
+    'Full Name': a.full_name || '',
     Alias: a.alias || '',
     Phone: a.phone || '',
     Email: a.email || '',
     Location: a.location || '',
-    'Agreed Rate': a.agreed_rate,
-    Remark: a.remark,
-    Status: a.status,
-    'Created At': a.created_at
+    'Agreed Rate (%)': a.agreed_rate != null ? Number(a.agreed_rate).toFixed(2) : '',
+    Remark: a.remark || '',
+    Status: a.status || '',
+    'Assigned Loans Count': a.assigned_loans_count ?? 0,
+    'Total Disbursed Amount':
+      a.total_disbursed_amount != null ? Number(a.total_disbursed_amount).toFixed(2) : 0,
+    'Profile Image URL': a.profile_image || '',
+    'Last Assigned At': a.last_assigned_at ? new Date(a.last_assigned_at).toLocaleString() : '',
+    'Created By': a.created_by || '',
+    'Created At': a.created_at ? new Date(a.created_at).toLocaleString() : '',
+    'Updated At': a.updated_at ? new Date(a.updated_at).toLocaleString() : ''
   }))
+
   const ws = XLSX.utils.json_to_sheet(data)
+
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Agents Report')
+
   const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+
   saveAs(
     new Blob([wbout], { type: 'application/octet-stream' }),
     `Agents_Report_${new Date().toISOString().split('T')[0]}.xlsx`
   )
+
+  ElMessage({ message: 'Export complete!', type: 'success' })
 }
 
 // single agent pdf
@@ -287,6 +305,59 @@ const downloadAgentPDF = async (a) => {
   pdfMake.createPdf(docDefinition).download(`${a.full_name || 'Agent'}.pdf`)
 }
 
+const downloadSingleAgentExcel = async (a) => {
+  if (!a) {
+    ElMessage({ message: 'Invalid agent data', type: 'error' })
+    return
+  }
+
+  ElMessage({ message: 'Preparing agent export...', type: 'info' })
+
+  await nextTick()
+
+  const data = [
+    {
+      'Agent ID': a.id,
+      'Merchant ID': a.merchant_id,
+      'Full Name': a.full_name || '',
+      Alias: a.alias || '',
+      Phone: a.phone || '',
+      Email: a.email || '',
+      Location: a.location || '',
+      'Agreed Rate (%)': a.agreed_rate != null ? Number(a.agreed_rate).toFixed(2) : '',
+      Remark: a.remark || '',
+      Status: a.status || '',
+      'Assigned Loans Count': a.assigned_loans_count ?? 0,
+      'Total Disbursed Amount':
+        a.total_disbursed_amount != null
+          ? `₦${Number(a.total_disbursed_amount).toLocaleString()}`
+          : '₦0',
+      'Profile Image URL': a.profile_image || '',
+      'Last Assigned At': a.last_assigned_at ? new Date(a.last_assigned_at).toLocaleString() : '',
+      'Created By': a.created_by || '',
+      'Created At': a.created_at ? new Date(a.created_at).toLocaleString() : '',
+      'Updated At': a.updated_at ? new Date(a.updated_at).toLocaleString() : ''
+    }
+  ]
+
+  const ws = XLSX.utils.json_to_sheet(data)
+
+  // Optional: better column width
+  ws['!cols'] = Object.keys(data[0]).map(() => ({ wch: 22 }))
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Agent Details')
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `${(a.full_name || 'Agent').replace(/\s+/g, '_')}.xlsx`
+  )
+
+  ElMessage({ message: 'Agent export complete!', type: 'success' })
+}
+
 // computed filtered list
 const filteredAgents = computed(() => {
   let list = agents.value || []
@@ -308,8 +379,6 @@ const filteredAgents = computed(() => {
 
   return list
 })
-
-
 
 // initial load
 onMounted(() => {
@@ -422,6 +491,13 @@ onMounted(() => {
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ a.status }}</td>
 
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <button
+                    class="text-green-700 hover:text-green-900"
+                    @click="downloadSingleAgentExcel(a)"
+                  >
+                    <i class="fas fa-file-excel"></i>
+                  </button>
+
                   <button class="text-green-600 hover:text-green-900" @click="downloadAgentPDF(a)">
                     <i class="fas fa-download"></i>
                   </button>
