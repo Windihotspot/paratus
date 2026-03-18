@@ -199,96 +199,7 @@ const downloadLoanPDF = async (loan) => {
   pdfMake.createPdf(docDefinition).download(`${loan.customer_name || 'PoF'}.pdf`)
 }
 
-const downloadLoanExcel = (loan) => {
-  const data = [
-    {
-      'Loan ID': loan.id,
-      'Customer Name': loan.customer_name || 'N/A',
-      'Customer ID': loan.customer_id,
-      'Customer Email': loan.customer_email || 'N/A',
-      'Customer Phone': loan.customer_phone || 'N/A',
-      'Account Number': loan.customer_account_number || 'N/A',
-      'Facility Name': loan.facility_name || 'N/A',
-      'Facility ID': loan.facility_id,
-      'Facility Amount': loan.facility_amount,
-      'Facility Status': loan.facility_status,
-      'Facility Rate (%)': loan.facility_rate,
-      'Facility Tenure (Days)': loan.facility_tenure_days,
-      'Facility Drawdown Date': loan.facility_drawdown_date,
-      'Loan Amount': loan.loan_amount,
-      'Agreed Rate (%)': loan.agreed_rate,
-      'Profit Rate (%)': loan.profit_rate,
-      'Rate/Day': loan.rate_day,
-      'Rate/Month': loan.rate_month,
-      'Rate/Year': loan.rate_year,
-      Profit: loan.profit,
-      'Interest Payable': loan.interest_payable,
-      'Tenure (Days)': loan.tenure_days,
-      'Disbursed At': loan.disbursed_at,
-      'Expiry Date': loan.expiry_date,
-      Status: loan.status,
-      'Created At': loan.created_at,
-      'Updated At': loan.updated_at
-    }
-  ]
 
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Loan')
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  saveAs(
-    new Blob([wbout], { type: 'application/octet-stream' }),
-    `${loan.customer_name || 'Unknown'}.xlsx`
-  )
-}
-
-const downloadAllLoansExcel = () => {
-  if (!loans.value || loans.value.length === 0) {
-    ElMessage({ message: 'No loans available to export', type: 'warning' })
-    return
-  }
-
-  const data = loans.value.map((loan) => ({
-    'Loan ID': loan.id,
-    'Customer Name': loan.customer_name || 'N/A',
-    'Customer ID': loan.customer_id,
-    'Customer Email': loan.customer_email || 'N/A',
-    'Customer Phone': loan.customer_phone || 'N/A',
-    'Account Number': loan.customer_account_number || 'N/A',
-    'Facility Name': loan.facility_name || 'N/A',
-    'Facility ID': loan.facility_id,
-    'Facility Amount': loan.facility_amount,
-    'Facility Status': loan.facility_status,
-    'Facility Rate (%)': loan.facility_rate,
-    'Facility Tenure (Days)': loan.facility_tenure_days,
-    'Facility Drawdown Date': loan.facility_drawdown_date,
-    'Loan Amount': loan.loan_amount,
-    'Agreed Rate (%)': loan.agreed_rate,
-    'Profit Rate (%)': loan.profit_rate,
-    'Rate/Day': loan.rate_day,
-    'Rate/Month': loan.rate_month,
-    'Rate/Year': loan.rate_year,
-    Profit: loan.profit,
-    'Interest Payable': loan.interest_payable,
-    'Tenure (Days)': loan.tenure_days,
-    'Disbursed At': loan.disbursed_at,
-    'Expiry Date': loan.expiry_date,
-    Status: loan.status,
-    'Created At': loan.created_at,
-    'Updated At': loan.updated_at
-  }))
-
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Loans Report')
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  saveAs(
-    new Blob([wbout], { type: 'application/octet-stream' }),
-    `Loans_Report_${new Date().toISOString().split('T')[0]}.xlsx`
-  )
-}
 
 const disburseMenu = ref(false)
 
@@ -506,6 +417,8 @@ const fetchCustomers = async () => {
   }
 }
 
+
+
 // fetch merchant loans
 const fetchLoans = async () => {
   loading.value = true
@@ -532,6 +445,74 @@ const fetchLoans = async () => {
     loading.value = false
   }
 }
+
+const formatLoanForExport = (loan) => {
+  return {
+    'Loan ID': loan.id,
+    'Customer Name': loan.customer_name,
+    'Customer Emails': (loan.customer_emails || [])
+      .map(e => e.email)
+      .join(', '),
+    'Customer Phone': loan.customer_phone,
+    'Account Number': loan.customer_account_number,
+
+    'Facility Name': loan.facility_name,
+    'Facility Amount': loan.facility_amount,
+    'Facility Rate (%)': loan.facility_rate,
+    'Facility Status': loan.facility_status,
+
+    'Loan Amount': loan.loan_amount,
+    'Agreed Rate (%)': loan.agreed_rate,
+    'Profit': loan.profit,
+    'Interest Payable': loan.interest_payable,
+
+    'Tenure (Days)': loan.tenure_days,
+    'Disbursed At': loan.disbursed_at,
+    'Expiry Date': loan.expiry_date,
+
+    'Agent Name': loan.agent_name,
+    'Status': loan.status,
+
+    'Created At': loan.created_at
+  }
+}
+
+const downloadLoanExcel = (loan) => {
+  const formatted = [formatLoanForExport(loan)]
+
+  const ws = XLSX.utils.json_to_sheet(formatted)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Loan')
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `${loan.customer_name || 'Loan'}.xlsx`
+  )
+}
+
+const downloadAllLoansExcel = () => {
+  if (!loans.value?.length) {
+    ElMessage({ message: 'No loans available to export', type: 'warning' })
+    return
+  }
+
+  const formatted = loans.value.map(formatLoanForExport)
+
+  const ws = XLSX.utils.json_to_sheet(formatted)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Loans Report')
+
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+
+  saveAs(
+    new Blob([wbout], { type: 'application/octet-stream' }),
+    `Loans_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+  )
+}
+
+
 const availableStatuses = computed(() => {
   const statuses = new Set(loans.value.map((l) => l.status || 'N/A'))
   return ['All', ...Array.from(statuses)]
@@ -541,6 +522,8 @@ const formatCurrency = (value) => {
   if (!value) return '₦0.00'
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
 }
+
+
 
 const selectedFacility = computed(() => authStore.selectedFacility)
 
