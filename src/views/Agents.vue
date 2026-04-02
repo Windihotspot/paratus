@@ -7,10 +7,236 @@ import { useAuthStore } from '@/stores/auth'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import * as pdfMake from 'pdfmake/build/pdfmake'
+import { ElMessageBox } from 'element-plus'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/New Logo_with_Paratus.png'
 const authStore = useAuthStore()
+const facilities = computed(() => authStore.facilities)
 const merchantId = authStore.merchant?.id
+// --- NEW: Agent Loan Export ---
+
+const showExportDialog = ref(false)
+const exportingAgent = ref(null) // the agent row clicked
+const exportFacilityId = ref(null) // selected facility filter
+const exportStatusFilter = ref('All') // selected status filter
+const exportLoading = ref(false)
+const exportExcelLoading = ref(false)
+
+const exportStatusOptions = ['All', 'Active', 'Active < 5 days', 'Closed', 'Completed', 'Defaulted']
+
+// Reuse from loans page
+const getStatusBadge = (loan) => {
+  if (!loan.status || !loan.expiry_date) return { text: 'N/A', color: 'gray' }
+  const today = new Date()
+  const expiry = new Date(loan.expiry_date)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+  if (loan.status === 'active') {
+    if (diffDays > 0) {
+      return diffDays <= 5
+        ? { text: `active < ${diffDays} day${diffDays > 1 ? 's' : ''}`, color: 'red' }
+        : { text: 'active', color: 'green' }
+    }
+    return { text: 'closed', color: 'red' }
+  }
+  if (loan.status === 'completed') return { text: 'completed', color: 'blue' }
+  if (loan.status === 'defaulted') return { text: 'defaulted', color: 'blue' }
+  return { text: loan.status, color: 'gray' }
+}
+
+const formatCurrency = (value) => {
+  if (!value) return '₦0.00'
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
+}
+
+const openExportDialog = (a) => {
+  exportingAgent.value = a
+  exportFacilityId.value = null
+  exportStatusFilter.value = 'All'
+  showExportDialog.value = true
+}
+
+// Fetch + filter agent loans
+const fetchAndFilterAgentLoans = async () => {
+  const { data, error } = await supabase.rpc('fetch_agent_loans', {
+    p_agent_id: exportingAgent.value.id,
+    p_merchant_id: merchantId,
+    p_facility_id: exportFacilityId.value || null
+  })
+  if (error) throw error
+
+  let loans = data || []
+
+  // Apply status filter
+  if (exportStatusFilter.value !== 'All') {
+    loans = loans.filter((loan) => {
+      const badge = getStatusBadge(loan).text.toLowerCase()
+      const sel = exportStatusFilter.value.toLowerCase()
+      if (sel === 'active') return badge === 'active'
+      if (sel === 'active < 5 days') return badge.startsWith('active <')
+      if (sel === 'closed') return badge === 'closed'
+      if (sel === 'completed') return badge === 'completed'
+      if (sel === 'defaulted') return badge === 'defaulted'
+      return false
+    })
+  }
+
+  return loans
+}
+
+// Export as Excel
+const exportAgentLoansExcel = async () => {
+  exportExcelLoading.value = true
+  try {
+    const loans = await fetchAndFilterAgentLoans()
+    if (!loans.length) {
+      ElMessage({ message: 'No loans match the selected filters', type: 'warning' })
+      return
+    }
+
+    const rows = loans.map((l) => ({
+      'Customer Name': l.customer_name || 'N/A',
+      'Account Number': l.customer_account_number || 'N/A',
+      Phone: l.customer_phone || 'N/A',
+      'Facility / Bank': l.facility_name || 'N/A',
+      'Loan Amount': l.loan_amount,
+      'Agreed Rate (%)': l.agreed_rate,
+      'Tenure (Days)': l.tenure_days,
+      'Disbursed At': l.disbursed_at,
+      'Expiry Date': l.expiry_date,
+      'Interest Payable': l.interest_payable,
+      Profit: l.profit,
+      Status: getStatusBadge(l).text
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(rows)
+    ws['!cols'] = Object.keys(rows[0]).map(() => ({ wch: 20 }))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Agent Loans')
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    saveAs(
+      new Blob([wbout], { type: 'application/octet-stream' }),
+      `${exportingAgent.value.full_name || 'Agent'}_Loans.xlsx`
+    )
+    showExportDialog.value = false
+    ElMessage({ message: 'Excel exported!', type: 'success' })
+  } catch (err) {
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+// Export as PDF
+const exportAgentLoansPDF = async () => {
+  exportLoading.value = true
+  try {
+    const loans = await fetchAndFilterAgentLoans()
+    if (!loans.length) {
+      ElMessage({ message: 'No loans match the selected filters', type: 'warning' })
+      return
+    }
+
+    const logo = await getBase64FromUrl(logoImage)
+    const agent = exportingAgent.value
+    const facilityLabel = exportFacilityId.value
+      ? facilities.value.find((f) => f.id === exportFacilityId.value)?.bank_name || 'N/A'
+      : 'All'
+
+    const tableBody = [
+      // header row
+      ['Customer', 'Account No.', 'Bank', 'Amount', 'Rate%', 'Disbursed', 'Expiry', 'Status'].map(
+        (h) => ({ text: h, bold: true, fillColor: '#27bfa0', color: '#fff', fontSize: 9 })
+      ),
+      // data rows
+      ...loans.map((l, i) =>
+        [
+          l.customer_name || 'N/A',
+          l.customer_account_number || 'N/A',
+          l.facility_name || 'N/A',
+          formatCurrency(l.loan_amount),
+          `${l.agreed_rate ?? 0}%`,
+          l.disbursed_at || 'N/A',
+          l.expiry_date || 'N/A',
+          {
+            text: getStatusBadge(l).text,
+            color:
+              getStatusBadge(l).color === 'green'
+                ? '#15803d'
+                : getStatusBadge(l).color === 'red'
+                  ? '#dc2626'
+                  : '#1d4ed8',
+            bold: true
+          }
+        ].map((cell, ci) => ({
+          text: typeof cell === 'object' ? cell.text : String(cell),
+          fontSize: 8,
+          fillColor: i % 2 === 0 ? '#f9fafb' : null,
+          color: typeof cell === 'object' ? cell.color : '#374151',
+          bold: typeof cell === 'object' ? cell.bold : false
+        }))
+      )
+    ]
+
+    const docDefinition = {
+      pageOrientation: 'landscape',
+      content: [
+        {
+          columns: [
+            {
+              stack: [
+                { text: 'Agent Loan Report', style: 'header' },
+                { text: `Agent: ${agent.full_name || 'N/A'}`, style: 'sub' },
+                {
+                  text: `Facility: ${facilityLabel}   |   Status: ${exportStatusFilter.value}`,
+                  style: 'sub'
+                },
+                {
+                  text: `Total Loans: ${loans.length}   |   Total Amount: ${formatCurrency(loans.reduce((s, l) => s + Number(l.loan_amount || 0), 0))}`,
+                  style: 'sub'
+                }
+              ]
+            },
+            { image: logo, width: 80, alignment: 'right' }
+          ],
+          margin: [0, 0, 0, 16]
+        },
+        {
+          style: 'loanTable',
+          table: {
+            headerRows: 1,
+            widths: ['15%', '13%', '12%', '12%', '7%', '11%', '11%', '12%'],
+            body: tableBody
+          },
+          layout: {
+            hLineWidth: () => 0.5,
+            vLineWidth: () => 0,
+            hLineColor: () => '#e5e7eb'
+          }
+        },
+        {
+          text: `Generated on ${new Date().toLocaleString()}`,
+          style: 'footer',
+          alignment: 'right',
+          margin: [0, 20, 0, 0]
+        }
+      ],
+      styles: {
+        header: { fontSize: 18, bold: true, color: '#1f5aa3' },
+        sub: { fontSize: 10, color: '#6b7280', margin: [0, 2, 0, 0] },
+        loanTable: { margin: [0, 0, 0, 10] },
+        footer: { fontSize: 9, italics: true, color: '#9ca3af' }
+      },
+      pageMargins: [30, 40, 30, 40]
+    }
+
+    pdfMake.createPdf(docDefinition).download(`${agent.full_name || 'Agent'}_Loans.pdf`)
+    showExportDialog.value = false
+  } catch (err) {
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  } finally {
+    exportLoading.value = false
+  }
+}
 
 // state
 const agents = ref([])
@@ -383,6 +609,7 @@ const filteredAgents = computed(() => {
 // initial load
 onMounted(() => {
   fetchAgents()
+  authStore.fetchFacilities()
 })
 </script>
 
@@ -505,6 +732,13 @@ onMounted(() => {
                   <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editAgent(a)">
                     <i class="fas fa-edit"></i>
                   </button>
+                  <button
+                    class="text-teal-600 hover:text-teal-900"
+                    title="Export Loans"
+                    @click="openExportDialog(a)"
+                  >
+                    <i class="fas fa-file-export"></i>
+                  </button>
                   <button class="text-red-600 hover:text-red-900" @click="openDeleteModal(a)">
                     <i class="fas fa-trash"></i>
                   </button>
@@ -616,6 +850,67 @@ onMounted(() => {
             </v-btn>
           </div>
         </v-form>
+      </v-card>
+    </v-dialog>
+
+    <!-- Agent Loans Export Dialog -->
+    <v-dialog v-model="showExportDialog" max-width="480px" persistent>
+      <v-card class="pa-6">
+        <button
+          @click="showExportDialog = false"
+          class="absolute top-4 right-4 text-gray-500 hover:text-red-500"
+        >
+          <i class="fas fa-times fa-lg"></i>
+        </button>
+
+        <h2 class="text-lg font-bold mb-1">Export Agent Loans</h2>
+        <p class="text-sm text-gray-500 mb-4">
+          {{ exportingAgent?.full_name }} — choose filters then pick a format
+        </p>
+
+        <!-- Facility filter -->
+        <v-select
+          v-model="exportFacilityId"
+          :items="[{ id: null, bank_name: 'All Facilities' }, ...facilities]"
+          item-value="id"
+          item-title="bank_name"
+          label="Filter by Facility"
+          variant="outlined"
+          color="#27bfa0"
+          density="compact"
+          class="mb-3"
+        />
+
+        <!-- Status filter -->
+        <v-select
+          v-model="exportStatusFilter"
+          :items="exportStatusOptions"
+          label="Filter by Status"
+          variant="outlined"
+          color="#27bfa0"
+          density="compact"
+          class="mb-6"
+        />
+
+        <div class="flex justify-end gap-3">
+          <v-btn text @click="showExportDialog = false">Cancel</v-btn>
+          <v-btn
+            color="green"
+            variant="outlined"
+            :loading="exportExcelLoading"
+            @click="exportAgentLoansExcel"
+          >
+            <i class="fas fa-file-excel mr-2"></i> Excel
+          </v-btn>
+          <v-btn
+            color="red"
+            variant="outlined"
+            :loading="exportLoading"
+            @click="exportAgentLoansPDF"
+          >
+            <i class="fas fa-file-pdf mr-2"></i> PDF
+          </v-btn>
+        </div>
       </v-card>
     </v-dialog>
   </MainLayout>
