@@ -9,7 +9,7 @@ import { saveAs } from 'file-saver'
 import * as pdfMake from 'pdfmake/build/pdfmake'
 import { ElMessageBox } from 'element-plus'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
-import logoImage from '@/assets/New Logo_with_Paratus.png'
+import paratus from '@/assets/paratus-logo.jpeg'
 const authStore = useAuthStore()
 const facilities = computed(() => authStore.facilities)
 const merchantId = authStore.merchant?.id
@@ -136,7 +136,7 @@ const exportAgentLoansPDF = async () => {
       return
     }
 
-    const logo = await getBase64FromUrl(logoImage)
+    const logo = await getBase64FromUrl(paratus)
     const agent = exportingAgent.value
     const facilityLabel = exportFacilityId.value
       ? facilities.value.find((f) => f.id === exportFacilityId.value)?.bank_name || 'N/A'
@@ -179,6 +179,15 @@ const exportAgentLoansPDF = async () => {
 
     const docDefinition = {
       pageOrientation: 'landscape',
+      // ✅ Add this
+      background: (currentPage, pageSize) => {
+        return {
+          image: logo,
+          width: 300,
+          opacity: 0.08,
+          absolutePosition: { x: (pageSize.width - 300) / 2, y: (pageSize.height - 300) / 2 }
+        }
+      },
       content: [
         {
           columns: [
