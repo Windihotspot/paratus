@@ -14,15 +14,20 @@ const sidebarItems = [
     path: '/facilities',
     icon: 'mdi-domain', // Building / Database icon
   },
+   {
+    title: 'Applications',
+    path: '/applications',
+    icon: 'mdi-account-group', // Users icon
+  },
+   {
+    title: 'Customers',
+    path: '/customers',
+    icon: 'mdi-account-group', // Users icon
+  },
   {
     title: 'Loans',
     path: '/loans',
     icon: 'mdi-cash-multiple', // Loans / Money icon
-  },
-  {
-    title: 'Customers',
-    path: '/customers',
-    icon: 'mdi-account-group', // Users icon
   },
   {
     title: 'Agents',

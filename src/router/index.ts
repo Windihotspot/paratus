@@ -10,6 +10,8 @@ import Repayments from '@/views/Repayments.vue'
 import Agents from '@/views/Agents.vue'
 import Logs from '@/views/Logs.vue'
 import Banks from '@/views/Banks.vue'
+import CustomerApplication from '@/views/CustomerApplication.vue'
+import Applications from '@/views/Applications.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -63,6 +65,16 @@ const router = createRouter({
       path: '/banks',
       name: 'banks',
       component: Banks
+    },
+    {
+      path: '/customer-applications',
+      name: 'customer-applications',
+      component: CustomerApplication
+    },
+    {
+      path: '/applications',
+      name: 'applications',
+      component: Applications
     },
   ]
 })

@@ -29,7 +29,7 @@ onMounted(() => {
       <img src="/src/assets/New Logo_with_Paratus.png" alt="Logo" class="w-24 h-24 mb-2 hidden md:flex" />
 
       <div class="logo pa-4 hidden md:flex items-center space-x-2">
-  <p class="font-semibold text-lg">Paratus</p>
+ <img src="@/assets/paratus-logo.jpeg" class="w-20 h-20" alt="">
   <span class="text-sm text-gray-600">Powered By: Uppertech One Ltd</span>
 </div>
 
