@@ -7,6 +7,8 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/paratus-logo.jpeg'
 
+const tab = ref<'under_review' | 'submitted_to_bank' | 'onboarded'>('under_review')
+
 const snackbar = ref(false)
 const snackText = ref('')
 
@@ -319,7 +321,6 @@ const exportSinglePDF = async (app: any) => {
 // ----------------------
 // STATE
 // ----------------------
-const tab = ref<'under_review' | 'onboarded'>('under_review')
 const search = ref('')
 const loading = ref(false)
 
@@ -336,21 +337,69 @@ const drawer = ref(false)
 // ----------------------
 // STATUS MAP (TABS)
 // ----------------------
-const statusMap = {
-  under_review: 'submitted,under_review',
-  onboarded: 'account_created'
-}
 
+const accountNumber = ref('')
+const accountName = ref('')
+const bankName = ref('')
+const assigning = ref(false)
+
+const assignAccountNumber = async () => {
+  if (!accountNumber.value || !accountName.value) return
+
+  try {
+    assigning.value = true
+
+    const { error } = await supabase.rpc('assign_account_number', {
+      p_application_id: selectedApp.value.application.id,
+      p_account_number: accountNumber.value,
+      p_account_name: accountName.value,
+      p_bank_name: bankName.value
+    })
+
+    if (error) throw error
+
+    snackText.value = 'Account assigned successfully'
+    snackbar.value = true
+
+    await fetchApplications()
+
+    // update UI instantly
+    selectedApp.value.application.status = 'account_created'
+
+  } catch (err) {
+    console.error(err)
+    snackText.value = 'Failed to assign account'
+    snackbar.value = true
+  } finally {
+    assigning.value = false
+  }
+}
 // ----------------------
 // FETCH DATA
 // ----------------------
+const statusMap: Record<string, string> = {
+  under_review: 'pending',
+  submitted_to_bank: 'submitted',
+  onboarded: 'account_created',
+  rejected: 'rejected'
+}
+
+const statusOptions = [
+  { label: 'Under Review', value: 'under_review' },
+  { label: 'Submitted to Bank', value: 'submitted_to_bank' },
+  { label: 'Onboarded', value: 'onboarded' },
+  { label: 'Rejected', value: 'rejected' }
+]
+
+const selectedStatus = ref('')
+const updatingStatus = ref(false)
 const fetchApplications = async () => {
   loading.value = true
 
   const { data, error } = await supabase.rpc('get_applications_full_view', {
     p_limit: perPage.value,
     p_offset: (page.value - 1) * perPage.value,
-    p_statuses: statusMap[tab.value],
+       p_statuses: statusMap[tab.value],
     p_search: search.value || null
   })
   console.log("applications:", data)
@@ -360,6 +409,36 @@ const fetchApplications = async () => {
   }
 
   loading.value = false
+}
+
+const updateApplicationStatus = async () => {
+  if (!selectedApp.value || !selectedStatus.value) return
+
+  try {
+    updatingStatus.value = true
+
+    const { error } = await supabase.rpc('update_application_status', {
+  p_application_id: selectedApp.value.application.id,
+  p_status: statusMap[selectedStatus.value]
+})
+
+    if (error) throw error
+
+    snackText.value = 'Status updated successfully'
+    snackbar.value = true
+
+    // refresh data
+    await fetchApplications()
+
+    // update drawer instantly
+    selectedApp.value.application.status = selectedStatus.value
+  } catch (err) {
+    console.error(err)
+    snackText.value = 'Failed to update status'
+    snackbar.value = true
+  } finally {
+    updatingStatus.value = false
+  }
 }
 
 // debounce search
@@ -375,6 +454,7 @@ onMounted(fetchApplications)
 // ----------------------
 const openDetails = (item: any) => {
   selectedApp.value = item
+  selectedStatus.value = item.application.status
   drawer.value = true
 }
 
@@ -564,10 +644,10 @@ const openDoc = (url: string) => {
 const getStatusMeta = (status: string) => {
   switch (status) {
     case 'submitted':
-      return { label: 'Submitted', color: 'green', icon: 'mdi-send' }
+      return { label: 'Submitted', color: 'orange', icon: 'mdi-send' }
 
     case 'under_review':
-      return { label: 'Under Review', color: 'orange', icon: 'mdi-eye-outline' }
+      return { label: 'Under Review', color: 'blue', icon: 'mdi-eye-outline' }
 
     case 'account_created':
       return { label: 'Onboarded', color: 'green', icon: 'mdi-check-circle' }
@@ -579,9 +659,10 @@ const getStatusMeta = (status: string) => {
       return { label: 'Verified', color: 'teal', icon: 'mdi-shield-check' }
 
     default:
-      return { label: status, color: 'grey', icon: 'mdi-help-circle' }
+      return { label: status, color: 'blue', icon: 'mdi-help-circle' }
   }
 }
+
 </script>
 
 <template>
@@ -600,12 +681,11 @@ const getStatusMeta = (status: string) => {
     </div>
 
     <!-- Tabs -->
-    <v-tabs v-model="tab" color="green" class="mb-4">
-      <v-tab value="under_review">Under Review</v-tab>
-      <v-tab value="under_review">Submitted to Bank</v-tab>
-      <v-tab value="onboarded">Onboarded</v-tab>
-    </v-tabs>
-
+   <v-tabs v-model="tab" color="green" class="mb-4">
+  <v-tab value="under_review">Under Review</v-tab>
+  <v-tab value="submitted_to_bank">Submitted to Bank</v-tab>
+  <v-tab value="onboarded">Onboarded</v-tab>
+</v-tabs>
 
 
     <!-- Search -->
@@ -701,7 +781,15 @@ const getStatusMeta = (status: string) => {
     <!-- BODY -->
     <div class="drawer-body">
 
-      
+      <!-- <v-alert
+  type="info"
+  density="compact"
+  class="mb-3"
+  variant="outlined"
+>
+  Current Status:
+  <b>{{ getStatusMeta(selectedApp.application.status).label }}</b>
+</v-alert> -->
 
       <!-- PERSONAL -->
       <v-card class="glass-card mb-4">
@@ -1141,6 +1229,82 @@ const getStatusMeta = (status: string) => {
         </v-card-text>
       </v-card>
 
+      <!-- STATUS UPDATE SECTION -->
+<v-card class="glass-card mb-6">
+  <div class="card-header gradient-blue">
+    <v-icon class="section-icon">mdi-update</v-icon>
+    Update Application Status
+  </div>
+
+  <v-card-text>
+    <v-select
+      v-model="selectedStatus"
+      :items="statusOptions"
+      item-title="label"
+      item-value="value"
+      label="Select new status"
+      variant="outlined"
+      density="compact"
+    />
+
+    <v-btn
+      class="mt-3"
+      color="primary"
+      block
+      :loading="updatingStatus"
+      :disabled="!selectedStatus || updatingStatus"
+      @click="updateApplicationStatus"
+    >
+      Update Status
+    </v-btn>
+  </v-card-text>
+</v-card>
+
+<v-card
+  v-if="selectedApp.application.status === 'submitted'"
+  class="glass-card mb-6"
+>
+  <div class="card-header gradient-green">
+    <v-icon class="section-icon">mdi-bank</v-icon>
+    Assign Account Number
+  </div>
+
+  <v-card-text>
+    <v-text-field
+      v-model="accountNumber"
+      label="Account Number"
+      variant="outlined"
+      density="compact"
+      maxLength="11"
+    />
+
+    <v-text-field
+      v-model="accountName"
+      label="Account Name"
+      variant="outlined"
+      density="compact"
+    />
+
+    <!-- <v-text-field
+    readOnly
+    disabled
+      v-model="bankName"
+      label="Bank Name"
+      variant="outlined"
+      density="compact"
+    /> -->
+
+    <v-btn
+      class="mt-3"
+      color="success"
+      block
+      :loading="assigning"
+      @click="assignAccountNumber"
+    >
+      Assign & Onboard
+    </v-btn>
+  </v-card-text>
+</v-card>
     </div>
   </div>
   <v-snackbar
