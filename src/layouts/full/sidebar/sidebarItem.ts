@@ -44,6 +44,11 @@ const sidebarItems = [
     path: '/logs',
     icon: 'mdi-history', // Logs / Activity icon
   },
+  {
+    title: 'Users',
+    path: '/users',
+    icon: 'mdi-account-tie', // Logs / Activity icon
+  },
 ]
 
 export default sidebarItems

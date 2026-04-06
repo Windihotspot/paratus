@@ -399,7 +399,7 @@ const updatingStatus = ref(false)
 const fetchApplications = async () => {
   loading.value = true
 
-  const { data, error } = await supabase.rpc('get_applications_full_view', {
+  const { data, error } = await supabase.rpc('get_applications_full_view4', {
     p_limit: perPage.value,
     p_offset: (page.value - 1) * perPage.value,
        p_statuses: statusMap[tab.value],
@@ -653,7 +653,7 @@ const getStatusMeta = (status: string) => {
     case 'under_review':
       return { label: 'Under Review', color: 'blue', icon: 'mdi-eye-outline' }
 
-    case 'onboarded':
+    case 'account_created':
       return { label: 'Onboarded', color: 'green', icon: 'mdi-check-circle' }
 
     case 'rejected':
@@ -670,6 +670,55 @@ const accountNumberRules = [
   (v: string) => !!v || 'Account number is required',
   (v: string) => (v && v.length === 11) || 'Account number must be 11 digits',
 ]
+const getLogIcon = (action: string) => {
+  switch (action) {
+    case 'STATUS_UPDATE':
+      return 'mdi-swap-horizontal'
+    case 'ACCOUNT_ASSIGNED':
+      return 'mdi-bank-check'
+    case 'KYC_VERIFIED':
+      return 'mdi-shield-check'
+    default:
+      return 'mdi-information'
+  }
+}
+
+const getLogColor = (action: string) => {
+  switch (action) {
+    case 'STATUS_UPDATE':
+      return 'blue'
+    case 'ACCOUNT_ASSIGNED':
+      return 'green'
+    case 'KYC_VERIFIED':
+      return 'purple'
+    default:
+      return 'grey'
+  }
+}
+
+const formatActionTitle = (log: any) => {
+  if (log.action === 'STATUS_UPDATE') {
+    return `${log.old_value?.status || 'unknown'} → ${log.new_value?.status || 'updated'}`
+  }
+
+  if (log.action === 'ACCOUNT_ASSIGNED') {
+    return 'Account Assigned'
+  }
+
+  return log.action
+}
+
+const formatActionDetails = (log: any) => {
+  if (log.action === 'ACCOUNT_ASSIGNED') {
+    return `Account: ${log.metadata?.account_number || '-'} | Name: ${log.metadata?.account_name || '-'}`
+  }
+
+  if (log.action === 'STATUS_UPDATE') {
+    return 'Application status changed'
+  }
+
+  return ''
+}
 </script>
 
 <template>
@@ -1218,34 +1267,48 @@ const accountNumberRules = [
 
       <!-- STATUS TIMELINE -->
       <v-card class="glass-card mb-6">
-        <div class="card-header gradient-blue">
-          <v-icon class="section-icon">mdi-timeline</v-icon>
-          Status History
+  <div class="card-header gradient-blue">
+    <v-icon class="section-icon">mdi-timeline</v-icon>
+    Audit Trail
+  </div>
+
+  <v-card-text>
+    <v-timeline density="compact" side="end">
+
+      <v-timeline-item
+        v-for="log in selectedApp.status_log"
+        :key="log.id"
+        :dot-color="getLogColor(log.action)"
+        size="small"
+      >
+
+        <!-- ICON -->
+        <template #icon>
+          <v-icon size="18">
+            {{ getLogIcon(log.action) }}
+          </v-icon>
+        </template>
+
+        <!-- TITLE -->
+        <div class="mb-1 font-weight-bold">
+          {{ formatActionTitle(log) }}
         </div>
 
-        <v-card-text>
-          <v-timeline density="compact" side="end">
-            <v-timeline-item
-              v-for="log in selectedApp.status_log"
-              :key="log.id"
-              size="small"
-              dot-color="green"
-            >
-              <div class="mb-1">
-                <b>{{ log.to_status }}</b>
-              </div>
+        <!-- DETAILS -->
+        <div class="text-sm text-gray-600 mb-1">
+          {{ formatActionDetails(log) }}
+        </div>
 
-              <div class="text-sm text-gray-600 mb-1">
-                {{ log.note }}
-              </div>
+        <!-- TIME -->
+        <div class="text-xs text-gray-400">
+          {{ new Date(log.created_at).toLocaleString() }}
+        </div>
 
-              <div class="text-xs text-gray-400">
-                {{ new Date(log.created_at).toLocaleString() }}
-              </div>
-            </v-timeline-item>
-          </v-timeline>
-        </v-card-text>
-      </v-card>
+      </v-timeline-item>
+
+    </v-timeline>
+  </v-card-text>
+</v-card>
 
       <!-- STATUS UPDATE SECTION -->
 <v-card class="glass-card mb-6">
