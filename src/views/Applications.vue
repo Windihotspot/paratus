@@ -7,7 +7,7 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/paratus-logo.jpeg'
 
-const tab = ref<'under_review' | 'submitted_to_bank' | 'onboarded'>('under_review')
+const tab = ref<'under_review' | 'submitted_to_bank' | 'account_created'>('under_review')
 
 const snackbar = ref(false)
 const snackText = ref('')
@@ -349,7 +349,7 @@ const assignAccountNumber = async () => {
   try {
     assigning.value = true
 
-    const { error } = await supabase.rpc('assign_account_number', {
+    const { error } = await supabase.rpc('assign_account_number2', {
       p_application_id: selectedApp.value.application.id,
       p_account_number: accountNumber.value,
       p_account_name: accountName.value,
@@ -360,11 +360,14 @@ const assignAccountNumber = async () => {
 
     snackText.value = 'Account assigned successfully'
     snackbar.value = true
-
+    accountNumber.value = ''
+accountName.value = ''
+bankName.value = ''
     await fetchApplications()
 
     // update UI instantly
     selectedApp.value.application.status = 'account_created'
+    drawer.value = false
 
   } catch (err) {
     console.error(err)
@@ -380,14 +383,14 @@ const assignAccountNumber = async () => {
 const statusMap: Record<string, string> = {
   under_review: 'under_review',
   submitted_to_bank: 'submitted',
-  onboarded: 'account_created',
+  account_created: 'account_created',
   rejected: 'rejected'
 }
 
 const statusOptions = [
   { label: 'Under Review', value: 'under_review' },
   { label: 'Submitted to Bank', value: 'submitted_to_bank' },
-  { label: 'Onboarded', value: 'onboarded' },
+  { label: 'Onboarded', value: 'account_created' },
   { label: 'Rejected', value: 'rejected' }
 ]
 
@@ -432,6 +435,7 @@ const updateApplicationStatus = async () => {
 
     // update drawer instantly
     selectedApp.value.application.status = selectedStatus.value
+    drawer.value = false
   } catch (err) {
     console.error(err)
     snackText.value = 'Failed to update status'
@@ -649,7 +653,7 @@ const getStatusMeta = (status: string) => {
     case 'under_review':
       return { label: 'Under Review', color: 'blue', icon: 'mdi-eye-outline' }
 
-    case 'account_created':
+    case 'onboarded':
       return { label: 'Onboarded', color: 'green', icon: 'mdi-check-circle' }
 
     case 'rejected':
@@ -662,7 +666,10 @@ const getStatusMeta = (status: string) => {
       return { label: status, color: 'blue', icon: 'mdi-help-circle' }
   }
 }
-
+const accountNumberRules = [
+  (v: string) => !!v || 'Account number is required',
+  (v: string) => (v && v.length === 11) || 'Account number must be 11 digits',
+]
 </script>
 
 <template>
@@ -844,6 +851,17 @@ const getStatusMeta = (status: string) => {
     </div>
     <v-btn icon size="x-small" variant="text"
       @click="copyField(selectedApp.application.last_name, 'Last Name')">
+      <v-icon size="16">mdi-content-copy</v-icon>
+    </v-btn>
+  </div>
+
+  <!-- BVN -->
+  <div class="flex items-center justify-between text-sm">
+    <div>
+      <b>BVN:</b> {{ selectedApp.application.bvn }}
+    </div>
+    <v-btn icon size="x-small" variant="text"
+      @click="copyField(selectedApp.application.nin, 'NIN')">
       <v-icon size="16">mdi-content-copy</v-icon>
     </v-btn>
   </div>
@@ -1067,7 +1085,7 @@ const getStatusMeta = (status: string) => {
       <!-- Business Type -->
       <div class="flex items-center justify-between text-sm">
         <div>
-          <b>Business Type:</b> {{ selectedApp.employment?.business_type }}
+          <b>Employer address:</b> {{ selectedApp.employment?.employer_address }}
         </div>
         <v-btn icon size="x-small" variant="text"
           @click="copyField(selectedApp.employment?.business_type, 'Business Type')">
@@ -1276,6 +1294,7 @@ const getStatusMeta = (status: string) => {
       variant="outlined"
       density="compact"
       maxLength="11"
+       :rules="accountNumberRules"
     />
 
     <v-text-field
