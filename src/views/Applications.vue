@@ -378,7 +378,7 @@ const assignAccountNumber = async () => {
 // FETCH DATA
 // ----------------------
 const statusMap: Record<string, string> = {
-  under_review: 'pending',
+  under_review: 'under_review',
   submitted_to_bank: 'submitted',
   onboarded: 'account_created',
   rejected: 'rejected'

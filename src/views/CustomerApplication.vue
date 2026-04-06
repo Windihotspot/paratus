@@ -114,15 +114,30 @@
             </div>
 
             <div class="ob-grid-3">
-              <v-text-field
-                v-model="form.date_of_birth"
-                label="Date of Birth"
-                variant="outlined"
-                density="comfortable"
-                type="date"
-                :rules="[required]"
-                class="ob-field"
-              />
+              <v-menu
+  v-model="dobMenu"
+  :close-on-content-click="false"
+  transition="scale-transition"
+  offset-y
+  min-width="auto"
+>
+  <template #activator="{ props }">
+    <v-text-field
+      v-model="form.date_of_birth"
+      label="Date of Birth"
+      variant="outlined"
+      readonly
+      v-bind="props"
+      :rules="[required, isAdultRule]"
+    />
+  </template>
+
+  <v-date-picker
+    v-model="dob"
+    :max="maxAllowedDate"
+    @update:model-value="onDobSelect"
+  />
+</v-menu>
               <v-text-field
                 v-model="form.place_of_birth"
                 label="Place of Birth"
@@ -659,7 +674,33 @@ const steps = [
   { label: 'Review' },
 ]
 const currentStep = ref(0)
+const dobMenu = ref(false)
+const dob = ref<string | null>(null)
+  const maxAllowedDate = computed(() => {
+  const today = new Date()
+  today.setFullYear(today.getFullYear() - 18)
+  return today.toISOString().split('T')[0]
+})
+const isAdultRule = (v) => {
+  if (!v) return 'Date of birth is required'
 
+  const dobDate = new Date(v)
+  const today = new Date()
+
+  const age = today.getFullYear() - dobDate.getFullYear()
+  const m = today.getMonth() - dobDate.getMonth()
+
+  const realAge =
+    m < 0 || (m === 0 && today.getDate() < dobDate.getDate())
+      ? age - 1
+      : age
+
+  return realAge >= 18 || 'You must be at least 18 years old'
+}
+const onDobSelect = (val) => {
+  form.date_of_birth = val
+  dobMenu.value = false
+}
 // ── One ref per step form ─────────────────────────────────────────────────────
 // THE FIX: each v-form gets its own ref so .validate() only touches that
 // step's fields — not every field in the whole wizard.
