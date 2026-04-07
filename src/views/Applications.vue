@@ -377,6 +377,13 @@ bankName.value = ''
     assigning.value = false
   }
 }
+const isValidAccount = () => {
+  return (
+    accountNumber.value &&
+    accountNumber.value.length === 11 &&
+    accountName.value
+  )
+}
 // ----------------------
 // FETCH DATA
 // ----------------------
@@ -1380,6 +1387,7 @@ const formatActionDetails = (log: any) => {
       class="mt-3"
       color="success"
       block
+      :disabled="!isValidAccount() || assigning"
       :loading="assigning"
       @click="assignAccountNumber"
     >
