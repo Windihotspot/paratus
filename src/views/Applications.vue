@@ -213,20 +213,7 @@ Address: ${app.next_of_kin?.address}
         margin: [0, 0, 0, 10]
       },
 
-      // =====================
-      // STATUS TIMELINE
-      // =====================
-      { text: 'Status Timeline', style: 'sectionTitle' },
-
-      {
-        ul: (app.status_log || []).map(
-          (log: any) =>
-            `${log.to_status} - ${log.note} (${new Date(
-              log.created_at
-            ).toLocaleString()})`
-        ),
-        margin: [0, 0, 0, 10]
-      },
+      
 
       // =====================
       // FOOTER NOTE
