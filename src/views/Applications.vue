@@ -6,6 +6,7 @@ import { supabase } from '@/services/supabase' // adjust if needed
 import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/paratus-logo.jpeg'
+import { ElMessageBox, ElMessage } from 'element-plus'
 
 const tab = ref<'under_review' | 'submitted_to_bank' | 'account_created'>('under_review')
 
@@ -460,6 +461,61 @@ watch(search, debouncedFetch)
 
 onMounted(fetchApplications)
 
+const deleting = ref(false)
+
+const deleteApplication = async (app: any) => {
+  try {
+    await ElMessageBox.confirm(
+      `This will permanently delete ${app.full_name} and all related data. Continue?`,
+      'Delete Application',
+      {
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+
+    deleting.value = true
+
+    // 🔥 1. Delete storage files ONLY (FIXED: file_name, not file_path)
+    if (app.kyc_docs?.length) {
+      const paths = app.kyc_docs.map((d: any) => d.file_name)
+
+      const { error: storageError } = await supabase.storage
+        .from('kyc-documents')
+        .remove(paths)
+
+      if (storageError) throw storageError
+    }
+
+    // 🔥 2. Delete application (CASCADE handles everything else)
+    const { error } = await supabase.rpc('delete_application_full2', {
+      p_application_id: app.application.id
+    })
+
+    if (error) throw error
+
+    ElMessage({
+      type: 'success',
+      message: 'Application deleted successfully'
+    })
+
+    await fetchApplications()
+
+  } catch (err: any) {
+    if (err === 'cancel' || err === 'close') return
+
+    console.error(err)
+
+    ElMessage({
+      type: 'error',
+      message: err?.message || 'Delete failed'
+    })
+  } finally {
+    deleting.value = false
+  }
+}
 // ----------------------
 // VIEW DETAILS
 // ----------------------
@@ -796,7 +852,22 @@ const formatActionDetails = (log: any) => {
   </v-chip>
 </td>
           <td>
-            <v-btn color="primary" size="small" @click="openDetails(item)">View</v-btn>
+            <div class="flex gap-6">
+               <v-btn color="primary" size="small" @click="openDetails(item)">View</v-btn>
+           <v-tooltip text="Delete">
+  <template #activator="{ props }">
+    <v-btn
+      v-bind="props"
+      color="red"
+      size="small"
+      variant="text"
+      icon="mdi-delete"
+      @click="deleteApplication(item)"
+    />
+  </template>
+</v-tooltip>
+            </div>
+           
           </td>
         </tr>
       </template>
@@ -1254,6 +1325,8 @@ const formatActionDetails = (log: any) => {
         >
           <v-icon size="18">mdi-eye</v-icon>
         </v-btn>
+
+        
 
         <!-- DOWNLOAD -->
         <v-btn
