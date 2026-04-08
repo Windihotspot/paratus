@@ -1,41 +1,77 @@
 <script setup>
 import { computed } from 'vue'
-import { useAuthStore } from '@/stores/auth' // your Pinia auth store
+import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const merchantId = authStore.merchant.id
-// Computed properties for the header
+
+// ------------------------
+// SAFE ACCESS (IMPORTANT)
+// ------------------------
+const merchant = computed(() => authStore.merchant || {})
+const profile = computed(() => authStore.profile || {})
+
+// ------------------------
+// INITIALS (FROM PROFILE OR BUSINESS)
+// ------------------------
 const userInitials = computed(() => {
-  if (!authStore.merchant?.business_name) return ''
-  return authStore.merchant.business_name
+  const name =
+    profile.value.full_name ||
+    merchant.value.business_name ||
+    'U'
+
+  return name
     .split(' ')
-    .map((n) => n[0])
+    .map(n => n[0])
     .join('')
     .toUpperCase()
 })
-console.log('store:', authStore)
+
+// ------------------------
+// DISPLAY NAME (PRIORITY: PROFILE)
+// ------------------------
 const displayName = computed(() => {
-  return authStore.merchant?.business_name || authStore.user?.full_name || ''
+  return (
+    profile.value.full_name ||
+    merchant.value.business_name ||
+    ''
+  )
 })
 
+// ------------------------
+// DISPLAY ROLE (FROM PROFILE - FIXED)
+// ------------------------
 const displayRole = computed(() => {
-  return authStore.user ? 'Super Admin' : ''
+  const role = profile.value.role || 'viewer'
+
+  const map = {
+    admin: 'Admin',
+    staff: 'Staff',
+    viewer: 'Viewer'
+  }
+
+  return map[role] || 'Viewer'
+})
+
+// ------------------------
+// FACILITY SELECT
+// ------------------------
+const selectedFacilityId = computed({
+  get: () => authStore.selectedFacility?.id || null,
+  set: (val) => authStore.setSelectedFacility(val)
 })
 
 const logFacilityChange = (facility) => {
   console.log('🏦 Facility switched:', facility)
   console.log('🔎 Selected Facility in store:', authStore.selectedFacility)
 }
-const selectedFacilityId = computed({
-  get: () => authStore.selectedFacility?.id || null,
-  set: (val) => authStore.setSelectedFacility(val)
-})
 
-// Logout function
+// ------------------------
+// LOGOUT
+// ------------------------
 const logout = async () => {
-  authStore.logout() // call the correct Pinia store method
+  authStore.logout()
   router.push('/')
 }
 </script>

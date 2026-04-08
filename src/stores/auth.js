@@ -6,6 +6,8 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null) // supabase user object
   const merchant = ref(null) // merchant details
   const token = ref(null) // optional JWT or session token
+  const role = ref(null)
+  const profile = ref(null)
 
   const facilities = ref([]) // merchant facilities
   const selectedFacility = ref(null)
@@ -17,7 +19,16 @@ export const useAuthStore = defineStore('auth', () => {
     const storedToken = localStorage.getItem('token')
     const storedFacilities = localStorage.getItem('facilities')
     const storedSelectedFacility = localStorage.getItem('selectedFacility')
+    const storedRole = localStorage.getItem('role')
+    const storedProfile = localStorage.getItem('profile')
 
+if (storedProfile) profile.value = JSON.parse(storedProfile)
+if (storedRole) {
+  role.value = storedRole
+} else {
+  role.value = 'viewer'
+}
+console.log('AUTH SET ROLE:', role.value)
     if (storedUser) user.value = JSON.parse(storedUser)
     if (storedMerchant) merchant.value = JSON.parse(storedMerchant)
     if (storedToken) token.value = storedToken
@@ -25,15 +36,19 @@ export const useAuthStore = defineStore('auth', () => {
     if (storedSelectedFacility) selectedFacility.value = JSON.parse(storedSelectedFacility)
   }
 
-  const setAuth = (u, m, t = null) => {
-    user.value = u
-    merchant.value = m
-    token.value = t
+  const setAuth = (u, m, p = null, t = null) => {
+  user.value = u
+  merchant.value = m
+  profile.value = p
+  token.value = t
 
-    localStorage.setItem('user', JSON.stringify(u))
-    localStorage.setItem('merchant', JSON.stringify(m))
-    if (t) localStorage.setItem('token', t)
-  }
+  role.value = p?.role || 'viewer'
+
+  localStorage.setItem('user', JSON.stringify(u))
+  localStorage.setItem('merchant', JSON.stringify(m))
+  localStorage.setItem('profile', JSON.stringify(p))
+  localStorage.setItem('role', role.value)
+}
 
   const setSelectedFacility = (facilityId) => {
     const found = facilities.value.find((f) => f.id === facilityId) || null
@@ -92,6 +107,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     merchant,
     token,
+    role,
+    profile,
     facilities,
     selectedFacility,
     setAuth,

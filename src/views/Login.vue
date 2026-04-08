@@ -49,17 +49,56 @@ const submitForm = async () => {
     userData.value = userResponse.user
 
     // 2. Fetch merchant details
-    const { data: merchant, error: merchantError } = await supabase
-      .from('merchants')
-      .select('*')
-      .eq('user_id', userData.value.id)
-      .single()
+   let merchant = null
 
-    if (merchantError) {
-      console.log('Merchant fetch error:', merchantError)
-      loginForm.value.errors.email = 'Failed to fetch merchant details'
-      return
-    }
+// 1. Try NEW system (profiles → merchant_id)
+const { data: profile, error: profileError } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', userData.value.id)
+  .single()
+    console.log('PROFILE FROM DB:', profile)
+ const role = profile?.role || 'viewer'
+
+const roleRedirectMap = {
+  admin: '/dashboard',
+  staff: '/applications',
+  viewer: '/applications'
+}
+
+// fallback safety
+const targetRoute = roleRedirectMap[role]
+
+if (!profileError && profile?.merchant_id) {
+  const { data: m, error: merchantError } = await supabase
+    .from('merchants')
+    .select('*')
+    .eq('id', profile.merchant_id)
+    .single()
+
+  if (!merchantError) {
+    merchant = m
+  }
+}
+
+// 2. Fallback to OLD system (merchants.user_id)
+if (!merchant) {
+  const { data: legacyMerchant, error: legacyError } = await supabase
+    .from('merchants')
+    .select('*')
+    .eq('user_id', userData.value.id)
+    .single()
+
+  if (!legacyError) {
+    merchant = legacyMerchant
+  }
+}
+
+// 3. Safety check
+if (!merchant) {
+  loginForm.value.errors.email = 'No merchant linked to this account'
+  return
+}
 
     merchantData.value = merchant
 
@@ -73,12 +112,14 @@ const submitForm = async () => {
       console.error('Facilities fetch error:', facilitiesError)
     }
 
+    
+
     // 4. Save everything into Pinia + localStorage
-    authStore.setAuth(userData.value, merchant)
+    authStore.setAuth(userData.value, merchant, profile)
     authStore.setFacilities(facilities || [])
 
     // 5. Redirect to dashboard
-    router.push('/dashboard')
+    router.push(targetRoute)
   } catch (err) {
     console.error('Login error:', err)
     loginForm.value.errors.email = 'Something went wrong. Try again.'

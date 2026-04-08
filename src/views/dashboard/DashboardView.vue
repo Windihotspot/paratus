@@ -477,7 +477,8 @@ const loanExpiryStats = computed(() => {
     ]
   }
 })
-
+const merchantId = authStore.merchant.id
+const facilityId = authStore.selectedFacility.id
 const loadAllData = async () => {
   if (!authStore.merchant?.id || !authStore.selectedFacility?.id) {
     console.warn('Merchant or facility not ready yet')
@@ -491,7 +492,7 @@ const loadAllData = async () => {
 
     // fetch both in parallel
     const [kpiRes, statsRes] = await Promise.all([
-    // fetchAppDashboard(merchantId, facilityId),
+    
       fetchFinancialKPIs(merchantId, facilityId),
       fetchMerchantFacilityStats(merchantId, facilityId)
     ])
@@ -537,6 +538,7 @@ watch(
 
 onMounted(async () => {
   await loadAllData()
+  fetchAppDashboard(merchantId, facilityId)
 })
 
 const appKpis = ref({
@@ -549,16 +551,13 @@ const appKpis = ref({
   conversion: 0
 })
 const fetchAppDashboard = async (merchantId, facilityId) => {
-  const { data, error } = await supabase.rpc('get_customer_applications_dashboard', {
-    p_merchant_id: merchantId,
-    p_facility_id: facilityId
-  })
-
+  const { data, error } = await supabase.rpc('get_customer_applications_dashboard0')
+console.log("data:", data)
   if (error) throw error
   const k = data.kpis
 
   const total = k.total_applications || 0
-  const onboarded = k.onboarded || 0
+  const onboarded = k.account_created || 0
 
   appKpis.value = {
     total,

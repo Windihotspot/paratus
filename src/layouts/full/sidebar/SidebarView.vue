@@ -5,16 +5,33 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 const route = useRoute()
 const router = useRouter()
+
 // Function to check if the current route is active
 const isActive = (path) => {
   return route.path === path
 }
 import { useAuthStore } from '@/stores/auth'
 const authStore = useAuthStore()
-const token = computed(() => authStore.token)
-const tenantId = computed(() => authStore.tenant_id)
+const role = computed(() => authStore.role)
+console.log("role:", role.value)
+
 
 const sidebarMenu = ref(sidebarItems)
+const filteredMenu = computed(() => {
+  return sidebarItems.filter((item) => {
+    if (role.value === 'admin') return true
+
+    if (role.value === 'viewer') {
+      return !['Users'].includes(item.title)
+    }
+
+    if (role.value === 'staff') {
+      return !['Users', 'Logs', 'Profit & Loss', 'Dashboard', 'Loans', 'Agents', 'Customers', 'Banks', 'Facilities'].includes(item.title)
+    }
+
+    return true
+  })
+})
 const logout = async () => {
   const savedAuth = JSON.parse(localStorage.getItem('data') || '{}')
   const token = savedAuth?.token || authStore.token
@@ -56,7 +73,7 @@ const logout = async () => {
     <!-- Navigation -->
     <div class="flex-grow mt-4">
       <v-list class="pa-4">
-        <template v-for="(item, i) in sidebarMenu" :key="i">
+        <template v-for="(item, i) in filteredMenu" :key="i">
           <v-list-item
             @click="router.push(item.path)"
             class="mb-4 pr-4 custom-btn no-uppercase relative"
