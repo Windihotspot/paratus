@@ -782,6 +782,7 @@ const formatActionDetails = (log: any) => {
 
   return ''
 }
+
 </script>
 
 <template>
@@ -1392,32 +1393,59 @@ const formatActionDetails = (log: any) => {
 
       <!-- STATUS UPDATE SECTION -->
 <v-card class="glass-card mb-6">
-  <div class="card-header gradient-blue">
-    <v-icon class="section-icon">mdi-update</v-icon>
-    Update Application Status
+  <div
+    class="card-header"
+    :class="selectedApp.application.status === 'account_created'
+      ? 'gradient-green'
+      : 'gradient-blue'"
+  >
+    <v-icon class="section-icon">
+      {{ selectedApp.application.status === 'account_created'
+        ? 'mdi-check-circle'
+        : 'mdi-update' }}
+    </v-icon>
+
+    {{ selectedApp.application.status === 'account_created'
+      ? 'Application Onboarded'
+      : 'Update Application Status' }}
   </div>
 
   <v-card-text>
-    <v-select
-      v-model="selectedStatus"
-      :items="statusOptions"
-      item-title="label"
-      item-value="value"
-      label="Select new status"
-      variant="outlined"
-      density="compact"
-    />
+    <!-- 🔒 LOCKED STATE -->
+    <div v-if="selectedApp.application.status === 'account_created'">
+      <div class="flex items-center gap-2 text-green-600 font-medium">
+        <v-icon color="green">mdi-lock</v-icon>
+        This application is locked
+      </div>
 
-    <v-btn
-      class="mt-3"
-      color="primary"
-      block
-      :loading="updatingStatus"
-      :disabled="!selectedStatus || updatingStatus"
-      @click="updateApplicationStatus"
-    >
-      Update Status
-    </v-btn>
+      <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+        The onboarding process has been completed. Status changes are disabled.
+      </p>
+    </div>
+
+    <!-- ✏️ ACTIVE STATE -->
+    <div v-else>
+      <v-select
+        v-model="selectedStatus"
+        :items="statusOptions"
+        item-title="label"
+        item-value="value"
+        label="Select new status"
+        variant="outlined"
+        density="compact"
+      />
+
+      <v-btn
+        class="mt-3"
+        color="primary"
+        block
+        :loading="updatingStatus"
+        :disabled="!selectedStatus || updatingStatus"
+        @click="updateApplicationStatus"
+      >
+        Update Status
+      </v-btn>
+    </div>
   </v-card-text>
 </v-card>
 
