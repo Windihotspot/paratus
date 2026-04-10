@@ -266,11 +266,11 @@ const deleteUser = async (user: any) => {
 
     tableLoading.value = true
 
-    const { error } = await supabase
+    const {data, error } = await supabase
       .from('profiles')
       .delete()
       .eq('id', user.id)
-
+      console.log("data:", data)
     if (error) throw error
 
     ElMessage.success('User deleted successfully')
@@ -278,6 +278,7 @@ const deleteUser = async (user: any) => {
     await fetchUsers()
 
   } catch (err: any) {
+    console.error(err)
     if (err !== 'cancel') {
       console.error(err)
       ElMessage.error('Failed to delete user')
