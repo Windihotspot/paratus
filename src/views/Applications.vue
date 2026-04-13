@@ -213,8 +213,6 @@ Address: ${app.next_of_kin?.address}
         margin: [0, 0, 0, 10]
       },
 
-      
-
       // =====================
       // FOOTER NOTE
       // =====================
@@ -275,7 +273,7 @@ const downloadDoc = async (url: string, name: string) => {
     console.error('Download failed:', err)
     snackText.value = 'Download failed'
     snackbar.value = true
-  }finally{
+  } finally {
     downloading.value = false
   }
 }
@@ -296,12 +294,10 @@ const exportSinglePDF = async (app: any) => {
 
     pdfMake
       .createPdf(docDefinition)
-      .download(
-        `${app.full_name.replace(/\s+/g, '_')}_Application.pdf`
-      )
+      .download(`${app.full_name.replace(/\s+/g, '_')}_Application.pdf`)
   } catch (err) {
     console.error('PDF export error:', err)
-  }finally{
+  } finally {
     exportingPdf.value = false
   }
 }
@@ -349,14 +345,13 @@ const assignAccountNumber = async () => {
     snackText.value = 'Account assigned successfully'
     snackbar.value = true
     accountNumber.value = ''
-accountName.value = ''
-bankName.value = ''
+    accountName.value = ''
+    bankName.value = ''
     await fetchApplications()
 
     // update UI instantly
     selectedApp.value.application.status = 'account_created'
     drawer.value = false
-
   } catch (err) {
     console.error(err)
     snackText.value = 'Failed to assign account'
@@ -366,11 +361,7 @@ bankName.value = ''
   }
 }
 const isValidAccount = () => {
-  return (
-    accountNumber.value &&
-    accountNumber.value.length === 11 &&
-    accountName.value
-  )
+  return accountNumber.value && accountNumber.value.length === 11 && accountName.value
 }
 // ----------------------
 // FETCH DATA
@@ -397,10 +388,10 @@ const fetchApplications = async () => {
   const { data, error } = await supabase.rpc('get_applications_full_view4', {
     p_limit: perPage.value,
     p_offset: (page.value - 1) * perPage.value,
-       p_statuses: statusMap[tab.value],
+    p_statuses: statusMap[tab.value],
     p_search: search.value || null
   })
-  console.log("applications:", data)
+  console.log('applications:', data)
   if (!error && data) {
     applications.value = data.data || []
     total.value = data.pagination?.total || 0
@@ -416,9 +407,9 @@ const updateApplicationStatus = async () => {
     updatingStatus.value = true
 
     const { error } = await supabase.rpc('update_application_status', {
-  p_application_id: selectedApp.value.application.id,
-  p_status: statusMap[selectedStatus.value]
-})
+      p_application_id: selectedApp.value.application.id,
+      p_status: statusMap[selectedStatus.value]
+    })
 
     if (error) throw error
 
@@ -469,9 +460,7 @@ const deleteApplication = async (app: any) => {
     if (app.kyc_docs?.length) {
       const paths = app.kyc_docs.map((d: any) => d.file_name)
 
-      const { error: storageError } = await supabase.storage
-        .from('kyc-documents')
-        .remove(paths)
+      const { error: storageError } = await supabase.storage.from('kyc-documents').remove(paths)
 
       if (storageError) throw storageError
     }
@@ -489,7 +478,6 @@ const deleteApplication = async (app: any) => {
     })
 
     await fetchApplications()
-
   } catch (err: any) {
     if (err === 'cancel' || err === 'close') return
 
@@ -516,10 +504,8 @@ const openDetails = (item: any) => {
 // SIGNED URL FOR DOCS
 // ----------------------
 const getSignedUrl = async (path: string) => {
-  const { data, error } = await supabase.storage
-    .from('kyc-documents')
-    .createSignedUrl(path, 60)
-    
+  const { data, error } = await supabase.storage.from('kyc-documents').createSignedUrl(path, 60)
+
   return data?.signedUrl
 }
 
@@ -527,7 +513,7 @@ const getSignedUrl = async (path: string) => {
 // EXPORT (EXCEL)
 // ----------------------
 const exportExcel = async () => {
-  const rows = applications.value.map(a => ({
+  const rows = applications.value.map((a) => ({
     Name: a.full_name,
     Email: a.application.email,
     Phone: a.application.phone_number,
@@ -548,7 +534,7 @@ const exportExcel = async () => {
 // ----------------------
 // const exportPDF = async () => {
 //   const jsPDF = (await import('jspdf')).default
-  
+
 // }
 
 const exportPDF = async () => {
@@ -584,10 +570,10 @@ const exportPDF = async () => {
               statusMeta.color === 'green'
                 ? '#15803d'
                 : statusMeta.color === 'orange'
-                ? '#ea580c'
-                : statusMeta.color === 'red'
-                ? '#dc2626'
-                : '#1d4ed8',
+                  ? '#ea580c'
+                  : statusMeta.color === 'red'
+                    ? '#dc2626'
+                    : '#1d4ed8',
             bold: true
           },
           new Date(a.application.created_at).toLocaleString()
@@ -675,9 +661,9 @@ const exportPDF = async () => {
       pageMargins: [30, 40, 30, 40]
     }
 
-    pdfMake.createPdf(docDefinition).download(
-      `Applications_${tab.value}_${new Date().toISOString().split('T')[0]}.pdf`
-    )
+    pdfMake
+      .createPdf(docDefinition)
+      .download(`Applications_${tab.value}_${new Date().toISOString().split('T')[0]}.pdf`)
   } catch (err: any) {
     console.error(err)
   }
@@ -718,7 +704,7 @@ const getStatusMeta = (status: string) => {
 }
 const accountNumberRules = [
   (v: string) => !!v || 'Account number is required',
-  (v: string) => (v && v.length === 11) || 'Account number must be 11 digits',
+  (v: string) => (v && v.length === 11) || 'Account number must be 11 digits'
 ]
 const getLogIcon = (action: string) => {
   switch (action) {
@@ -769,7 +755,6 @@ const formatActionDetails = (log: any) => {
 
   return ''
 }
-
 </script>
 
 <template>
@@ -780,7 +765,7 @@ const formatActionDetails = (log: any) => {
         <h1 class="text-xl font-bold">Applications</h1>
         <p class="text-gray-500 text-sm">Manage customer applications</p>
       </div>
-<!-- 
+      <!-- 
       <div class="flex gap-2">
         <v-btn @click="exportExcel">Export Excel</v-btn>
         <v-btn @click="exportPDF">Export PDF</v-btn>
@@ -788,16 +773,15 @@ const formatActionDetails = (log: any) => {
     </div>
 
     <!-- Tabs -->
-   <v-tabs v-model="tab" color="green" class="mb-4">
-  <v-tab value="under_review">Under Review</v-tab>
-  <v-tab value="submitted_to_bank">Submitted to Bank</v-tab>
-  <v-tab value="onboarded">Onboarded</v-tab>
-</v-tabs>
-
+    <v-tabs v-model="tab" color="green" class="mb-4">
+      <v-tab value="under_review">Under Review</v-tab>
+      <v-tab value="submitted_to_bank">Submitted to Bank</v-tab>
+      <v-tab value="onboarded">Onboarded</v-tab>
+    </v-tabs>
 
     <!-- Search -->
     <v-text-field
-    variant="outlined"
+      variant="outlined"
       v-model="search"
       placeholder="Search name, phone..."
       clearable
@@ -828,82 +812,71 @@ const formatActionDetails = (log: any) => {
           <td>{{ item.application.email }}</td>
           <td>{{ item.application.phone_number }}</td>
           <td>
-  <v-chip
-    size="small"
-    :color="getStatusMeta(item.application.status).color"
-    variant="flat"
-    class="text-white"
-  >
-    
-
-    {{ getStatusMeta(item.application.status).label }}
-  </v-chip>
-</td>
+            <v-chip
+              size="small"
+              :color="getStatusMeta(item.application.status).color"
+              variant="flat"
+              class="text-white"
+            >
+              {{ getStatusMeta(item.application.status).label }}
+            </v-chip>
+          </td>
           <td>
             <div class="flex gap-6">
-               <v-btn color="primary" size="small" @click="openDetails(item)">View</v-btn>
-           <v-tooltip text="Delete">
-  <template #activator="{ props }">
-    <v-btn
-      v-bind="props"
-      color="red"
-      size="small"
-      variant="text"
-      icon="mdi-delete"
-      @click="deleteApplication(item)"
-    />
-  </template>
-</v-tooltip>
+              <v-btn color="primary" size="small" @click="openDetails(item)">View</v-btn>
+              <v-tooltip text="Delete">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    color="red"
+                    size="small"
+                    variant="text"
+                    icon="mdi-delete"
+                    @click="deleteApplication(item)"
+                  />
+                </template>
+              </v-tooltip>
             </div>
-           
           </td>
         </tr>
       </template>
     </v-data-table>
 
     <!-- DETAILS DRAWER -->
-   <v-navigation-drawer
-  v-model="drawer"
-  location="right"
-  width="800"
-  temporary
->
-  <div v-if="selectedApp" class="drawer-container">
+    <v-navigation-drawer v-model="drawer" location="right" width="800" temporary>
+      <div v-if="selectedApp" class="drawer-container">
+        <!-- HEADER -->
+        <div class="drawer-header">
+          <div class="mt-4">
+            <h2 class="text-lg font-bold">
+              {{ selectedApp.full_name }}
+            </h2>
+            <p class="text-sm text-gray-500">
+              {{ selectedApp.application.email }}
+            </p>
+          </div>
 
-    <!-- HEADER -->
-    <div class="drawer-header">
-      <div class="mt-4">
-        <h2 class="text-lg font-bold">
-          {{ selectedApp.full_name }}
-        </h2>
-        <p class="text-sm text-gray-500">
-          {{ selectedApp.application.email }}
-        </p>
-      </div>
+          <div class="flex gap-2">
+            <v-btn
+              :loading="exportingPdf"
+              :disabled="exportingPdf"
+              class="pdf-btn"
+              prepend-icon="mdi-download"
+              @click="exportSinglePDF(selectedApp)"
+            >
+              Download PDF
+            </v-btn>
+          </div>
+          <v-btn icon variant="text" @click="drawer = false">
+            <v-icon color="red-darken-2">mdi-close</v-icon>
+          </v-btn>
+        </div>
 
+        <v-divider class="mb-3" />
 
-<div class="flex gap-2">
-  <v-btn
-   :loading="exportingPdf"
-  :disabled="exportingPdf"
-  class="pdf-btn"
-  prepend-icon="mdi-download"
-  @click="exportSinglePDF(selectedApp)"
->
-  Download PDF
-</v-btn>
-</div>
-      <v-btn icon variant="text" @click="drawer = false">
-        <v-icon color="red-darken-2">mdi-close</v-icon>
-      </v-btn>
-    </div>
-
-    <v-divider class="mb-3" />
-
-    <!-- BODY -->
-    <div class="drawer-body">
-
-      <!-- <v-alert
+        <!-- BODY -->
+        <div class="drawer-body">
+          <!-- <v-alert
   type="info"
   density="compact"
   class="mb-3"
@@ -913,556 +886,599 @@ const formatActionDetails = (log: any) => {
   <b>{{ getStatusMeta(selectedApp.application.status).label }}</b>
 </v-alert> -->
 
-      <!-- PERSONAL -->
-      <v-card class="glass-card mb-4">
-        <div class="card-header gradient-purple">
-          <v-icon class="section-icon">mdi-account</v-icon>
-          Personal Details
-        </div>
-
-        <v-card-text>
-            <div class="mb-3">
-  <b>Status:</b>
-
-  <v-chip
-    class="ml-2"
-    size="small"
-    :color="getStatusMeta(selectedApp.application.status).color"
-    variant="flat"
-  >
-    
-
-    {{ getStatusMeta(selectedApp.application.status).label }}
-  </v-chip>
-</div>
-          <div class="space-y-2">
-
-  <!-- First Name -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>First Name:</b> {{ selectedApp.application.first_name }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.first_name, 'First Name')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Middle Name -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Middle Name:</b> {{ selectedApp.application.middle_name }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.middle_name, 'Middle Name')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Last Name -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Last Name:</b> {{ selectedApp.application.last_name }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.last_name, 'Last Name')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- BVN -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>BVN:</b> {{ selectedApp.application.bvn }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.nin, 'NIN')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- NIN -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>NIN:</b> {{ selectedApp.application.nin }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.nin, 'NIN')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Phone -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Phone:</b> {{ selectedApp.application.phone_number }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.phone_number, 'Phone')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Email -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Email:</b> {{ selectedApp.application.email }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.email, 'Email')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- DOB -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>DOB:</b> {{ selectedApp.application.date_of_birth }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.date_of_birth, 'DOB')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Sex -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Sex:</b> {{ selectedApp.application.sex }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.sex, 'Sex')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Religion -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Religion:</b> {{ selectedApp.application.religion }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.religion, 'Religion')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- State of Origin -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>State of Origin:</b> {{ selectedApp.application.state_of_origin }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.state_of_origin, 'State of Origin')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- LGA -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>LGA:</b> {{ selectedApp.application.lga_of_origin }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.lga_of_origin, 'LGA')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-  <!-- Mother's Maiden Name -->
-  <div class="flex items-center justify-between text-sm">
-    <div>
-      <b>Mother's Maiden Name:</b>
-      {{ selectedApp.application.mothers_maiden_name }}
-    </div>
-    <v-btn icon size="x-small" variant="text"
-      @click="copyField(selectedApp.application.mothers_maiden_name, 'Mother Maiden Name')">
-      <v-icon size="16">mdi-content-copy</v-icon>
-    </v-btn>
-  </div>
-
-</div>
-        </v-card-text>
-      </v-card>
-
-      <!-- ADDRESS -->
-      <v-card class="glass-card mb-4">
-  <div class="card-header gradient-green">
-    <v-icon class="section-icon">mdi-home-map-marker</v-icon>
-    Address
-  </div>
-
-  <v-card-text>
-    <div class="space-y-2">
-
-      <!-- Full Address -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Full Address:</b> {{ selectedApp.address?.full_address }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.address?.full_address, 'Full Address')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Town -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Town:</b> {{ selectedApp.address?.town_village }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.address?.town_village, 'Town')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- State -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>State:</b> {{ selectedApp.address?.state }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.address?.state, 'State')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Landmark -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Landmark:</b> {{ selectedApp.address?.nearest_landmark }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.address?.nearest_landmark, 'Landmark')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Bus Stop -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Bus Stop:</b> {{ selectedApp.address?.bus_stop_description }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.address?.bus_stop_description, 'Bus Stop')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Building Type -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Building Type:</b> {{ selectedApp.address?.building_type }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.address?.building_type, 'Building Type')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-    </div>
-  </v-card-text>
-</v-card>
-
-      <!-- EMPLOYMENT -->
-    <v-card class="glass-card mb-4">
-  <div class="card-header gradient-orange">
-    <v-icon class="section-icon">mdi-briefcase</v-icon>
-    Employment
-  </div>
-
-  <v-card-text>
-    <div class="space-y-2">
-
-      <!-- Status -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Status:</b> {{ selectedApp.employment?.employment_status }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.employment?.employment_status, 'Employment Status')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Employer -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Employer:</b> {{ selectedApp.employment?.employer_name }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.employment?.employer_name, 'Employer')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Business Type -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Employer address:</b> {{ selectedApp.employment?.employer_address }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.employment?.business_type, 'Business Type')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Additional Info -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Additional Info:</b> {{ selectedApp.employment?.additional_info }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.employment?.additional_info, 'Additional Info')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-    </div>
-  </v-card-text>
-</v-card>
-
-      <!-- NEXT OF KIN -->
-      <v-card class="glass-card mb-4">
-  <div class="card-header gradient-pink">
-    <v-icon class="section-icon">mdi-account-heart</v-icon>
-    Next of Kin
-  </div>
-
-  <v-card-text>
-    <div class="space-y-2">
-
-      <!-- Name -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Name:</b> {{ selectedApp.next_of_kin?.full_name }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.next_of_kin?.full_name, 'Next of Kin Name')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Phone -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Phone:</b> {{ selectedApp.next_of_kin?.phone_number }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.next_of_kin?.phone_number, 'Next of Kin Phone')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Relationship -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Relationship:</b> {{ selectedApp.next_of_kin?.relationship }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.next_of_kin?.relationship, 'Relationship')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-      <!-- Address -->
-      <div class="flex items-center justify-between text-sm">
-        <div>
-          <b>Address:</b> {{ selectedApp.next_of_kin?.address }}
-        </div>
-        <v-btn icon size="x-small" variant="text"
-          @click="copyField(selectedApp.next_of_kin?.address, 'Next of Kin Address')">
-          <v-icon size="16">mdi-content-copy</v-icon>
-        </v-btn>
-      </div>
-
-    </div>
-  </v-card-text>
-</v-card>
-
-      <!-- KYC DOCUMENTS -->
-    <v-card class="glass-card mb-4">
-  <div class="card-header gradient-dark">
-    <v-icon class="section-icon">mdi-file-document-multiple</v-icon>
-    KYC Documents
-  </div>
-
-  <v-card-text>
-    <div
-      v-for="doc in selectedApp.kyc_docs"
-      :key="doc.doc_type"
-      class="flex items-center justify-between mb-2 p-2 rounded hover:bg-gray-50 transition"
-    >
-
-      <!-- Doc Name -->
-      <div class="text-sm font-medium">
-        {{ doc.doc_type }}
-      </div>
-
-      <!-- Actions -->
-      <div class="flex items-center gap-2">
-
-        <!-- VIEW -->
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          color="primary"
-          @click="openDoc(doc.file_path)"
-        >
-          <v-icon size="18">mdi-eye</v-icon>
-        </v-btn>
-
-        
-
-        <!-- DOWNLOAD -->
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          color="green"
-           
-          @click="downloadDoc(doc.file_path, doc.doc_type)"
-        >
-          <v-icon size="18">mdi-download</v-icon>
-        </v-btn>
-
-      </div>
-    </div>
-  </v-card-text>
-</v-card>
-
-      <!-- STATUS TIMELINE -->
-      <v-card class="glass-card mb-6">
-  <div class="card-header gradient-blue">
-    <v-icon class="section-icon">mdi-timeline</v-icon>
-    Audit Trail
-  </div>
-
-  <v-card-text>
-    <v-timeline density="compact" side="end">
-
-      <v-timeline-item
-        v-for="log in selectedApp.status_log"
-        :key="log.id"
-        :dot-color="getLogColor(log.action)"
-        size="small"
-      >
-
-        <!-- ICON -->
-        <template #icon>
-          <v-icon size="18">
-            {{ getLogIcon(log.action) }}
-          </v-icon>
-        </template>
-
-        <!-- TITLE -->
-        <div class="mb-1 font-weight-bold">
-          {{ formatActionTitle(log) }}
-        </div>
-
-        <!-- DETAILS -->
-        <div class="text-sm text-gray-600 mb-1">
-          {{ formatActionDetails(log) }}
-        </div>
-
-        <!-- TIME -->
-        <div class="text-xs text-gray-400">
-          {{ new Date(log.created_at).toLocaleString() }}
-        </div>
-
-      </v-timeline-item>
-
-    </v-timeline>
-  </v-card-text>
-</v-card>
-
-      <!-- STATUS UPDATE SECTION -->
-<v-card class="glass-card mb-6">
-  <div
-    class="card-header"
-    :class="selectedApp.application.status === 'account_created'
-      ? 'gradient-green'
-      : 'gradient-blue'"
-  >
-    <v-icon class="section-icon">
-      {{ selectedApp.application.status === 'account_created'
-        ? 'mdi-check-circle'
-        : 'mdi-update' }}
-    </v-icon>
-
-    {{ selectedApp.application.status === 'account_created'
-      ? 'Application Onboarded'
-      : 'Update Application Status' }}
-  </div>
-
-  <v-card-text>
-    <!-- 🔒 LOCKED STATE -->
-    <div v-if="selectedApp.application.status === 'account_created'">
-      <div class="flex items-center gap-2 text-green-600 font-medium">
-        <v-icon color="green">mdi-lock</v-icon>
-        This application is locked
-      </div>
-
-      <p class="text-sm text-gray-600 mt-2 leading-relaxed">
-        The onboarding process has been completed. Status changes are disabled.
-      </p>
-    </div>
-
-    <!-- ✏️ ACTIVE STATE -->
-    <div v-else>
-      <v-select
-        v-model="selectedStatus"
-        :items="statusOptions"
-        item-title="label"
-        item-value="value"
-        label="Select new status"
-        variant="outlined"
-        density="compact"
-      />
-
-      <v-btn
-        class="mt-3"
-        color="primary"
-        block
-        :loading="updatingStatus"
-        :disabled="!selectedStatus || updatingStatus"
-        @click="updateApplicationStatus"
-      >
-        Update Status
-      </v-btn>
-    </div>
-  </v-card-text>
-</v-card>
-
-<v-card
-  v-if="selectedApp.application.status === 'submitted'"
-  class="glass-card mb-6"
->
-  <div class="card-header gradient-green">
-    <v-icon class="section-icon">mdi-bank</v-icon>
-    Assign Account Number
-  </div>
-
-  <v-card-text>
-    <v-text-field
-      v-model="accountNumber"
-      label="Account Number"
-      variant="outlined"
-      density="compact"
-      maxLength="11"
-       :rules="accountNumberRules"
-    />
-
-    <v-text-field
-      v-model="accountName"
-      label="Account Name"
-      variant="outlined"
-      density="compact"
-    />
-
-    <!-- <v-text-field
+          <!-- PERSONAL -->
+          <v-card class="glass-card mb-4">
+            <div class="card-header gradient-purple">
+              <v-icon class="section-icon">mdi-account</v-icon>
+              Personal Details
+            </div>
+
+            <v-card-text>
+              <div class="mb-3">
+                <b>Status:</b>
+
+                <v-chip
+                  class="ml-2"
+                  size="small"
+                  :color="getStatusMeta(selectedApp.application.status).color"
+                  variant="flat"
+                >
+                  {{ getStatusMeta(selectedApp.application.status).label }}
+                </v-chip>
+              </div>
+              <div class="space-y-2">
+                <!-- First Name -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>First Name:</b> {{ selectedApp.application.first_name }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.first_name, 'First Name')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Middle Name -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Middle Name:</b> {{ selectedApp.application.middle_name }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.middle_name, 'Middle Name')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Last Name -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Last Name:</b> {{ selectedApp.application.last_name }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.last_name, 'Last Name')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- BVN -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>BVN:</b> {{ selectedApp.application.bvn }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.nin, 'NIN')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- NIN -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>NIN:</b> {{ selectedApp.application.nin }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.nin, 'NIN')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Phone -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Phone:</b> {{ selectedApp.application.phone_number }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.phone_number, 'Phone')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Email -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Email:</b> {{ selectedApp.application.email }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.email, 'Email')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- DOB -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>DOB:</b> {{ selectedApp.application.date_of_birth }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.date_of_birth, 'DOB')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Sex -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Sex:</b> {{ selectedApp.application.sex }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.sex, 'Sex')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Religion -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Religion:</b> {{ selectedApp.application.religion }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.religion, 'Religion')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- State of Origin -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>State of Origin:</b> {{ selectedApp.application.state_of_origin }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.state_of_origin, 'State of Origin')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- LGA -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>LGA:</b> {{ selectedApp.application.lga_of_origin }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.lga_of_origin, 'LGA')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Mother's Maiden Name -->
+                <div class="flex items-center justify-between text-sm">
+                  <div>
+                    <b>Mother's Maiden Name:</b>
+                    {{ selectedApp.application.mothers_maiden_name }}
+                  </div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="
+                      copyField(selectedApp.application.mothers_maiden_name, 'Mother Maiden Name')
+                    "
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- ADDRESS -->
+          <v-card class="glass-card mb-4">
+            <div class="card-header gradient-green">
+              <v-icon class="section-icon">mdi-home-map-marker</v-icon>
+              Address
+            </div>
+
+            <v-card-text>
+              <div class="space-y-2">
+                <!-- Full Address -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Full Address:</b> {{ selectedApp.address?.full_address }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.address?.full_address, 'Full Address')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Town -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Town:</b> {{ selectedApp.address?.town_village }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.address?.town_village, 'Town')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- State -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>State:</b> {{ selectedApp.address?.state }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.address?.state, 'State')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Landmark -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Landmark:</b> {{ selectedApp.address?.nearest_landmark }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.address?.nearest_landmark, 'Landmark')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Bus Stop -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Bus Stop:</b> {{ selectedApp.address?.bus_stop_description }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.address?.bus_stop_description, 'Bus Stop')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Building Type -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Building Type:</b> {{ selectedApp.address?.building_type }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.address?.building_type, 'Building Type')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- EMPLOYMENT -->
+          <v-card class="glass-card mb-4">
+            <div class="card-header gradient-orange">
+              <v-icon class="section-icon">mdi-briefcase</v-icon>
+              Employment
+            </div>
+
+            <v-card-text>
+              <div class="space-y-2">
+                <!-- Status -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Status:</b> {{ selectedApp.employment?.employment_status }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="
+                      copyField(selectedApp.employment?.employment_status, 'Employment Status')
+                    "
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Employer -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Employer:</b> {{ selectedApp.employment?.employer_name }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.employment?.employer_name, 'Employer')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Business Type -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Employer address:</b> {{ selectedApp.employment?.employer_address }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.employment?.business_type, 'Business Type')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Additional Info -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Additional Info:</b> {{ selectedApp.employment?.additional_info }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.employment?.additional_info, 'Additional Info')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- NEXT OF KIN -->
+          <v-card class="glass-card mb-4">
+            <div class="card-header gradient-pink">
+              <v-icon class="section-icon">mdi-account-heart</v-icon>
+              Next of Kin
+            </div>
+
+            <v-card-text>
+              <div class="space-y-2">
+                <!-- Name -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Name:</b> {{ selectedApp.next_of_kin?.full_name }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.next_of_kin?.full_name, 'Next of Kin Name')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Phone -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Phone:</b> {{ selectedApp.next_of_kin?.phone_number }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.next_of_kin?.phone_number, 'Next of Kin Phone')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Relationship -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Relationship:</b> {{ selectedApp.next_of_kin?.relationship }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.next_of_kin?.relationship, 'Relationship')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Address -->
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Address:</b> {{ selectedApp.next_of_kin?.address }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.next_of_kin?.address, 'Next of Kin Address')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- KYC DOCUMENTS -->
+          <v-card class="glass-card mb-4">
+            <div class="card-header gradient-dark">
+              <v-icon class="section-icon">mdi-file-document-multiple</v-icon>
+              KYC Documents
+            </div>
+
+            <v-card-text>
+              <div
+                v-for="doc in selectedApp.kyc_docs"
+                :key="doc.doc_type"
+                class="flex items-center justify-between mb-2 p-2 rounded hover:bg-gray-50 transition"
+              >
+                <!-- Doc Name -->
+                <div class="text-sm font-medium">
+                  {{ doc.doc_type }}
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-2">
+                  <!-- VIEW -->
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    color="primary"
+                    @click="openDoc(doc.file_path)"
+                  >
+                    <v-icon size="18">mdi-eye</v-icon>
+                  </v-btn>
+
+                  <!-- DOWNLOAD -->
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    color="green"
+                    @click="downloadDoc(doc.file_path, doc.doc_type)"
+                  >
+                    <v-icon size="18">mdi-download</v-icon>
+                  </v-btn>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <!-- STATUS TIMELINE -->
+          <v-card class="glass-card mb-6">
+            <div class="card-header gradient-blue">
+              <v-icon class="section-icon">mdi-timeline</v-icon>
+              Audit Trail
+            </div>
+
+            <v-card-text>
+              <v-timeline density="compact" side="end">
+                <v-timeline-item
+                  v-for="log in selectedApp.status_log"
+                  :key="log.id"
+                  :dot-color="getLogColor(log.action)"
+                  size="small"
+                >
+                  <!-- ICON -->
+                  <template #icon>
+                    <v-icon size="18">
+                      {{ getLogIcon(log.action) }}
+                    </v-icon>
+                  </template>
+
+                  <!-- TITLE -->
+                  <div class="mb-1 font-weight-bold">
+                    {{ formatActionTitle(log) }}
+                  </div>
+
+                  <!-- DETAILS -->
+                  <div class="text-sm text-gray-600 mb-1">
+                    {{ formatActionDetails(log) }}
+                  </div>
+
+                  <!-- TIME -->
+                  <div class="text-xs text-gray-400">
+                    {{ new Date(log.created_at).toLocaleString() }}
+                  </div>
+                </v-timeline-item>
+              </v-timeline>
+            </v-card-text>
+          </v-card>
+
+          <!-- STATUS UPDATE SECTION -->
+          <v-card class="glass-card mb-6">
+            <div
+              class="card-header"
+              :class="
+                selectedApp.application.status === 'account_created'
+                  ? 'gradient-green'
+                  : 'gradient-blue'
+              "
+            >
+              <v-icon class="section-icon">
+                {{
+                  selectedApp.application.status === 'account_created'
+                    ? 'mdi-check-circle'
+                    : 'mdi-update'
+                }}
+              </v-icon>
+
+              {{
+                selectedApp.application.status === 'account_created'
+                  ? 'Application Onboarded'
+                  : 'Update Application Status'
+              }}
+            </div>
+
+            <v-card-text>
+              <!-- LOCKED STATE -->
+              <div v-if="selectedApp.application.status === 'account_created'">
+                <div class="flex items-center gap-2 text-green-600 font-medium">
+                  <v-icon color="green">mdi-lock</v-icon>
+                  This application is locked
+                </div>
+
+                <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+                  The onboarding process has been completed. Status changes are disabled.
+                </p>
+              </div>
+
+              <!-- ✏️ ACTIVE STATE -->
+              <div v-else>
+                <v-select
+                  v-model="selectedStatus"
+                  :items="statusOptions"
+                  item-title="label"
+                  item-value="value"
+                  label="Select new status"
+                  variant="outlined"
+                  density="compact"
+                />
+
+                <v-btn
+                  class="mt-3"
+                  color="primary"
+                  block
+                  :loading="updatingStatus"
+                  :disabled="!selectedStatus || updatingStatus"
+                  @click="updateApplicationStatus"
+                >
+                  Update Status
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-card>
+
+          <v-card v-if="selectedApp.application.status === 'submitted'" class="glass-card mb-6">
+            <div class="card-header gradient-green">
+              <v-icon class="section-icon">mdi-bank</v-icon>
+              Assign Account Number
+            </div>
+
+            <v-card-text>
+              <v-text-field
+                v-model="accountNumber"
+                label="Account Number"
+                variant="outlined"
+                density="compact"
+                maxLength="11"
+                :rules="accountNumberRules"
+              />
+
+              <v-text-field
+                v-model="accountName"
+                label="Account Name"
+                variant="outlined"
+                density="compact"
+              />
+
+              <!-- <v-text-field
     readOnly
     disabled
       v-model="bankName"
@@ -1471,35 +1487,34 @@ const formatActionDetails = (log: any) => {
       density="compact"
     /> -->
 
-    <v-btn
-      class="mt-3"
-      color="success"
-      block
-      :disabled="!isValidAccount() || assigning"
-      :loading="assigning"
-      @click="assignAccountNumber"
-    >
-      Assign & Onboard
-    </v-btn>
-  </v-card-text>
-</v-card>
-    </div>
-  </div>
-  <v-snackbar
-  v-model="snackbar"
-  location="top right"
-  timeout="2000"
-  color="green-darken-2"
-  elevation="6"
-  rounded="lg"
->
-  <div class="flex items-center gap-2">
-    <v-icon size="18">mdi-check-circle</v-icon>
-    {{ snackText }}
-  </div>
-</v-snackbar>
-</v-navigation-drawer>
-
+              <v-btn
+                class="mt-3"
+                color="success"
+                block
+                :disabled="!isValidAccount() || assigning"
+                :loading="assigning"
+                @click="assignAccountNumber"
+              >
+                Assign & Onboard
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </div>
+      </div>
+      <v-snackbar
+        v-model="snackbar"
+        location="top right"
+        timeout="2000"
+        color="green-darken-2"
+        elevation="6"
+        rounded="lg"
+      >
+        <div class="flex items-center gap-2">
+          <v-icon size="18">mdi-check-circle</v-icon>
+          {{ snackText }}
+        </div>
+      </v-snackbar>
+    </v-navigation-drawer>
   </MainLayout>
 </template>
 
@@ -1508,10 +1523,10 @@ const formatActionDetails = (log: any) => {
   font-weight: 500;
   letter-spacing: 0.2px;
 }
-.v-btn{
-    text-transform: none;
+.v-btn {
+  text-transform: none;
 }
-    .drawer-container {
+.drawer-container {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1574,7 +1589,7 @@ const formatActionDetails = (log: any) => {
 }
 .section-icon {
   font-size: 20px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 .drawer-container {
   height: 100%;
@@ -1582,7 +1597,7 @@ const formatActionDetails = (log: any) => {
   flex-direction: column;
   background: linear-gradient(180deg, #f8fafc, #eef2ff);
 }
-.v-btn{
+.v-btn {
   text-transform: none;
 }
 .pdf-btn {
