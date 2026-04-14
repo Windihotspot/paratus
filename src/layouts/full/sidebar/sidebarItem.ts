@@ -2,7 +2,7 @@ const sidebarItems = [
   {
     title: 'Dashboard',
     path: '/dashboard',
-    icon: 'mdi-view-dashboard', // Dashboard icon
+    icon: 'mdi-view-dashboard' // Dashboard icon
   },
   {
     title: 'Banks',
@@ -12,43 +12,43 @@ const sidebarItems = [
   {
     title: 'Facilities',
     path: '/facilities',
-    icon: 'mdi-domain', // Building / Database icon
+    icon: 'mdi-domain' // Building / Database icon
   },
-   {
+  {
     title: 'Applications',
     path: '/applications',
-    icon: 'mdi-account-group', // Users icon
+    icon: 'mdi-account-group' // Users icon
   },
-   {
+  {
     title: 'Customers',
     path: '/customers',
-    icon: 'mdi-account-group', // Users icon
+    icon: 'mdi-account-group' // Users icon
   },
   {
     title: 'Loans',
     path: '/loans',
-    icon: 'mdi-cash-multiple', // Loans / Money icon
+    icon: 'mdi-cash-multiple' // Loans / Money icon
   },
   {
     title: 'Agents',
     path: '/agents',
-    icon: 'mdi-account-tie', // User with tie icon
+    icon: 'mdi-account-tie' // User with tie icon
   },
   {
     title: 'Profit & Loss',
     path: '/profit-loss',
-    icon: 'mdi-chart-line', // Line chart icon to represent financial performance
+    icon: 'mdi-chart-line' // Line chart icon to represent financial performance
   },
   {
     title: 'Logs',
     path: '/logs',
-    icon: 'mdi-history', // Logs / Activity icon
+    icon: 'mdi-history' // Logs / Activity icon
   },
   {
     title: 'Users',
     path: '/users',
-    icon: 'mdi-account-tie', // Logs / Activity icon
-  },
+    icon: 'mdi-account-tie' // Logs / Activity icon
+  }
 ]
 
 export default sidebarItems

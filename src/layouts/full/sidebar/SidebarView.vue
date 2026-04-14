@@ -13,8 +13,7 @@ const isActive = (path) => {
 import { useAuthStore } from '@/stores/auth'
 const authStore = useAuthStore()
 const role = computed(() => authStore.role)
-console.log("role:", role.value)
-
+console.log('role:', role.value)
 
 const sidebarMenu = ref(sidebarItems)
 const filteredMenu = computed(() => {
@@ -26,7 +25,17 @@ const filteredMenu = computed(() => {
     }
 
     if (role.value === 'staff') {
-      return !['Users', 'Logs', 'Profit & Loss', 'Dashboard', 'Loans', 'Agents', 'Customers', 'Banks', 'Facilities'].includes(item.title)
+      return ![
+        'Users',
+        'Logs',
+        'Profit & Loss',
+        'Dashboard',
+        'Loans',
+        'Agents',
+        'Customers',
+        'Banks',
+        'Facilities'
+      ].includes(item.title)
     }
 
     return true
@@ -61,6 +70,10 @@ const logout = async () => {
     isLoading.value = false
   }
 }
+
+const goTo = (url) => {
+  window.open(url, '_blank')
+}
 </script>
 
 <template>
@@ -69,6 +82,23 @@ const logout = async () => {
     <!-- <div class="logo pa-4">
       <img src="/src/assets/images/white.png" class="" />
     </div> -->
+    <div class="flex mt-4 flex-col items-center">
+      <span
+        class="text-xs mt-2 font-medium text-red-600 hover:text-red-700 cursor-pointer transition"
+        @click="goTo('https://cib.globusbank.com/')"
+      >
+        Globus Bank
+      </span>
+    </div>
+
+    <div class="mt-4 flex flex-col items-center">
+      <span
+        class="text-xs mt-2 font-medium text-purple-600 hover:text-purple-700 cursor-pointer transition"
+        @click="goTo('https://icorporate.parallexbank.com/auth/login')"
+      >
+        Parallex Bank
+      </span>
+    </div>
 
     <!-- Navigation -->
     <div class="flex-grow mt-4">
@@ -94,15 +124,7 @@ const logout = async () => {
       </v-list>
     </div>
 
-    <!-- Footer Logout -->
-    <!-- <div class="pa-4">
-      <v-list-item @click="logout" class="custom-btn logout-btn" rounded="lg" block>
-        <v-icon class="text-lg" left>
-          <i class="fas fa-sign-out-alt"></i>
-        </v-icon>
-        <span class="menu-item ml-4">Logout</span>
-      </v-list-item>
-    </div> -->
+    <!-- FOOTER LOGO -->
   </div>
 </template>
 
@@ -118,7 +140,6 @@ const logout = async () => {
   justify-content: space-between;
   height: 100vh;
   background: #ffffff;
- 
 }
 
 /* Default button state */
@@ -176,5 +197,26 @@ const logout = async () => {
 .active-bar {
   display: none; /* no need if using border-left highlight */
 }
+.sidebar-footer {
+  border-top: 1px solid #f1f5f9;
+}
 
+.footer-logo {
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.footer-logo img {
+  max-height: 40px;
+  object-fit: contain;
+}
+
+.footer-logo:hover {
+  background-color: rgba(39, 191, 160, 0.08);
+}
 </style>
