@@ -7,53 +7,11 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/paratus-logo.jpeg'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
-import moment from 'moment'
-
-const authStore = useAuthStore()
 
 const tab = ref<'under_review' | 'submitted_to_bank' | 'account_created'>('under_review')
 
 const snackbar = ref(false)
 const snackText = ref('')
-
-const appKpis = ref({
-  total: 0,
-  draft: 0,
-  submitted: 0,
-  under_review: 0,
-  account_created: 0,
-  rejected: 0,
-  conversion: 0
-})
-
-const appChartData = ref({
-  status_breakdown: [],
-  monthly_trend: [],
-  daily_trend: []
-})
-
-const fetchAppDashboard = async () => {
-  const { data, error } = await supabase.rpc('get_customer_applications_dashboard0')
-  console.log('data:', data)
-  if (error) throw error
-  const k = data.kpis
-
-  const total = k.total_applications || 0
-  const onboarded = k.account_created || 0
-
-  appKpis.value = {
-    total,
-    draft: k.draft || 0,
-    submitted: k.submitted || 0,
-    under_review: k.under_review || 0,
-    account_created: onboarded,
-    rejected: k.rejected || 0,
-    conversion: total ? ((onboarded / total) * 100).toFixed(1) : 0
-  }
-
-  appChartData.value = data
-}
 
 const copyToClipboard = async (value: string, label?: string) => {
   try {
@@ -479,10 +437,7 @@ const debouncedFetch = useDebounceFn(fetchApplications, 400)
 watch([tab, page], fetchApplications)
 watch(search, debouncedFetch)
 
-onMounted(() => {
-  fetchApplications()
-  fetchAppDashboard()
-})
+onMounted(fetchApplications)
 
 const deleting = ref(false)
 
@@ -749,7 +704,7 @@ const getStatusMeta = (status: string) => {
 }
 const accountNumberRules = [
   (v: string) => !!v || 'Account number is required',
-  (v: string) => (v && v.length === 11) || 'Account number must be 11 digits'
+  (v: string) => (v && v.length === 10) || 'Account number must be 10 digits'
 ]
 const getLogIcon = (action: string) => {
   switch (action) {
@@ -815,75 +770,6 @@ const formatActionDetails = (log: any) => {
         <v-btn @click="exportExcel">Export Excel</v-btn>
         <v-btn @click="exportPDF">Export PDF</v-btn>
       </div> -->
-    </div>
-
-    <!-- APPLICATION KPIs -->
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6 mt-4">
-      <!-- Total -->
-      <div class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition">
-        <div class="p-3 text-blue-600">
-          <i class="fas fa-layer-group"></i>
-        </div>
-        <div class="ml-4">
-          <p class="text-gray-500 text-sm">Total Applications</p>
-          <p class="text-lg font-medium">{{ appKpis.total }}</p>
-        </div>
-      </div>
-
-      <!-- Under Review -->
-      <div class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition">
-        <div class="p-3 text-yellow-500">
-          <i class="fas fa-eye"></i>
-        </div>
-        <div class="ml-4">
-          <p class="text-gray-500 text-sm">Under Review</p>
-          <p class="text-lg font-medium">{{ appKpis.under_review }}</p>
-        </div>
-      </div>
-
-      <!-- Submitted -->
-      <div class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition">
-        <div class="p-3 text-orange-500">
-          <i class="fas fa-paper-plane"></i>
-        </div>
-        <div class="ml-4">
-          <p class="text-gray-500 text-sm">Submitted</p>
-          <p class="text-lg font-medium">{{ appKpis.submitted }}</p>
-        </div>
-      </div>
-
-      <!-- Onboarded -->
-      <div class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition">
-        <div class="p-3 text-green-600">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <div class="ml-4">
-          <p class="text-gray-500 text-sm">Onboarded</p>
-          <p class="text-lg font-medium">{{ appKpis.account_created }}</p>
-        </div>
-      </div>
-
-      <!-- Rejected -->
-      <div class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition">
-        <div class="p-3 text-red-500">
-          <i class="fas fa-times-circle"></i>
-        </div>
-        <div class="ml-4">
-          <p class="text-gray-500 text-sm">Rejected</p>
-          <p class="text-lg font-medium">{{ appKpis.rejected }}</p>
-        </div>
-      </div>
-
-      <!-- Conversion -->
-      <div class="flex items-center p-5 bg-white shadow rounded-lg hover:scale-105 transition">
-        <div class="p-3 text-purple-600">
-          <i class="fas fa-chart-line"></i>
-        </div>
-        <div class="ml-4">
-          <p class="text-gray-500 text-sm">Conversion</p>
-          <p class="text-lg font-medium">{{ appKpis.conversion }}%</p>
-        </div>
-      </div>
     </div>
 
     <!-- Tabs -->
@@ -1531,7 +1417,7 @@ const formatActionDetails = (log: any) => {
             </div>
 
             <v-card-text>
-              <!-- LOCKED STATE -->
+              <!-- 🔒 LOCKED STATE -->
               <div v-if="selectedApp.application.status === 'account_created'">
                 <div class="flex items-center gap-2 text-green-600 font-medium">
                   <v-icon color="green">mdi-lock</v-icon>
@@ -1581,7 +1467,7 @@ const formatActionDetails = (log: any) => {
                 label="Account Number"
                 variant="outlined"
                 density="compact"
-                maxLength="11"
+                maxLength="10"
                 :rules="accountNumberRules"
               />
 
