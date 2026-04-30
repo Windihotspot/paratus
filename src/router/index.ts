@@ -14,6 +14,7 @@ import Applications from '@/views/Applications.vue'
 import UsersPage from '@/views/UsersPage.vue'
 
 import { useAuthStore } from '@/stores/auth'
+import Revenue from '@/views/Revenue.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,7 +27,6 @@ const router = createRouter({
       name: 'login',
       component: Login
     },
-
 
     // =====================
     // DASHBOARD
@@ -113,6 +113,12 @@ const router = createRouter({
       path: '/users',
       name: 'users',
       component: UsersPage,
+      meta: { roles: ['admin'] }
+    },
+    {
+      path: '/revenue',
+      name: 'revenue',
+      component: Revenue,
       meta: { roles: ['admin'] }
     }
   ]

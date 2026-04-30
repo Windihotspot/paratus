@@ -35,9 +35,14 @@ const sidebarItems = [
     icon: 'mdi-account-tie' // User with tie icon
   },
   {
+    title: 'Revenue',
+    path: '/revenue',
+    icon: 'mdi-chart-line' // Line chart icon to represent financial performance
+  },
+  {
     title: 'Profit & Loss',
     path: '/profit-loss',
-    icon: 'mdi-chart-line' // Line chart icon to represent financial performance
+    icon: 'mdi-chart-areaspline' // Line chart icon to represent financial performance
   },
   {
     title: 'Logs',
