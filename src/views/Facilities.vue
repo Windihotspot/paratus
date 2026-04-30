@@ -26,17 +26,42 @@ const disburseMenu = ref(false)
 const facilityTypes = [{ label: 'Overdraft', value: 'overdraft' }]
 
 // Form state
+// const facilityForm = ref({
+//   bank_id: null,
+//   facility_type: '',
+//   facility_amount: null,
+//   borrowing_rate: null,
+//   drawdown_date: null, // string YYYY-MM-DD for API
+//   drawdown_date_obj: null, // Date object for internal use
+//   tenure_days: null
+// })
+
 const facilityForm = ref({
   bank_id: null,
   facility_type: '',
   facility_amount: null,
   borrowing_rate: null,
-  drawdown_date: null, // string YYYY-MM-DD for API
-  drawdown_date_obj: null, // Date object for internal use
+  rate_unit: 'monthly',
+
+  management_fee_percent: 0,
+  vat_percent: 7.5,
+  other_fees: 0,
+  security_deposit: 0,
+
+  drawdown_date: null,
+  drawdown_date_obj: null,
   tenure_days: null
 })
 
 const formattedFacilityAmount = useFormattedFields(facilityForm, 'facility_amount', {
+  currency: true
+})
+
+const formattedOtherFees = useFormattedFields(facilityForm, 'other_fees', {
+  currency: true
+})
+
+const formattedSecurityDeposit = useFormattedFields(facilityForm, 'security_deposit', {
   currency: true
 })
 
@@ -115,18 +140,23 @@ const submitFacility = async () => {
 
     if (isEditing.value && editingFacilityId.value) {
       // ✅ Update facility
-      ;({ data, error } = await supabase.rpc('update_facility', {
+      ;({ data, error } = await supabase.rpc('update_facility_v4', {
         p_facility_id: editingFacilityId.value,
         p_bank_id: facilityForm.value.bank_id,
         p_facility_type: facilityForm.value.facility_type,
         p_facility_amount: facilityForm.value.facility_amount,
         p_borrowing_rate: facilityForm.value.borrowing_rate,
         p_drawdown_date: facilityForm.value.drawdown_date,
-        p_tenure_days: facilityForm.value.tenure_days
+        p_tenure_days: facilityForm.value.tenure_days,
+        p_rate_unit: facilityForm.value.rate_unit,
+        p_management_fee_percent: facilityForm.value.management_fee_percent,
+        p_vat_percent: facilityForm.value.vat_percent,
+        p_other_fees: facilityForm.value.other_fees,
+        p_security_deposit: facilityForm.value.security_deposit
       }))
     } else {
       // ✅ Add facility
-      ;({ data, error } = await supabase.rpc('add_facility', {
+      ;({ data, error } = await supabase.rpc('add_facility_v2', {
         p_merchant_id: merchantId,
         p_bank_id: facilityForm.value.bank_id,
         p_facility_type: facilityForm.value.facility_type,
@@ -238,7 +268,6 @@ onMounted(() => {
   fetchBanks()
   authStore.fetchFacilities()
 })
-
 </script>
 
 <template>
@@ -361,84 +390,152 @@ onMounted(() => {
         </p>
 
         <v-form ref="formRef" v-model="valid" lazy-validation>
-          <v-select
-            variant="outlined"
-            color="#27bfa0"
-            v-model="facilityForm.bank_id"
-            :items="banks"
-            item-title="name"
-            item-value="id"
-            label="Select Bank"
-            required
-          />
-
-          <v-select
-            variant="outlined"
-            color="#27bfa0"
-            v-model="facilityForm.facility_type"
-            :items="facilityTypes"
-            item-title="label"
-            item-value="value"
-            label="Facility Type"
-            :rules="[(v) => !!v || 'Facility type is required']"
-            required
-          />
-
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="formattedFacilityAmount"
-            label="Facility Amount"
-            required
-          />
-
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="facilityForm.borrowing_rate"
-            label="Borrowing Rate (%)"
-            type="number"
-            required
-          />
-
-          <v-menu
-            v-model="disburseMenu"
-            :close-on-content-click="false"
-            transition="scale-transition"
-            offset-y
-            min-width="290px"
-          >
-            <template v-slot:activator="{ props }">
-              <v-text-field
-                v-bind="props"
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
                 variant="outlined"
                 color="#27bfa0"
-                :model-value="facilityForm.drawdown_date"
-                label="Drawdown Date"
-                readonly
-                :rules="[(v) => !!v || 'Drawdown date is required']"
+                v-model="facilityForm.bank_id"
+                :items="banks"
+                item-title="name"
+                item-value="id"
+                label="Select Bank"
+                required
               />
-            </template>
+            </v-col>
 
-            <v-date-picker
-              :model-value="facilityForm.drawdown_date_obj"
-              @update:model-value="
-                (val) => {
-                  facilityForm.drawdown_date_obj = val
-                  facilityForm.drawdown_date = val ? val.toISOString().split('T')[0] : null
-                  disburseMenu = false
-                }
-              "
-            />
-          </v-menu>
+            <v-col cols="12" md="6">
+              <v-select
+                variant="outlined"
+                color="#27bfa0"
+                v-model="facilityForm.facility_type"
+                :items="facilityTypes"
+                item-title="label"
+                item-value="value"
+                label="Facility Type"
+                :rules="[(v) => !!v || 'Facility type is required']"
+                required
+              />
+            </v-col>
 
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="facilityForm.tenure_days"
-            label="Tenure (Days)"
-            required
-          />
+            <v-col cols="12" md="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="formattedFacilityAmount"
+                label="Facility Amount"
+                required
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="facilityForm.borrowing_rate"
+                label="Borrowing Rate (%)"
+                type="number"
+                required
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-menu
+                v-model="disburseMenu"
+                :close-on-content-click="false"
+                transition="scale-transition"
+                offset-y
+                min-width="290px"
+              >
+                <template v-slot:activator="{ props }">
+                  <v-text-field
+                    v-bind="props"
+                    variant="outlined"
+                    color="#27bfa0"
+                    :model-value="facilityForm.drawdown_date"
+                    label="Drawdown Date"
+                    readonly
+                    :rules="[(v) => !!v || 'Drawdown date is required']"
+                  />
+                </template>
+
+                <v-date-picker
+                  :model-value="facilityForm.drawdown_date_obj"
+                  @update:model-value="
+                    (val) => {
+                      facilityForm.drawdown_date_obj = val
+                      facilityForm.drawdown_date = val ? val.toISOString().split('T')[0] : null
+                      disburseMenu = false
+                    }
+                  "
+                />
+              </v-menu>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="facilityForm.tenure_days"
+                label="Tenure (Days)"
+                required
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="facilityForm.rate_unit"
+                :items="[
+                  { label: 'Daily', value: 'daily' },
+                  { label: 'Monthly', value: 'monthly' },
+                  { label: 'Annual', value: 'annual' }
+                ]"
+                item-title="label"
+                item-value="value"
+                label="Rate Type"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="facilityForm.management_fee_percent"
+                label="Management Fee (%)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="facilityForm.vat_percent"
+                label="VAT (%)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formattedOtherFees"
+                label="Other Fees"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formattedSecurityDeposit"
+                label="Security Deposit"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+          </v-row>
 
           <div class="flex justify-end mt-6">
             <v-btn text @click="closeFacilityModal">Cancel</v-btn>
