@@ -69,7 +69,7 @@ const closeModal = () => {
 // Fetch available banks
 const fetchFacilities = async () => {
   loading.value = true
-  const { data, error } = await supabase.rpc('get_merchant_facilities', {
+  const { data, error } = await supabase.rpc('get_merchant_facilities_v1', {
     p_merchant_id: merchantId
   })
   console.log('merchant facilities:', data)
@@ -585,145 +585,144 @@ onMounted(() => {
     </v-dialog>
 
     <!-- Add/ edit Customer Modal -->
-  <v-dialog v-model="showModal" persistent scrollable max-width="800px">
-  <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
-    <!-- Close button -->
-    <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
-      <i class="fas fa-times fa-lg"></i>
-    </button>
+    <v-dialog v-model="showModal" persistent scrollable max-width="800px">
+      <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
+        <!-- Close button -->
+        <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
+          <i class="fas fa-times fa-lg"></i>
+        </button>
 
-    <h2 class="text-lg font-bold mb-4">
-      {{ isEditingCustomer ? 'Edit Customer' : 'Add a new customer' }}
-    </h2>
+        <h2 class="text-lg font-bold mb-4">
+          {{ isEditingCustomer ? 'Edit Customer' : 'Add a new customer' }}
+        </h2>
 
-    <v-form ref="formRef" v-model="valid" lazy-validation>
-      <v-row dense>
-        <!-- First Name -->
-        <v-col cols="6">
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="customer.first_name"
-            label="First Name"
-            :rules="[(v) => !!v || 'First name is required']"
-            required
-          />
-        </v-col>
+        <v-form ref="formRef" v-model="valid" lazy-validation>
+          <v-row dense>
+            <!-- First Name -->
+            <v-col cols="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="customer.first_name"
+                label="First Name"
+                :rules="[(v) => !!v || 'First name is required']"
+                required
+              />
+            </v-col>
 
-        <!-- Last Name -->
-        <v-col cols="6">
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="customer.last_name"
-            label="Last Name"
-            :rules="[(v) => !!v || 'Last name is required']"
-            required
-          />
-        </v-col>
+            <!-- Last Name -->
+            <v-col cols="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="customer.last_name"
+                label="Last Name"
+                :rules="[(v) => !!v || 'Last name is required']"
+                required
+              />
+            </v-col>
 
-        <!-- Primary Email -->
-        <v-col cols="6">
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="customer.primary_email"
-            label="Primary Email"
-            type="email"
-          />
-        </v-col>
+            <!-- Primary Email -->
+            <v-col cols="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="customer.primary_email"
+                label="Primary Email"
+                type="email"
+              />
+            </v-col>
 
-        <!-- Phone -->
-        <v-col cols="6">
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="phone"
-            label="Phone"
-            :rules="[
-              (v) => !!v || 'Phone number is required',
-              (v) => validatePhone() || 'Phone must start with 234'
-            ]"
-          />
-        </v-col>
+            <!-- Phone -->
+            <v-col cols="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="phone"
+                label="Phone"
+                :rules="[
+                  (v) => !!v || 'Phone number is required',
+                  (v) => validatePhone() || 'Phone must start with 234'
+                ]"
+              />
+            </v-col>
 
-        <!-- Account Number -->
-        <v-col cols="6">
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="customer.account_number"
-            label="Account Number"
-          />
-        </v-col>
+            <!-- Account Number -->
+            <v-col cols="6">
+              <v-text-field
+                variant="outlined"
+                color="#27bfa0"
+                v-model="customer.account_number"
+                label="Account Number"
+              />
+            </v-col>
 
-        <!-- Facility -->
-        <v-col cols="6">
-          <v-select
-            :disabled="isEditingCustomer"
-            variant="outlined"
-            color="#27bfa0"
-            v-model="customer.facility_id"
-            :items="facilities"
-            item-title="bank_name"
-            item-value="id"
-            label="Facility"
-            :rules="[(v) => !!v || 'Bank is required']"
-            required
-          />
-        </v-col>
+            <!-- Facility -->
+            <v-col cols="6">
+              <v-select
+                :disabled="isEditingCustomer"
+                variant="outlined"
+                color="#27bfa0"
+                v-model="customer.facility_id"
+                :items="facilities"
+                item-title="bank_name"
+                item-value="id"
+                label="Facility"
+                :rules="[(v) => !!v || 'Bank is required']"
+                required
+              />
+            </v-col>
 
-        <!-- Notification Preference -->
-        <v-col cols="6">
-          <v-select
-            v-model="customer.notification_preference"
-            :items="notificationOptions"
-            label="Notification Preference"
-            item-title="label"
-            item-value="value"
-            variant="outlined"
-            color="#27bfa0"
-            dense
-            class="mb-4 mt-4"
-          />
-        </v-col>
+            <!-- Notification Preference -->
+            <v-col cols="6">
+              <v-select
+                v-model="customer.notification_preference"
+                :items="notificationOptions"
+                label="Notification Preference"
+                item-title="label"
+                item-value="value"
+                variant="outlined"
+                color="#27bfa0"
+                dense
+                class="mb-4 mt-4"
+              />
+            </v-col>
 
-        <!-- Spacer to balance grid if needed -->
-        <v-col cols="6"></v-col>
+            <!-- Spacer to balance grid if needed -->
+            <v-col cols="6"></v-col>
 
-        <!-- Other Emails (Full width for better UX) -->
-        <v-col cols="12">
-          <v-combobox
-            v-model="customer.other_emails"
-            label="Other Emails"
-            multiple
-            chips
-            clearable
-            variant="outlined"
-            color="#27bfa0"
-            hint="Press enter after each email"
-            persistent-hint
-          />
-        </v-col>
-      </v-row>
+            <!-- Other Emails (Full width for better UX) -->
+            <v-col cols="12">
+              <v-combobox
+                v-model="customer.other_emails"
+                label="Other Emails"
+                multiple
+                chips
+                clearable
+                variant="outlined"
+                color="#27bfa0"
+                hint="Press enter after each email"
+                persistent-hint
+              />
+            </v-col>
+          </v-row>
 
-      <!-- Action Buttons -->
-      <div class="flex justify-end mt-6">
-        <v-btn text @click="closeModal">Cancel</v-btn>
-        <v-btn
-          color="green"
-          class="ml-3"
-          @click="submitCustomer"
-          :loading="loading"
-          :disabled="loading"
-        >
-          {{ isEditingCustomer ? 'Update' : 'Save' }}
-        </v-btn>
+          <!-- Action Buttons -->
+          <div class="flex justify-end mt-6">
+            <v-btn text @click="closeModal">Cancel</v-btn>
+            <v-btn
+              color="green"
+              class="ml-3"
+              @click="submitCustomer"
+              :loading="loading"
+              :disabled="loading"
+            >
+              {{ isEditingCustomer ? 'Update' : 'Save' }}
+            </v-btn>
+          </div>
+        </v-form>
       </div>
-    </v-form>
-  </div>
-</v-dialog>
-
+    </v-dialog>
   </MainLayout>
 </template>
 <style scoped>
