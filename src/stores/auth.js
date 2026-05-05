@@ -22,13 +22,13 @@ export const useAuthStore = defineStore('auth', () => {
     const storedRole = localStorage.getItem('role')
     const storedProfile = localStorage.getItem('profile')
 
-if (storedProfile) profile.value = JSON.parse(storedProfile)
-if (storedRole) {
-  role.value = storedRole
-} else {
-  role.value = 'viewer'
-}
-console.log('AUTH SET ROLE:', role.value)
+    if (storedProfile) profile.value = JSON.parse(storedProfile)
+    if (storedRole) {
+      role.value = storedRole
+    } else {
+      role.value = 'viewer'
+    }
+    console.log('AUTH SET ROLE:', role.value)
     if (storedUser) user.value = JSON.parse(storedUser)
     if (storedMerchant) merchant.value = JSON.parse(storedMerchant)
     if (storedToken) token.value = storedToken
@@ -37,18 +37,18 @@ console.log('AUTH SET ROLE:', role.value)
   }
 
   const setAuth = (u, m, p = null, t = null) => {
-  user.value = u
-  merchant.value = m
-  profile.value = p
-  token.value = t
+    user.value = u
+    merchant.value = m
+    profile.value = p
+    token.value = t
 
-  role.value = p?.role || 'viewer'
+    role.value = p?.role || 'viewer'
 
-  localStorage.setItem('user', JSON.stringify(u))
-  localStorage.setItem('merchant', JSON.stringify(m))
-  localStorage.setItem('profile', JSON.stringify(p))
-  localStorage.setItem('role', role.value)
-}
+    localStorage.setItem('user', JSON.stringify(u))
+    localStorage.setItem('merchant', JSON.stringify(m))
+    localStorage.setItem('profile', JSON.stringify(p))
+    localStorage.setItem('role', role.value)
+  }
 
   const setSelectedFacility = (facilityId) => {
     const found = facilities.value.find((f) => f.id === facilityId) || null
@@ -82,7 +82,7 @@ console.log('AUTH SET ROLE:', role.value)
   }
 
   const fetchFacilities = async () => {
-    const { data, error } = await supabase.rpc('get_merchant_facilities', {
+    const { data, error } = await supabase.rpc('get_merchant_facilities_v2', {
       p_merchant_id: merchant.value.id
     })
     console.log('merchant facillities:', data)
