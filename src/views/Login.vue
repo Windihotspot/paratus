@@ -49,70 +49,68 @@ const submitForm = async () => {
     userData.value = userResponse.user
 
     // 2. Fetch merchant details
-   let merchant = null
+    let merchant = null
 
-// 1. Try NEW system (profiles → merchant_id)
-const { data: profile, error: profileError } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('id', userData.value.id)
-  .single()
+    // 1. Try NEW system (profiles → merchant_id)
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userData.value.id)
+      .single()
     console.log('PROFILE FROM DB:', profile)
- const role = profile?.role || 'viewer'
+    const role = profile?.role || 'viewer'
 
-const roleRedirectMap = {
-  admin: '/dashboard',
-  staff: '/applications',
-  viewer: '/applications'
-}
+    const roleRedirectMap = {
+      admin: '/dashboard',
+      staff: '/applications',
+      viewer: '/applications'
+    }
 
-// fallback safety
-const targetRoute = roleRedirectMap[role]
+    // fallback safety
+    const targetRoute = roleRedirectMap[role]
 
-if (!profileError && profile?.merchant_id) {
-  const { data: m, error: merchantError } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('id', profile.merchant_id)
-    .single()
+    if (!profileError && profile?.merchant_id) {
+      const { data: m, error: merchantError } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('id', profile.merchant_id)
+        .single()
 
-  if (!merchantError) {
-    merchant = m
-  }
-}
+      if (!merchantError) {
+        merchant = m
+      }
+    }
 
-// 2. Fallback to OLD system (merchants.user_id)
-if (!merchant) {
-  const { data: legacyMerchant, error: legacyError } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('user_id', userData.value.id)
-    .single()
+    // 2. Fallback to OLD system (merchants.user_id)
+    if (!merchant) {
+      const { data: legacyMerchant, error: legacyError } = await supabase
+        .from('merchants')
+        .select('*')
+        .eq('user_id', userData.value.id)
+        .single()
 
-  if (!legacyError) {
-    merchant = legacyMerchant
-  }
-}
+      if (!legacyError) {
+        merchant = legacyMerchant
+      }
+    }
 
-// 3. Safety check
-if (!merchant) {
-  loginForm.value.errors.email = 'No merchant linked to this account'
-  return
-}
+    // 3. Safety check
+    if (!merchant) {
+      loginForm.value.errors.email = 'No merchant linked to this account'
+      return
+    }
 
     merchantData.value = merchant
 
     // 3. Fetch merchant facilities via RPC
     const { data: facilities, error: facilitiesError } = await supabase.rpc(
-      'get_merchant_facilities',
+      'get_merchant_facilities_v2',
       { p_merchant_id: merchant.id }
     )
 
     if (facilitiesError) {
       console.error('Facilities fetch error:', facilitiesError)
     }
-
-    
 
     // 4. Save everything into Pinia + localStorage
     authStore.setAuth(userData.value, merchant, profile)

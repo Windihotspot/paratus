@@ -199,8 +199,6 @@ const downloadLoanPDF = async (loan) => {
   pdfMake.createPdf(docDefinition).download(`${loan.customer_name || 'PoF'}.pdf`)
 }
 
-
-
 const disburseMenu = ref(false)
 
 const loan = ref({
@@ -215,7 +213,7 @@ const loan = ref({
 
 // const fetchFacilities = async () => {
 //   loading.value = true
-//   const { data, error } = await supabase.rpc('get_merchant_facilities', {
+//   const { data, error } = await supabase.rpc('get_merchant_facilities_v2', {
 //     p_merchant_id: merchantId
 //   })
 //   console.log('merchant facilities:', data)
@@ -417,8 +415,6 @@ const fetchCustomers = async () => {
   }
 }
 
-
-
 // fetch merchant loans
 const fetchLoans = async () => {
   loading.value = true
@@ -450,9 +446,7 @@ const formatLoanForExport = (loan) => {
   return {
     'Loan ID': loan.id,
     'Customer Name': loan.customer_name,
-    'Customer Emails': (loan.customer_emails || [])
-      .map(e => e.email)
-      .join(', '),
+    'Customer Emails': (loan.customer_emails || []).map((e) => e.email).join(', '),
     'Customer Phone': loan.customer_phone,
     'Account Number': loan.customer_account_number,
 
@@ -463,7 +457,7 @@ const formatLoanForExport = (loan) => {
 
     'Loan Amount': loan.loan_amount,
     'Agreed Rate (%)': loan.agreed_rate,
-    'Profit': loan.profit,
+    Profit: loan.profit,
     'Interest Payable': loan.interest_payable,
 
     'Tenure (Days)': loan.tenure_days,
@@ -471,7 +465,7 @@ const formatLoanForExport = (loan) => {
     'Expiry Date': loan.expiry_date,
 
     'Agent Name': loan.agent_name,
-    'Status': loan.status,
+    Status: loan.status,
 
     'Created At': loan.created_at
   }
@@ -512,7 +506,6 @@ const downloadAllLoansExcel = () => {
   )
 }
 
-
 const availableStatuses = computed(() => {
   const statuses = new Set(loans.value.map((l) => l.status || 'N/A'))
   return ['All', ...Array.from(statuses)]
@@ -522,8 +515,6 @@ const formatCurrency = (value) => {
   if (!value) return '₦0.00'
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
 }
-
-
 
 const selectedFacility = computed(() => authStore.selectedFacility)
 
@@ -697,12 +688,14 @@ const sendLoanSMS = async (loan) => {
 }
 
 const sendLoanEmail = async (loan) => {
-      // ✅ Build + deduplicate emails
+  // ✅ Build + deduplicate emails
   const allEmails = Array.from(
-    new Set([
-      loan.customer_email, // main email
-      ...(loan.customer_emails?.map(e => e.email) || [])
-    ].filter(Boolean)) // remove null/undefined
+    new Set(
+      [
+        loan.customer_email, // main email
+        ...(loan.customer_emails?.map((e) => e.email) || [])
+      ].filter(Boolean)
+    ) // remove null/undefined
   )
 
   if (allEmails.length === 0) {
@@ -728,7 +721,6 @@ const sendLoanEmail = async (loan) => {
       }
     )
 
-
     sendingEmail[loan.id] = true
 
     // ✅ Start full-page loading
@@ -739,7 +731,6 @@ const sendLoanEmail = async (loan) => {
     })
 
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
 
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-email-service',
@@ -783,12 +774,14 @@ const sendLoanEmail = async (loan) => {
 }
 
 const sendLoanKudiEmail = async (loan) => {
-     // ✅ Build + deduplicate emails
+  // ✅ Build + deduplicate emails
   const allEmails = Array.from(
-    new Set([
-      loan.customer_email, // main email
-      ...(loan.customer_emails?.map(e => e.email) || [])
-    ].filter(Boolean)) // remove null/undefined
+    new Set(
+      [
+        loan.customer_email, // main email
+        ...(loan.customer_emails?.map((e) => e.email) || [])
+      ].filter(Boolean)
+    ) // remove null/undefined
   )
 
   if (allEmails.length === 0) {
@@ -803,7 +796,7 @@ const sendLoanKudiEmail = async (loan) => {
   const emailsListStr = allEmails.join(', ')
   let loadingInstance = null
   try {
-     await ElMessageBox.confirm(
+    await ElMessageBox.confirm(
       `Send Email to ${loan.customer_name} (${emailsListStr})?`,
       'Confirm Email',
       {
@@ -823,7 +816,6 @@ const sendLoanKudiEmail = async (loan) => {
     })
 
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
 
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
@@ -1049,39 +1041,38 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                    <el-tooltip content="Send sms by Termii" placement="top">
-                       <button
-                    class="text-purple-600 hover:text-purple-900"
-                    :disabled="sendingSMS[loan.id]"
-                    @click="sendLoanSMS(loan)"
-                    title="Send SMS"
-                  >
-                    <i :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
-                  </button>
-                    </el-tooltip>
-                 
-                  <el-tooltip content="Send email by Termii" placement="top">
-                     <button
-                    class="text-indigo-600 hover:text-indigo-900"
-                    :disabled="sendingEmail[loan.id]"
-                    @click="sendLoanEmail(loan)"
-                    title="Send Email"
-                  >
-                    <i class="fas fa-envelope"></i>
-                  </button>
-                  </el-tooltip>
-                 
-                   <el-tooltip content="Send email by kudi" placement="top">
+                  <el-tooltip content="Send sms by Termii" placement="top">
                     <button
-                    class="text-green-600 hover:text-green-900"
-                    :disabled="sendingEmail[loan.id]"
-                    @click="sendLoanKudiEmail(loan)"
-                    title="Send Email"
-                  >
-                    <i class="fas fa-envelope"></i>
-                  </button>
-                   </el-tooltip>
-                  
+                      class="text-purple-600 hover:text-purple-900"
+                      :disabled="sendingSMS[loan.id]"
+                      @click="sendLoanSMS(loan)"
+                      title="Send SMS"
+                    >
+                      <i :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
+                    </button>
+                  </el-tooltip>
+
+                  <el-tooltip content="Send email by Termii" placement="top">
+                    <button
+                      class="text-indigo-600 hover:text-indigo-900"
+                      :disabled="sendingEmail[loan.id]"
+                      @click="sendLoanEmail(loan)"
+                      title="Send Email"
+                    >
+                      <i class="fas fa-envelope"></i>
+                    </button>
+                  </el-tooltip>
+
+                  <el-tooltip content="Send email by kudi" placement="top">
+                    <button
+                      class="text-green-600 hover:text-green-900"
+                      :disabled="sendingEmail[loan.id]"
+                      @click="sendLoanKudiEmail(loan)"
+                      title="Send Email"
+                    >
+                      <i class="fas fa-envelope"></i>
+                    </button>
+                  </el-tooltip>
 
                   <button
                     class="text-green-600 hover:text-green-900"

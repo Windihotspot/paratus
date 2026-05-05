@@ -79,7 +79,7 @@ const fetchBanks = async () => {
 // Fetch merchant facilities
 const fetchFacilities = async () => {
   loading.value = true
-  const { data, error } = await supabase.rpc('get_merchant_facilities', {
+  const { data, error } = await supabase.rpc('get_merchant_facilities_v2', {
     p_merchant_id: merchantId
   })
   console.log('facilities:', data)
