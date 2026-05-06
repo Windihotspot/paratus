@@ -15,6 +15,9 @@ const loading = ref(false)
 const formRef = ref(null)
 const valid = ref(false)
 
+const isEditingDrawdown = ref(false)
+const editingDrawdownId = ref(null)
+
 const formatCurrency = (value) => {
   if (!value) return '₦0.00'
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
@@ -243,25 +246,72 @@ const showDrawdownModal = ref(false)
 const selectedFacilityForDrawdown = ref(null)
 const drawdownForm = ref({ amount: null, date: null, date_obj: null })
 
-const openDrawdownModal = (facility) => {
+const openDrawdownModal = (facility, drawdown = null) => {
   selectedFacilityForDrawdown.value = facility
-  drawdownForm.value = { amount: null, date: null, date_obj: null }
+
+  if (drawdown) {
+    isEditingDrawdown.value = true
+    editingDrawdownId.value = drawdown.id
+
+    drawdownForm.value = {
+      amount: drawdown.amount,
+      date: drawdown.date,
+      date_obj: drawdown.date ? new Date(drawdown.date) : null
+    }
+  } else {
+    isEditingDrawdown.value = false
+    editingDrawdownId.value = null
+
+    drawdownForm.value = {
+      amount: null,
+      date: null,
+      date_obj: null
+    }
+  }
+
   showDrawdownModal.value = true
 }
-
+const formattedDrawdownAmount = useFormattedFields(drawdownForm, 'amount', {
+  currency: true
+})
 const submitDrawdown = async () => {
   try {
-    const { error } = await supabase.rpc('add_facility_drawdown', {
-      p_facility_id: selectedFacilityForDrawdown.value.id,
-      p_amount: drawdownForm.value.amount,
-      p_date: drawdownForm.value.date
-    })
+    let error
+
+    if (isEditingDrawdown.value && editingDrawdownId.value) {
+      // UPDATE
+      ;({ error } = await supabase.rpc('update_facility_drawdown', {
+        p_drawdown_id: editingDrawdownId.value,
+        p_amount: drawdownForm.value.amount,
+        p_date: drawdownForm.value.date
+      }))
+    } else {
+      // CREATE
+      ;({ error } = await supabase.rpc('add_facility_drawdown', {
+        p_facility_id: selectedFacilityForDrawdown.value.id,
+        p_amount: drawdownForm.value.amount,
+        p_date: drawdownForm.value.date
+      }))
+    }
+
     if (error) throw error
-    ElNotification({ title: 'Success', message: 'Drawdown added successfully', type: 'success' })
-    showDrawdownModal.value = false
+
+    ElNotification({
+      title: 'Success',
+      message: isEditingDrawdown.value
+        ? 'Drawdown updated successfully'
+        : 'Drawdown added successfully',
+      type: 'success'
+    })
+
+    closeDrawdownModal()
     await authStore.fetchFacilities()
   } catch (err) {
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message,
+      type: 'error'
+    })
   }
 }
 
@@ -275,6 +325,12 @@ const activeFacilities = computed(
 const totalDrawdowns = computed(
   () => facilities.value?.reduce((sum, f) => sum + (f.drawdowns?.length || 0), 0) || 0
 )
+
+const closeDrawdownModal = () => {
+  showDrawdownModal.value = false
+  isEditingDrawdown.value = false
+  editingDrawdownId.value = null
+}
 
 onMounted(() => {
   fetchBanks()
@@ -447,6 +503,7 @@ onMounted(() => {
                             <th>Date</th>
                             <th>Amount Received</th>
                             <th>Recorded At</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -459,6 +516,14 @@ onMounted(() => {
                             <td>{{ formatDate(drawdown.date) }}</td>
                             <td class="drawdown-amount">{{ formatCurrency(drawdown.amount) }}</td>
                             <td class="drawdown-created">{{ formatDate(drawdown.created_at) }}</td>
+                            <td>
+                              <button
+                                class="action-btn action-btn--edit"
+                                @click="openDrawdownModal(facility, drawdown)"
+                              >
+                                <i class="fas fa-pen"></i>
+                              </button>
+                            </td>
                           </tr>
                         </tbody>
                         <tfoot>
@@ -702,7 +767,9 @@ onMounted(() => {
               <i class="fa-solid fa-money-bill-wave"></i>
             </div>
             <div>
-              <h2 class="modal-title">Record Drawdown</h2>
+              <h2 class="modal-title">
+                {{ isEditingDrawdown ? 'Edit Drawdown' : 'Record Drawdown' }}
+              </h2>
               <p class="modal-subtitle">{{ selectedFacilityForDrawdown?.bank_name }}</p>
             </div>
           </div>
@@ -712,9 +779,8 @@ onMounted(() => {
         </div>
         <div class="modal-body">
           <v-text-field
-            v-model="drawdownForm.amount"
+            v-model="formattedDrawdownAmount"
             label="Amount Received"
-            type="number"
             variant="outlined"
             color="#27bfa0"
             class="mb-3"
