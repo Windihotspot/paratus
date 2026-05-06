@@ -351,7 +351,6 @@
               v-for="(d, idx) in selectedItem.drawdowns"
               :key="d.id"
               class="drawer-drawdown-card"
-              @click="openDrawdownDrawer(selectedItem, d)"
             >
               <div class="ddc-left">
                 <div class="ddc-index">#{{ idx + 1 }}</div>
