@@ -15,6 +15,11 @@ const sidebarItems = [
     icon: 'mdi-domain' // Building / Database icon
   },
   {
+    title: 'Facilities - Bank',
+    path: '/facilities-bank',
+    icon: 'mdi-domain' // Building / Database icon
+  },
+  {
     title: 'Applications',
     path: '/applications',
     icon: 'mdi-account-group' // Users icon
