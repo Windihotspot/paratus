@@ -30,13 +30,36 @@
             <div class="stat-label">Total Approved OD</div>
           </div>
         </div>
-        <div class="stat-card">
+        <!-- <div class="stat-card">
           <div class="stat-icon stat-icon--green">
             <i class="fa-solid fa-arrow-down-to-line"></i>
           </div>
           <div>
             <div class="stat-value">{{ formatCurrency(totalReceived) }}</div>
             <div class="stat-label">Total Received</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--purple">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+          </div>
+          <div>
+            <div class="stat-value">
+              {{ formatCurrency(totalDisbursedToCustomers) }}
+            </div>
+            <div class="stat-label">Disbursed To Customers</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--indigo">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+          <div>
+            <div class="stat-value">
+              {{ formatCurrency(totalAvailableDrawdownBalance) }}
+            </div>
+            <div class="stat-label">Available Drawdown Balance</div>
           </div>
         </div>
         <div class="stat-card">
@@ -47,7 +70,7 @@
             <div class="stat-value">{{ formatCurrency(totalCost) }}</div>
             <div class="stat-label">Total Cost</div>
           </div>
-        </div>
+        </div> -->
       </div>
 
       <!-- Loading -->
@@ -65,6 +88,8 @@
               <th>Bank</th>
               <th>Approved OD</th>
               <th>Total Received</th>
+              <th>Disbursed</th>
+              <th>Available</th>
               <th>Balance</th>
               <th>Rate</th>
               <th>Mgt Fee</th>
@@ -96,6 +121,15 @@
                 </td>
                 <td class="amount-cell">{{ formatCurrency(item.approved_amount) }}</td>
                 <td class="amount-cell">{{ formatCurrency(item.total_received) }}</td>
+                <td class="amount-cell">
+                  {{ formatCurrency(item.total_disbursed_to_customers) }}
+                </td>
+
+                <td>
+                  <span :class="item.available_drawdown_balance < 0 ? 'neg-amount' : 'pos-amount'">
+                    {{ formatCurrency(item.available_drawdown_balance) }}
+                  </span>
+                </td>
                 <td>
                   <span :class="item.balance < 0 ? 'neg-amount' : 'pos-amount'">
                     {{ formatCurrency(item.balance) }}
@@ -127,7 +161,7 @@
 
               <!-- Drawdown Expansion Row -->
               <tr v-if="isExpanded(item.id)" class="drawdown-expansion-row">
-                <td colspan="13" class="expansion-cell">
+                <td colspan="15" class="expansion-cell">
                   <div class="expansion-content">
                     <div class="drawdowns-header">
                       <i class="fa-solid fa-arrow-down-to-line"></i>
@@ -249,6 +283,26 @@
             <div class="dsummary-label">Total Received</div>
             <div class="dsummary-value">{{ formatCurrency(selectedItem.total_received) }}</div>
           </div>
+          <div class="dsummary-card dsummary-card--purple">
+            <div class="dsummary-label">Disbursed</div>
+            <div class="dsummary-value">
+              {{ formatCurrency(selectedItem.total_disbursed_to_customers) }}
+            </div>
+          </div>
+
+          <div
+            class="dsummary-card"
+            :class="
+              selectedItem.available_drawdown_balance < 0
+                ? 'dsummary-card--red'
+                : 'dsummary-card--indigo'
+            "
+          >
+            <div class="dsummary-label">Available</div>
+            <div class="dsummary-value">
+              {{ formatCurrency(selectedItem.available_drawdown_balance) }}
+            </div>
+          </div>
           <div
             class="dsummary-card"
             :class="selectedItem.balance < 0 ? 'dsummary-card--red' : 'dsummary-card--teal'"
@@ -288,6 +342,22 @@
             <div class="detail-row">
               <span class="detail-label">Expiry Date</span>
               <span class="detail-value">{{ formatDate(selectedItem.expiry_date) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Disbursed To Customers</span>
+              <span class="detail-value">
+                {{ formatCurrency(selectedItem.total_disbursed_to_customers) }}
+              </span>
+            </div>
+
+            <div class="detail-row">
+              <span class="detail-label">Available Drawdown Balance</span>
+              <span
+                class="detail-value"
+                :class="selectedItem.available_drawdown_balance < 0 ? 'neg-amount' : 'pos-amount'"
+              >
+                {{ formatCurrency(selectedItem.available_drawdown_balance) }}
+              </span>
             </div>
             <div class="detail-row">
               <span class="detail-label">Status</span>
@@ -472,12 +542,23 @@
               }}</span>
             </div>
             <div class="detail-row">
-              <span class="detail-label">Available Balance</span>
+              <span class="detail-label">Disbursed To Customers</span>
+              <span class="detail-value">
+                {{ formatCurrency(selectedDrawdownFacility.total_disbursed_to_customers) }}
+              </span>
+            </div>
+
+            <div class="detail-row">
+              <span class="detail-label">Available Drawdown Balance</span>
               <span
                 class="detail-value"
-                :class="selectedDrawdownFacility.balance < 0 ? 'neg-amount' : 'pos-amount'"
+                :class="
+                  selectedDrawdownFacility.available_drawdown_balance < 0
+                    ? 'neg-amount'
+                    : 'pos-amount'
+                "
               >
-                {{ formatCurrency(selectedDrawdownFacility.balance) }}
+                {{ formatCurrency(selectedDrawdownFacility.available_drawdown_balance) }}
               </span>
             </div>
           </div>
@@ -549,11 +630,18 @@ const totalReceived = computed(() =>
   odSummary.value.reduce((s, i) => s + (i.total_received || 0), 0)
 )
 const totalCost = computed(() => odSummary.value.reduce((s, i) => s + (i.total_cost || 0), 0))
+const totalDisbursedToCustomers = computed(() =>
+  odSummary.value.reduce((s, i) => s + (i.total_disbursed_to_customers || 0), 0)
+)
+
+const totalAvailableDrawdownBalance = computed(() =>
+  odSummary.value.reduce((s, i) => s + (i.available_drawdown_balance || 0), 0)
+)
 
 const fetchODSummary = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase.rpc('get_facility_od_summary_v2', {
+    const { data, error } = await supabase.rpc('get_facility_od_summary_v3', {
       p_merchant_id: merchantId
     })
     if (error) throw error
@@ -1362,5 +1450,24 @@ onMounted(() => {
     align-items: flex-start;
     gap: 12px;
   }
+}
+.stat-icon--purple {
+  background: #f3e8ff;
+  color: #9333ea;
+}
+
+.stat-icon--indigo {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.dsummary-card--purple {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+}
+
+.dsummary-card--indigo {
+  background: #eef2ff;
+  border-color: #c7d2fe;
 }
 </style>
