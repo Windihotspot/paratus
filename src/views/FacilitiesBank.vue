@@ -283,7 +283,7 @@
             <div class="dsummary-label">Total Received</div>
             <div class="dsummary-value">{{ formatCurrency(selectedItem.total_received) }}</div>
           </div>
-          <div class="dsummary-card dsummary-card--purple">
+          <!-- <div class="dsummary-card dsummary-card--purple">
             <div class="dsummary-label">Disbursed</div>
             <div class="dsummary-value">
               {{ formatCurrency(selectedItem.total_disbursed_to_customers) }}
@@ -313,7 +313,7 @@
           <div class="dsummary-card dsummary-card--amber">
             <div class="dsummary-label">Total Cost</div>
             <div class="dsummary-value">{{ formatCurrency(selectedItem.total_cost) }}</div>
-          </div>
+          </div> -->
         </div>
 
         <!-- Facility Info Section -->
@@ -641,7 +641,7 @@ const totalAvailableDrawdownBalance = computed(() =>
 const fetchODSummary = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase.rpc('get_facility_od_summary_v3', {
+    const { data, error } = await supabase.rpc('get_facility_od_summary_v2', {
       p_merchant_id: merchantId
     })
     if (error) throw error
