@@ -90,7 +90,7 @@
               <th>Total Received</th>
               <th>Disbursed</th>
               <th>Available</th>
-              <th>Balance</th>
+              <th>OD Balance</th>
               <th>Rate</th>
               <th>Mgt Fee</th>
               <th>VAT</th>
@@ -122,7 +122,7 @@
                 <td class="amount-cell">{{ formatCurrency(item.approved_amount) }}</td>
                 <td class="amount-cell">{{ formatCurrency(item.total_received) }}</td>
                 <td class="amount-cell">
-                  {{ formatCurrency(item.total_disbursed_to_customers) }}
+                  {{ formatCurrency(item.disbursed_to_customers) }}
                 </td>
 
                 <td>
@@ -177,7 +177,6 @@
                             <th>#</th>
                             <th>Date</th>
                             <th>Amount</th>
-                            <th>Days Outstanding</th>
                             <th>Interest Accrued</th>
                             <th>Actions</th>
                           </tr>
@@ -191,9 +190,6 @@
                             <td class="drawdown-index">{{ idx + 1 }}</td>
                             <td>{{ formatDate(drawdown.date) }}</td>
                             <td class="drawdown-amount">{{ formatCurrency(drawdown.amount) }}</td>
-                            <td>
-                              <span class="days-pill">{{ drawdown.days_outstanding }} days</span>
-                            </td>
                             <td class="drawdown-amount">{{ formatCurrency(drawdown.interest) }}</td>
                             <td>
                               <button
@@ -346,7 +342,7 @@
             <div class="detail-row">
               <span class="detail-label">Disbursed To Customers</span>
               <span class="detail-value">
-                {{ formatCurrency(selectedItem.total_disbursed_to_customers) }}
+                {{ formatCurrency(selectedItem.disbursed_to_customers) }}
               </span>
             </div>
 
@@ -641,9 +637,10 @@ const totalAvailableDrawdownBalance = computed(() =>
 const fetchODSummary = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase.rpc('get_facility_od_summary_v2', {
+    const { data, error } = await supabase.rpc('get_facility_od_summary_full', {
       p_merchant_id: merchantId
     })
+    console.log('od summary:', data)
     if (error) throw error
     odSummary.value = data || []
   } catch (err) {
