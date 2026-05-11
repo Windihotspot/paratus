@@ -57,65 +57,195 @@ const buildApplicationPDF = async (app: any) => {
 
   const statusMeta = getStatusMeta(app.application.status)
 
-  // ✅ FETCH KYC IMAGES
+  const safe = (value: any) => {
+    if (value === null || value === undefined || value === '') {
+      return 'Not Available'
+    }
+
+    return value
+  }
+
+  const formatLabel = (value: string) => {
+    return value?.replace(/_/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
+  // =========================
+  // FETCH KYC IMAGES
+  // =========================
   const kycImages = await Promise.all(
     (app.kyc_docs || []).map(async (doc: any) => {
       try {
         const base64 = await getBase64FromUrl(doc.file_path)
 
         return {
+          width: '33%',
           stack: [
             {
-              text: doc.doc_type.replace(/_/g, ' ').toUpperCase(),
-              fontSize: 8,
-              margin: [0, 0, 0, 4],
-              bold: true
+              text: formatLabel(doc.doc_type),
+              fontSize: 9,
+              bold: true,
+              margin: [0, 0, 0, 5],
+              color: '#1f2937'
             },
             {
               image: base64,
-              width: 100,
-              margin: [0, 0, 10, 10]
+              width: 140,
+              height: 100,
+              fit: [140, 100],
+              margin: [0, 0, 0, 4]
+            },
+            {
+              text: `Verified: ${doc.is_verified ? 'Yes' : 'No'}`,
+              fontSize: 8,
+              color: doc.is_verified ? 'green' : 'red'
+            },
+            {
+              text: `Uploaded: ${new Date(doc.uploaded_at).toLocaleString()}`,
+              fontSize: 7,
+              color: '#6b7280'
             }
           ]
         }
       } catch (e) {
         return {
-          text: `${doc.doc_type} (failed to load)`,
-          fontSize: 8,
-          color: 'red'
+          width: '33%',
+          stack: [
+            {
+              text: formatLabel(doc.doc_type),
+              bold: true,
+              fontSize: 9
+            },
+            {
+              text: 'Failed to load image',
+              color: 'red',
+              fontSize: 8
+            }
+          ]
         }
       }
     })
   )
 
+  const detailRow = (label: string, value: any) => ({
+    columns: [
+      {
+        text: label,
+        width: '38%',
+        bold: true,
+        color: '#374151'
+      },
+      {
+        text: safe(value),
+        width: '*',
+        color: '#111827'
+      }
+    ],
+    margin: [0, 2, 0, 2]
+  })
+
+  const section = (title: string, content: any[]) => [
+    {
+      text: title,
+      style: 'sectionTitle'
+    },
+    {
+      table: {
+        widths: ['*'],
+        body: [
+          [
+            {
+              stack: content,
+              margin: [10, 10, 10, 10]
+            }
+          ]
+        ]
+      },
+      layout: {
+        hLineColor: () => '#d1d5db',
+        vLineColor: () => '#d1d5db'
+      },
+      margin: [0, 0, 0, 14]
+    }
+  ]
+
   return {
+    pageSize: 'A4',
     pageMargins: [30, 40, 30, 40],
 
-    // ✅ WATERMARK
+    // =========================
+    // WATERMARK
+    // =========================
     background: (currentPage: any, pageSize: any) => ({
       image: logo,
-      width: 300,
-      opacity: 0.05,
+      width: 320,
+      opacity: 0.04,
       absolutePosition: {
-        x: (pageSize.width - 300) / 2,
-        y: (pageSize.height - 300) / 2
+        x: (pageSize.width - 320) / 2,
+        y: (pageSize.height - 320) / 2
       }
     }),
 
+    // =========================
+    // HEADER / FOOTER
+    // =========================
+    header: () => ({
+      margin: [30, 15, 30, 0],
+      columns: [
+        {
+          text: 'Application Report',
+          color: '#1f5aa3',
+          bold: true,
+          fontSize: 16
+        },
+        {
+          text: new Date().toLocaleDateString(),
+          alignment: 'right',
+          fontSize: 9,
+          color: '#6b7280'
+        }
+      ]
+    }),
+
+    footer: (currentPage: number, pageCount: number) => ({
+      margin: [30, 0, 30, 15],
+      columns: [
+        {
+          text: `Generated on ${new Date().toLocaleString()}`,
+          fontSize: 8,
+          color: '#6b7280'
+        },
+        {
+          text: `Page ${currentPage} of ${pageCount}`,
+          alignment: 'right',
+          fontSize: 8,
+          color: '#6b7280'
+        }
+      ]
+    }),
+
     content: [
-      // =====================
-      // HEADER
-      // =====================
+      // =========================
+      // TOP HEADER
+      // =========================
       {
         columns: [
           {
+            width: '*',
             stack: [
-              { text: 'Application Report', style: 'header' },
-              { text: app.full_name, style: 'subHeader' },
+              {
+                text: app.full_name,
+                style: 'mainHeader'
+              },
+              {
+                text: `Application ID: ${safe(app.application.id)}`,
+                fontSize: 9,
+                margin: [0, 4, 0, 0]
+              },
               {
                 text: `Status: ${statusMeta.label}`,
                 color: '#1d4ed8',
-                margin: [0, 2, 0, 0]
+                bold: true,
+                margin: [0, 4, 0, 0]
               }
             ]
           },
@@ -125,127 +255,144 @@ const buildApplicationPDF = async (app: any) => {
             alignment: 'right'
           }
         ],
-        margin: [0, 0, 0, 15]
+        margin: [0, 0, 0, 20]
       },
 
-      // =====================
+      // =========================
       // PERSONAL DETAILS
-      // =====================
-      { text: 'Personal Details', style: 'sectionTitle' },
+      // =========================
+      ...section('Personal Details', [
+        detailRow('First Name', app.application.first_name),
+        detailRow('Middle Name', app.application.middle_name),
+        detailRow('Last Name', app.application.last_name),
+        detailRow('Full Name', app.full_name),
+        detailRow('Email Address', app.application.email),
+        detailRow('Phone Number', app.application.phone_number),
+        detailRow('WhatsApp Number', app.application.whatsapp_number),
+        detailRow('BVN', app.application.bvn),
+        detailRow('NIN', app.application.nin),
+        detailRow('Date of Birth', app.application.date_of_birth),
+        detailRow('Sex', formatLabel(app.application.sex)),
+        detailRow('Religion', formatLabel(app.application.religion)),
+        detailRow('Marital Status', app.application.marital_status),
+        detailRow('Place of Birth', app.application.place_of_birth),
+        detailRow('State of Origin', app.application.state_of_origin),
+        detailRow('LGA of Origin', app.application.lga_of_origin),
+        detailRow("Mother's Maiden Name", app.application.mothers_maiden_name),
+        detailRow('BVN Phone Number', app.application.bvn_phone_number),
+        detailRow('BVN Phone Accessible', app.application.bvn_phone_accessible ? 'Yes' : 'No')
+      ]),
 
-      {
-        columns: [
-          [
-            `First Name: ${app.application.first_name}`,
-            `Middle Name: ${app.application.middle_name}`,
-            `Last Name: ${app.application.last_name}`,
-            `Email: ${app.application.email}`,
-            `Phone: ${app.application.phone_number}`,
-            `DOB: ${app.application.date_of_birth}`,
-            `Sex: ${app.application.sex}`,
-            `Religion: ${app.application.religion}`
-          ],
-          [
-            `NIN: ${app.application.nin}`,
-            `State: ${app.application.state_of_origin}`,
-            `LGA: ${app.application.lga_of_origin}`,
-            `Place of Birth: ${app.application.place_of_birth}`,
-            `Mother's Maiden Name: ${app.application.mothers_maiden_name}`
-          ]
-        ],
-        margin: [0, 0, 0, 10]
-      },
+      // =========================
+      // ADDRESS DETAILS
+      // =========================
+      ...section('Residential Address', [
+        detailRow('Full Address', app.address?.full_address),
+        detailRow('Town / Village', app.address?.town_village),
+        detailRow('State', app.address?.state),
+        detailRow('LGA', app.address?.lga),
+        detailRow('LGA of Residence', app.address?.lga_of_residence),
+        detailRow('Nearest Landmark', app.address?.nearest_landmark),
+        detailRow('Bus Stop Description', app.address?.bus_stop_description),
+        detailRow('Building Type', formatLabel(app.address?.building_type)),
+        detailRow('Gate Color', app.address?.gate_color),
+        detailRow('Roof Color', app.address?.roof_color)
+      ]),
 
-      // =====================
-      // ADDRESS
-      // =====================
-      { text: 'Address', style: 'sectionTitle' },
+      // =========================
+      // EMPLOYMENT DETAILS
+      // =========================
+      ...section('Employment Information', [
+        detailRow('Employment Status', formatLabel(app.employment?.employment_status)),
+        detailRow('Employer Name', app.employment?.employer_name),
+        detailRow('Employer Address', app.employment?.employer_address),
+        detailRow('School Name', app.employment?.school_name),
+        detailRow('Business Type', app.employment?.business_type),
+        detailRow('Business Location', app.employment?.business_location),
+        detailRow('Additional Information', app.employment?.additional_info)
+      ]),
 
-      {
-        text: `
-Full Address: ${app.address?.full_address}
-Town: ${app.address?.town_village}
-State: ${app.address?.state}
-Landmark: ${app.address?.nearest_landmark}
-Bus Stop: ${app.address?.bus_stop_description}
-Building Type: ${app.address?.building_type}
-        `,
-        margin: [0, 0, 0, 10]
-      },
-
-      // =====================
-      // EMPLOYMENT
-      // =====================
-      { text: 'Employment', style: 'sectionTitle' },
-
-      {
-        text: `
-Status: ${app.employment?.employment_status}
-Employer: ${app.employment?.employer_name}
-Business Type: ${app.employment?.business_type}
-Info: ${app.employment?.additional_info}
-        `,
-        margin: [0, 0, 0, 10]
-      },
-
-      // =====================
+      // =========================
       // NEXT OF KIN
-      // =====================
-      { text: 'Next of Kin', style: 'sectionTitle' },
+      // =========================
+      ...section('Next of Kin', [
+        detailRow('Full Name', app.next_of_kin?.full_name),
+        detailRow('Phone Number', app.next_of_kin?.phone_number),
+        detailRow('WhatsApp Number', app.next_of_kin?.whatsapp_number),
+        detailRow('Relationship', formatLabel(app.next_of_kin?.relationship)),
+        detailRow('Date of Birth', app.next_of_kin?.date_of_birth),
+        detailRow('Place of Birth', app.next_of_kin?.place_of_birth),
+        detailRow('Address', app.next_of_kin?.address)
+      ]),
 
+      // =========================
+      // FACILITY REQUEST
+      // =========================
+      ...section('Facility Request', [
+        detailRow('POF Facility', app.application?.pof_facility),
+        detailRow(
+          'Amount Requested',
+          app.application?.pof_amount_requested
+            ? `₦${Number(app.application?.pof_amount_requested).toLocaleString()}`
+            : null
+        ),
+        detailRow('Proof of Facility', app.application?.proof_of_facility),
+        detailRow('Submitted At', app.application?.submitted_at),
+        detailRow('Approved At', app.application?.approved_at),
+        detailRow('Rejected At', app.application?.rejected_at),
+        detailRow('Rejection Reason', app.application?.rejection_reason)
+      ]),
+
+      // =========================
+      // BANK DETAILS
+      // =========================
+      ...section('Bank Details', [
+        detailRow('Bank Name', app.application?.bank_name),
+        detailRow('Account Name', app.application?.account_name),
+        detailRow('Account Number', app.application?.account_number),
+        detailRow('Account Issued At', app.application?.account_issued_at)
+      ]),
+
+      // =========================
+      // KYC DOCUMENTS
+      // =========================
       {
-        text: `
-Name: ${app.next_of_kin?.full_name}
-Phone: ${app.next_of_kin?.phone_number}
-Relationship: ${app.next_of_kin?.relationship}
-Address: ${app.next_of_kin?.address}
-        `,
-        margin: [0, 0, 0, 10]
+        text: 'KYC Documents',
+        style: 'sectionTitle'
       },
 
-      // =====================
-      // KYC DOCUMENTS (IMAGES)
-      // =====================
-      { text: 'KYC Documents', style: 'sectionTitle' },
-
-      {
-        columns: kycImages.length ? kycImages : [{ text: 'No documents' }],
-        margin: [0, 0, 0, 10]
-      },
-
-      // =====================
-      // FOOTER NOTE
-      // =====================
-      {
-        text: `Generated on ${new Date().toLocaleString()}`,
-        style: 'footer',
-        alignment: 'right',
-        margin: [0, 20, 0, 0]
-      }
+      kycImages.length
+        ? {
+            columns: kycImages,
+            columnGap: 10,
+            margin: [0, 0, 0, 15]
+          }
+        : {
+            text: 'No KYC documents uploaded',
+            italics: true,
+            color: '#6b7280',
+            margin: [0, 0, 0, 15]
+          }
     ],
 
     styles: {
-      header: {
-        fontSize: 18,
+      mainHeader: {
+        fontSize: 20,
         bold: true,
-        color: '#1f5aa3'
+        color: '#111827'
       },
-      subHeader: {
+
+      sectionTitle: {
         fontSize: 12,
         bold: true,
-        margin: [0, 4, 0, 0]
-      },
-      sectionTitle: {
-        fontSize: 11,
-        bold: true,
         color: '#1f5aa3',
-        margin: [0, 8, 0, 4]
-      },
-      footer: {
-        fontSize: 9,
-        italics: true,
-        color: '#9ca3af'
+        margin: [0, 10, 0, 6]
       }
+    },
+
+    defaultStyle: {
+      fontSize: 9,
+      lineHeight: 1.3
     }
   }
 }
