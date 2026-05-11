@@ -188,23 +188,23 @@ const buildApplicationPDF = async (app: any) => {
     // =========================
     // HEADER / FOOTER
     // =========================
-    header: () => ({
-      margin: [30, 15, 30, 0],
-      columns: [
-        {
-          text: 'Application Report',
-          color: '#1f5aa3',
-          bold: true,
-          fontSize: 16
-        },
-        {
-          text: new Date().toLocaleDateString(),
-          alignment: 'right',
-          fontSize: 9,
-          color: '#6b7280'
-        }
-      ]
-    }),
+    // header: () => ({
+    //   margin: [30, 15, 30, 0],
+    //   columns: [
+    //     {
+    //       text: 'Application Report',
+    //       color: '#1f5aa3',
+    //       bold: true,
+    //       fontSize: 16
+    //     },
+    //     {
+    //       text: new Date().toLocaleDateString(),
+    //       alignment: 'right',
+    //       fontSize: 9,
+    //       color: '#6b7280'
+    //     }
+    //   ]
+    // }),
 
     footer: (currentPage: number, pageCount: number) => ({
       margin: [30, 0, 30, 15],
