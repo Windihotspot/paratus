@@ -96,7 +96,6 @@
               <th>VAT</th>
               <th>Other Fees</th>
               <th>Security</th>
-              <th>Interest</th>
               <th>Total Cost</th>
               <th class="text-center">View</th>
             </tr>
@@ -142,7 +141,6 @@
                 <td>{{ formatCurrency(item.vat_on_mgt_fee) }}</td>
                 <td>{{ formatCurrency(item.other_fees_amount) }}</td>
                 <td>{{ formatCurrency(item.security_deposit_amount) }}</td>
-                <td class="amount-cell">{{ formatCurrency(item.interest_accrued) }}</td>
                 <td>
                   <span class="total-cost-value">{{ formatCurrency(item.total_cost) }}</span>
                 </td>
@@ -176,8 +174,13 @@
                           <tr>
                             <th>#</th>
                             <th>Date</th>
+                            <th>Days</th>
                             <th>Amount</th>
-                            <th>Interest Accrued</th>
+                            <th>Mgt Fee</th>
+                            <th>VAT</th>
+                            <th>Other Fees</th>
+                            <th>Security</th>
+                            <th>Total Cost</th>
                             <th>Actions</th>
                           </tr>
                         </thead>
@@ -189,8 +192,30 @@
                           >
                             <td class="drawdown-index">{{ idx + 1 }}</td>
                             <td>{{ formatDate(drawdown.date) }}</td>
+                            <td>
+                              <span class="days-pill">{{ drawdown.days_outstanding }}d</span>
+                            </td>
                             <td class="drawdown-amount">{{ formatCurrency(drawdown.amount) }}</td>
-                            <td class="drawdown-amount">{{ formatCurrency(drawdown.interest) }}</td>
+                            <td class="drawdown-amount">
+                              {{ formatCurrency(drawdown.management_fee) }}
+                            </td>
+                            <td class="drawdown-amount">
+                              {{ formatCurrency(drawdown.vat_on_mgt_fee) }}
+                            </td>
+                            <td class="drawdown-amount">
+                              {{ formatCurrency(drawdown.other_fees) }}
+                            </td>
+                            <td class="drawdown-amount">
+                              {{ formatCurrency(drawdown.security_deposit) }}
+                            </td>
+                            <!-- <td class="drawdown-amount interest-val">
+                              {{ formatCurrency(drawdown.interest) }}
+                            </td> -->
+                            <td>
+                              <span class="total-cost-value">{{
+                                formatCurrency(drawdown.total_cost)
+                              }}</span>
+                            </td>
                             <td>
                               <button
                                 class="action-btn action-btn--view"
@@ -205,6 +230,7 @@
                         <tfoot>
                           <tr class="drawdown-total-row">
                             <td colspan="2" class="total-label">Totals</td>
+                            <td></td>
                             <td class="total-amount">
                               {{
                                 formatCurrency(
@@ -212,11 +238,41 @@
                                 )
                               }}
                             </td>
-                            <td></td>
                             <td class="total-amount">
                               {{
                                 formatCurrency(
-                                  item.drawdowns.reduce((s, d) => s + (d.interest || 0), 0)
+                                  item.drawdowns.reduce((s, d) => s + (d.management_fee || 0), 0)
+                                )
+                              }}
+                            </td>
+                            <td class="total-amount">
+                              {{
+                                formatCurrency(
+                                  item.drawdowns.reduce((s, d) => s + (d.vat_on_mgt_fee || 0), 0)
+                                )
+                              }}
+                            </td>
+                            <td class="total-amount">
+                              {{
+                                formatCurrency(
+                                  item.drawdowns.reduce((s, d) => s + (d.other_fees || 0), 0)
+                                )
+                              }}
+                            </td>
+                            <td class="total-amount">
+                              {{
+                                formatCurrency(
+                                  item.drawdowns.reduce((s, d) => s + (d.security_deposit || 0), 0)
+                                )
+                              }}
+                            </td>
+                            <!-- <td class="total-amount interest-val">
+      {{ formatCurrency(item.drawdowns.reduce((s, d) => s + (d.interest || 0), 0)) }}
+    </td> -->
+                            <td class="total-amount">
+                              {{
+                                formatCurrency(
+                                  item.drawdowns.reduce((s, d) => s + (d.total_cost || 0), 0)
                                 )
                               }}
                             </td>
@@ -270,7 +326,8 @@
         </div>
 
         <!-- Summary Cards -->
-        <div class="drawer-summary-grid">
+        <!-- FIXED — facility drawer uses selectedItem -->
+        <div class="drawer-summary-grid" style="grid-template-columns: 1fr 1fr">
           <div class="dsummary-card dsummary-card--blue">
             <div class="dsummary-label">Approved OD</div>
             <div class="dsummary-value">{{ formatCurrency(selectedItem.approved_amount) }}</div>
@@ -279,37 +336,14 @@
             <div class="dsummary-label">Total Received</div>
             <div class="dsummary-value">{{ formatCurrency(selectedItem.total_received) }}</div>
           </div>
-          <!-- <div class="dsummary-card dsummary-card--purple">
-            <div class="dsummary-label">Disbursed</div>
-            <div class="dsummary-value">
-              {{ formatCurrency(selectedItem.total_disbursed_to_customers) }}
-            </div>
-          </div>
-
-          <div
-            class="dsummary-card"
-            :class="
-              selectedItem.available_drawdown_balance < 0
-                ? 'dsummary-card--red'
-                : 'dsummary-card--indigo'
-            "
-          >
-            <div class="dsummary-label">Available</div>
-            <div class="dsummary-value">
-              {{ formatCurrency(selectedItem.available_drawdown_balance) }}
-            </div>
-          </div>
-          <div
-            class="dsummary-card"
-            :class="selectedItem.balance < 0 ? 'dsummary-card--red' : 'dsummary-card--teal'"
-          >
-            <div class="dsummary-label">Balance</div>
-            <div class="dsummary-value">{{ formatCurrency(selectedItem.balance) }}</div>
-          </div>
-          <div class="dsummary-card dsummary-card--amber">
+          <!-- <div class="dsummary-card dsummary-card--amber">
+            <div class="dsummary-label">Interest Accrued</div>
+            <div class="dsummary-value">{{ formatCurrency(selectedItem.interest_accrued) }}</div>
+          </div> -->
+          <div class="dsummary-card dsummary-card--red">
             <div class="dsummary-label">Total Cost</div>
             <div class="dsummary-value">{{ formatCurrency(selectedItem.total_cost) }}</div>
-          </div> -->
+          </div>
         </div>
 
         <!-- Facility Info Section -->
@@ -365,17 +399,16 @@
         </div>
 
         <!-- Cost Breakdown Section -->
+        <!-- FIXED — facility cost breakdown uses selectedItem -->
         <div class="drawer-section">
           <div class="drawer-section-title"><i class="fa-solid fa-receipt"></i> Cost Breakdown</div>
           <div class="cost-breakdown">
             <div class="cost-row">
-              <span class="cost-label"
-                >Management Fee ({{ selectedItem.management_fee_percent }}%)</span
-              >
+              <span class="cost-label">Management Fee</span>
               <span class="cost-val">{{ formatCurrency(selectedItem.management_fee) }}</span>
             </div>
             <div class="cost-row">
-              <span class="cost-label">VAT on Mgt Fee ({{ selectedItem.vat_percent }}%)</span>
+              <span class="cost-label">VAT on Mgt Fee</span>
               <span class="cost-val">{{ formatCurrency(selectedItem.vat_on_mgt_fee) }}</span>
             </div>
             <div class="cost-row">
@@ -383,17 +416,19 @@
               <span class="cost-val">{{ formatCurrency(selectedItem.other_fees_amount) }}</span>
             </div>
             <div class="cost-row">
-              <span class="cost-label">Security Deposit</span>
+              <span class="cost-label">
+                Security Deposit <span class="asset-tag">asset</span>
+              </span>
               <span class="cost-val">{{
                 formatCurrency(selectedItem.security_deposit_amount)
               }}</span>
             </div>
-            <div class="cost-row">
+            <!-- <div class="cost-row">
               <span class="cost-label">Interest Accrued</span>
               <span class="cost-val interest-val">{{
                 formatCurrency(selectedItem.interest_accrued)
               }}</span>
-            </div>
+            </div> -->
             <div class="cost-row cost-row--total">
               <span class="cost-label">Total Cost</span>
               <span class="cost-val total-val">{{ formatCurrency(selectedItem.total_cost) }}</span>
@@ -485,10 +520,10 @@
             <div class="dsummary-label">Amount Drawn</div>
             <div class="dsummary-value">{{ formatCurrency(selectedDrawdown.amount) }}</div>
           </div>
-          <div class="dsummary-card dsummary-card--amber">
+          <!-- <div class="dsummary-card dsummary-card--amber">
             <div class="dsummary-label">Interest Accrued</div>
             <div class="dsummary-value">{{ formatCurrency(selectedDrawdown.interest) }}</div>
-          </div>
+          </div> -->
         </div>
 
         <div class="drawer-section">
@@ -569,6 +604,7 @@ import { ref, onMounted, computed } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/services/supabase.js'
+import { useFormattedFields } from '@/composables/useFormmatedFields'
 
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
@@ -637,7 +673,7 @@ const totalAvailableDrawdownBalance = computed(() =>
 const fetchODSummary = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase.rpc('get_facility_od_summary_full', {
+    const { data, error } = await supabase.rpc('get_facility_drawdown_od_summary_full', {
       p_merchant_id: merchantId
     })
     console.log('od summary:', data)
@@ -649,7 +685,25 @@ const fetchODSummary = async () => {
     loading.value = false
   }
 }
+// expanded drawdown form
+const drawdownForm = ref({
+  amount: null,
+  date: null,
+  date_obj: null,
+  management_fee_percent: 0,
+  vat_percent: 7.5,
+  other_fees: 0,
+  security_deposit: 0,
+  tenure_days: null
+})
 
+const formattedDrawdownAmount = useFormattedFields(drawdownForm, 'amount', { currency: true })
+const formattedDrawdownOtherFees = useFormattedFields(drawdownForm, 'other_fees', {
+  currency: true
+})
+const formattedDrawdownSecurityDeposit = useFormattedFields(drawdownForm, 'security_deposit', {
+  currency: true
+})
 onMounted(() => {
   fetchODSummary()
 })
@@ -657,7 +711,19 @@ onMounted(() => {
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-
+.asset-tag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #eff6ff;
+  color: #3b82f6;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
 .facilities-page {
   padding: 24px;
   min-height: 100vh;

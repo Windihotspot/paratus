@@ -244,7 +244,24 @@ watch(
 
 const showDrawdownModal = ref(false)
 const selectedFacilityForDrawdown = ref(null)
-const drawdownForm = ref({ amount: null, date: null, date_obj: null })
+// expanded drawdown form
+const drawdownForm = ref({
+  amount: null,
+  date: null,
+  date_obj: null,
+  management_fee_percent: 0,
+  vat_percent: 7.5,
+  other_fees: 0,
+  security_deposit: 0,
+  tenure_days: null
+})
+
+const formattedDrawdownOtherFees = useFormattedFields(drawdownForm, 'other_fees', {
+  currency: true
+})
+const formattedDrawdownSecurityDeposit = useFormattedFields(drawdownForm, 'security_deposit', {
+  currency: true
+})
 
 const openDrawdownModal = (facility, drawdown = null) => {
   selectedFacilityForDrawdown.value = facility
@@ -274,23 +291,32 @@ const openDrawdownModal = (facility, drawdown = null) => {
 const formattedDrawdownAmount = useFormattedFields(drawdownForm, 'amount', {
   currency: true
 })
+// updated submitDrawdown — pass all fields
 const submitDrawdown = async () => {
   try {
     let error
 
     if (isEditingDrawdown.value && editingDrawdownId.value) {
-      // UPDATE
       ;({ error } = await supabase.rpc('update_facility_drawdown', {
         p_drawdown_id: editingDrawdownId.value,
         p_amount: drawdownForm.value.amount,
-        p_date: drawdownForm.value.date
+        p_date: drawdownForm.value.date,
+        p_management_fee_percent: drawdownForm.value.management_fee_percent,
+        p_vat_percent: drawdownForm.value.vat_percent,
+        p_other_fees: drawdownForm.value.other_fees,
+        p_security_deposit: drawdownForm.value.security_deposit,
+        p_tenure_days: drawdownForm.value.tenure_days
       }))
     } else {
-      // CREATE
       ;({ error } = await supabase.rpc('add_facility_drawdown', {
         p_facility_id: selectedFacilityForDrawdown.value.id,
         p_amount: drawdownForm.value.amount,
-        p_date: drawdownForm.value.date
+        p_date: drawdownForm.value.date,
+        p_management_fee_percent: drawdownForm.value.management_fee_percent,
+        p_vat_percent: drawdownForm.value.vat_percent,
+        p_other_fees: drawdownForm.value.other_fees,
+        p_security_deposit: drawdownForm.value.security_deposit,
+        p_tenure_days: drawdownForm.value.tenure_days
       }))
     }
 
@@ -298,20 +324,30 @@ const submitDrawdown = async () => {
 
     ElNotification({
       title: 'Success',
-      message: isEditingDrawdown.value
-        ? 'Drawdown updated successfully'
-        : 'Drawdown added successfully',
+      message: isEditingDrawdown.value ? 'Drawdown updated' : 'Drawdown added',
       type: 'success'
     })
-
     closeDrawdownModal()
     await authStore.fetchFacilities()
   } catch (err) {
-    ElNotification({
-      title: 'Error',
-      message: err.message,
-      type: 'error'
-    })
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  }
+}
+
+// reset all fields on close
+const closeDrawdownModal = () => {
+  showDrawdownModal.value = false
+  isEditingDrawdown.value = false
+  editingDrawdownId.value = null
+  drawdownForm.value = {
+    amount: null,
+    date: null,
+    date_obj: null,
+    management_fee_percent: 0,
+    vat_percent: 7.5,
+    other_fees: 0,
+    security_deposit: 0,
+    tenure_days: null
   }
 }
 
@@ -326,11 +362,11 @@ const totalDrawdowns = computed(
   () => facilities.value?.reduce((sum, f) => sum + (f.drawdowns?.length || 0), 0) || 0
 )
 
-const closeDrawdownModal = () => {
-  showDrawdownModal.value = false
-  isEditingDrawdown.value = false
-  editingDrawdownId.value = null
-}
+// const closeDrawdownModal = () => {
+//   showDrawdownModal.value = false
+//   isEditingDrawdown.value = false
+//   editingDrawdownId.value = null
+// }
 
 onMounted(() => {
   fetchBanks()
@@ -759,7 +795,7 @@ onMounted(() => {
     </v-dialog>
 
     <!-- ─── Drawdown Modal ─── -->
-    <v-dialog v-model="showDrawdownModal" max-width="480px">
+    <v-dialog v-model="showDrawdownModal" max-width="600px">
       <div class="modal-card">
         <div class="modal-header">
           <div class="modal-title-group">
@@ -773,43 +809,102 @@ onMounted(() => {
               <p class="modal-subtitle">{{ selectedFacilityForDrawdown?.bank_name }}</p>
             </div>
           </div>
-          <button class="modal-close" @click="showDrawdownModal = false">
+          <button class="modal-close" @click="closeDrawdownModal">
             <i class="fas fa-times"></i>
           </button>
         </div>
+
         <div class="modal-body">
-          <v-text-field
-            v-model="formattedDrawdownAmount"
-            label="Amount Received"
-            variant="outlined"
-            color="#27bfa0"
-            class="mb-3"
-          />
-          <v-menu v-model="disburseMenu" :close-on-content-click="false">
-            <template #activator="{ props }">
+          <!-- Section 1: Core -->
+          <div class="form-section-label">Drawdown Info</div>
+          <v-row>
+            <v-col cols="12" md="6">
               <v-text-field
-                v-bind="props"
-                :model-value="drawdownForm.date"
-                label="Drawdown Date"
-                readonly
+                v-model="formattedDrawdownAmount"
+                label="Amount Received"
                 variant="outlined"
                 color="#27bfa0"
               />
-            </template>
-            <v-date-picker
-              :model-value="drawdownForm.date_obj"
-              @update:model-value="
-                (val) => {
-                  drawdownForm.date_obj = val
-                  drawdownForm.date = val.toISOString().split('T')[0]
-                  disburseMenu = false
-                }
-              "
-            />
-          </v-menu>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-menu v-model="disburseMenu" :close-on-content-click="false">
+                <template #activator="{ props }">
+                  <v-text-field
+                    v-bind="props"
+                    :model-value="drawdownForm.date"
+                    label="Drawdown Date"
+                    readonly
+                    variant="outlined"
+                    color="#27bfa0"
+                  />
+                </template>
+                <v-date-picker
+                  :model-value="drawdownForm.date_obj"
+                  @update:model-value="
+                    (val) => {
+                      drawdownForm.date_obj = val
+                      drawdownForm.date = val.toISOString().split('T')[0]
+                      disburseMenu = false
+                    }
+                  "
+                />
+              </v-menu>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="drawdownForm.tenure_days"
+                label="Tenure (Days)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+          </v-row>
+
+          <!-- Section 2: Fees -->
+          <div class="form-section-label" style="margin-top: 8px">Fees & Deposits</div>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="drawdownForm.management_fee_percent"
+                label="Management Fee (%)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="drawdownForm.vat_percent"
+                label="VAT (%)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formattedDrawdownOtherFees"
+                label="Other Fees"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formattedDrawdownSecurityDeposit"
+                label="Security Deposit"
+                variant="outlined"
+                color="#27bfa0"
+              />
+            </v-col>
+          </v-row>
+
           <div class="modal-actions">
-            <button class="btn-cancel" @click="showDrawdownModal = false">Cancel</button>
-            <button class="btn-save" @click="submitDrawdown">Save Drawdown</button>
+            <button class="btn-cancel" @click="closeDrawdownModal">Cancel</button>
+            <button class="btn-save" @click="submitDrawdown">
+              {{ isEditingDrawdown ? 'Update Drawdown' : 'Save Drawdown' }}
+            </button>
           </div>
         </div>
       </div>
