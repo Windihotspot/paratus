@@ -77,7 +77,7 @@ const goTo = (url) => {
 </script>
 
 <template>
-  <div class="side-bar mt-4 d-flex flex-column h-full justify-between overflow-hidden">
+  <div class="side-bar mt-4 d-flex flex-column h-full justify-between">
     <!-- Logo part -->
     <!-- <div class="logo pa-4">
       <img src="/src/assets/images/white.png" class="" />
@@ -101,7 +101,7 @@ const goTo = (url) => {
     </div>
 
     <!-- Navigation -->
-    <div class="flex-grow mt-4">
+    <div class="flex-1 mt-4 overflow-y-auto">
       <v-list class="pa-4">
         <template v-for="(item, i) in filteredMenu" :key="i">
           <v-list-item
