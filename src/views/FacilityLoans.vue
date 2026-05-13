@@ -25,7 +25,7 @@ const statusOptions = ['All', 'active', 'completed', 'defaulted', 'overdue']
 const fetchLoans = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase.rpc('fetch_loans_to_facility', {
+    const { data, error } = await supabase.rpc('fetch_loans_to_facility_v1', {
       p_merchant_id: merchantId,
       p_facility_id: authStore.selectedFacility?.id || null
     })
@@ -192,7 +192,7 @@ onMounted(() => {
       <div class="filters-row">
         <v-text-field
           v-model="searchQuery"
-          placeholder="Search customer, bank, agent..."
+          placeholder="Search a loan record"
           density="compact"
           hide-details
           variant="outlined"
@@ -241,7 +241,7 @@ onMounted(() => {
                 {{ group.loans.length }} loan record{{ group.loans.length > 1 ? 's' : '' }}
               </div>
             </div>
-            <div class="bank-group-totals">
+            <!-- <div class="bank-group-totals">
               <span class="bgt-item">
                 <span class="bgt-label">Sales</span>
                 <span class="bgt-val bgt-val--green">{{
@@ -260,7 +260,7 @@ onMounted(() => {
                   formatCurrency(bankTotals(group.loans).total_gross_profit)
                 }}</span>
               </span>
-            </div>
+            </div> -->
           </div>
 
           <!-- Loans table -->
@@ -279,7 +279,6 @@ onMounted(() => {
                   <th class="col-green">Sales Amount</th>
                   <th class="col-amber">Direct Cost</th>
                   <th class="col-blue">Gross Profit</th>
-                  <th>Margin</th>
                   <th>Status</th>
                   <th>View</th>
                 </tr>
@@ -327,7 +326,7 @@ onMounted(() => {
                   <td class="col-green font-medium">{{ formatCurrency(l.sales_amount) }}</td>
                   <td class="col-amber font-medium">{{ formatCurrency(l.direct_cost) }}</td>
                   <td class="col-blue font-medium">{{ formatCurrency(l.gross_profit) }}</td>
-                  <td>
+                  <!-- <td>
                     <span
                       :class="[
                         'margin-pill',
@@ -336,7 +335,7 @@ onMounted(() => {
                     >
                       {{ profitMargin(l) }}%
                     </span>
-                  </td>
+                  </td> -->
                   <td>
                     <span
                       :class="{
@@ -547,7 +546,6 @@ onMounted(() => {
             </div>
             <div class="cb-row">
               <span class="cb-lbl">Interest Payable</span>
-              <span class="cb-formula">(charged to customer)</span>
               <span class="cb-val">{{ formatCurrency(selectedLoan.interest_payable) }}</span>
             </div>
           </div>
@@ -569,10 +567,10 @@ onMounted(() => {
               <span class="ds-lbl">Bank Rate</span
               ><span class="ds-val col-amber">{{ selectedLoan.bank_rate }}%</span>
             </div>
-            <div class="ds-row">
+            <!-- <div class="ds-row">
               <span class="ds-lbl">Mgt Fee %</span
               ><span class="ds-val">{{ selectedLoan.management_fee_percent }}%</span>
-            </div>
+            </div> -->
           </div>
         </div>
       </div>

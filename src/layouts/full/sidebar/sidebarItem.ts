@@ -35,6 +35,11 @@ const sidebarItems = [
     icon: 'mdi-cash-multiple' // Loans / Money icon
   },
   {
+    title: 'Loans - Facilities',
+    path: '/facilities-loans',
+    icon: 'mdi-cash-multiple' // Loans / Money icon
+  },
+  {
     title: 'Agents',
     path: '/agents',
     icon: 'mdi-account-tie' // User with tie icon
