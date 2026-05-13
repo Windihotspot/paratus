@@ -44,6 +44,11 @@ const sidebarItems = [
     path: '/agents',
     icon: 'mdi-account-tie' // User with tie icon
   },
+  {
+    title: 'Expenses',
+    path: '/expenses',
+    icon: 'mdi-account-tie' // User with tie icon
+  },
   // {
   //   title: 'Revenue',
   //   path: '/revenue',
