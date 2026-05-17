@@ -11,18 +11,10 @@
           </div>
           <div>
             <h1 class="font-semibold text-lg leading-tight tracking-tight">Expense Tracker</h1>
-            <p class="text-[#8a8f9e] text-xs">Monitor all facility-linked expenses</p>
+            <p class="text-[#8a8f9e] text-xs">View and manage your expenses</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <v-btn
-            variant="outlined"
-            size="small"
-            class="export-btn"
-            prepend-icon="mdi-download-outline"
-            @click="exportCSV"
-            >Export</v-btn
-          >
           <v-btn size="small" class="" color="green" prepend-icon="mdi-plus" @click="openAddDialog"
             >Add Expense</v-btn
           >
@@ -46,19 +38,22 @@
 
         <!-- ─── FILTERS ROW ────────────────────────────────────── -->
         <div class="filters-bar flex flex-wrap gap-2 items-end">
+          <!-- REMOVE the Facility <v-select> filter -->
+
+          <!-- ADD: -->
           <div class="flex-1 min-w-[180px]">
-            <label class="filter-label">Facility</label>
+            <label class="filter-label">Account</label>
             <v-select
-              v-model="filters.facilityId"
-              :items="facilityOptions"
+              v-model="filters.opsAccountId"
+              :items="opsAccountOptions"
               item-title="label"
               item-value="value"
               clearable
               density="compact"
               variant="outlined"
               hide-details
-              class="dark-select"
-              placeholder="All facilities"
+              class=""
+              placeholder="All accounts"
             />
           </div>
           <div class="flex-1 min-w-[160px]">
@@ -72,7 +67,7 @@
               density="compact"
               variant="outlined"
               hide-details
-              class="dark-select"
+              class=""
               placeholder="All categories"
               @update:model-value="filters.typeId = null"
             />
@@ -88,7 +83,7 @@
               density="compact"
               variant="outlined"
               hide-details
-              class="dark-select"
+              class=""
               placeholder="All types"
               :disabled="!filters.categoryId"
             />
@@ -101,7 +96,7 @@
               density="compact"
               variant="outlined"
               hide-details
-              class="dark-select"
+              class=""
             />
           </div>
           <div class="flex-1 min-w-[130px]">
@@ -112,20 +107,21 @@
               density="compact"
               variant="outlined"
               hide-details
-              class="dark-select"
+              class=""
             />
           </div>
           <v-btn
-            variant="text"
+            variant="flat"
+            color="red"
             size="small"
-            class="text-[#8a8f9e] hover:text-white self-end mb-[1px]"
+            class="self-end mb-[1px]"
             @click="resetFilters"
             >Clear</v-btn
           >
         </div>
 
         <!-- ─── CATEGORY BREAKDOWN BAR ─────────────────────────── -->
-        <div v-if="categoryBreakdown.length" class="breakdown-card p-4">
+        <!-- <div v-if="categoryBreakdown.length" class="breakdown-card p-4">
           <p class="text-[#8a8f9e] text-xs font-medium uppercase tracking-widest mb-3">
             Spend by Category
           </p>
@@ -148,16 +144,16 @@
               <span class="text-[#8a8f9e] text-xs w-10 text-right">{{ item.pct }}%</span>
             </div>
           </div>
-        </div>
+        </div> -->
 
         <!-- ─── MAIN TABLE ─────────────────────────────────────── -->
         <div class="">
           <div
             class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/[0.05]"
           >
-            <span class="text-white text-sm font-medium">
+            <!-- <span class="text-sm font-semibold">
               {{ filteredExpenses.length }} record{{ filteredExpenses.length !== 1 ? 's' : '' }}
-            </span>
+            </span> -->
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"
@@ -166,7 +162,7 @@
               variant="outlined"
               hide-details
               clearable
-              class="dark-select max-w-[220px]"
+              class="max-w-[220px]"
             />
           </div>
 
@@ -176,12 +172,11 @@
             :search="search"
             :items-per-page="15"
             density="compact"
-            class="expenses-table"
-            hover
+            class=""
           >
             <!-- Date -->
             <template #item.expense_date="{ item }">
-              <span class="text-[#c8cad4] tabular-nums text-xs">
+              <span class="font-semibold text-xs">
                 {{ formatDate(item.expense_date) }}
               </span>
             </template>
@@ -201,33 +196,31 @@
 
             <!-- Type -->
             <template #item.type_name="{ item }">
-              <span class="text-[#c8cad4] text-xs">{{ item.type_name }}</span>
+              <span class="font-semibold text-xs">{{ item.type_name }}</span>
             </template>
 
             <!-- Description -->
             <template #item.description="{ item }">
-              <span class="text-[#8a8f9e] text-xs max-w-[180px] truncate block">
+              <span class="font-semibold text-xs max-w-[180px] truncate block">
                 {{ item.description || '—' }}
               </span>
             </template>
 
             <!-- Facility -->
-            <template #item.facility_label="{ item }">
-              <div v-if="item.facility_id">
-                <div class="text-[#c8cad4] text-xs font-medium">{{ item.bank_name }}</div>
-                <div class="text-[#8a8f9e] text-[10px]">{{ capitalise(item.facility_type) }}</div>
+
+            <!-- REMOVE the facility_label and payment_bank item slots -->
+
+            <!-- ADD: -->
+            <template #item.ops_account_name="{ item }">
+              <div v-if="item.operations_account_id">
+                <div class="text-xs font-semibold">{{ item.ops_account_name }}</div>
+                <div class="text-[10px]">{{ item.ops_bank_name }}</div>
               </div>
-              <span v-else class="text-[#505565] text-xs">—</span>
+              <span v-else class="text-xs">—</span>
             </template>
-
-            <!-- Payment Bank -->
-            <template #item.payment_bank="{ item }">
-              <span class="text-[#c8cad4] text-xs">{{ item.payment_bank || '—' }}</span>
-            </template>
-
             <!-- Amount -->
             <template #item.amount="{ item }">
-              <span class="text-white font-semibold tabular-nums text-sm">
+              <span class="font-semibold text-sm">
                 {{ formatNGN(item.amount) }}
               </span>
             </template>
@@ -252,7 +245,7 @@
                   icon
                   size="x-small"
                   variant="text"
-                  class="text-[#8a8f9e] hover:text-white"
+                  class="text-blue hover:text-blue-500"
                   @click="openEditDialog(item)"
                 >
                   <v-icon size="14">mdi-pencil-outline</v-icon>
@@ -261,7 +254,7 @@
                   icon
                   size="x-small"
                   variant="text"
-                  class="text-[#8a8f9e] hover:text-red-400"
+                  class="text-red hover:text-red-400"
                   @click="confirmDelete(item)"
                 >
                   <v-icon size="14">mdi-trash-can-outline</v-icon>
@@ -294,12 +287,10 @@
                 {{ dialog.isEdit ? 'Edit Expense' : 'Add New Expense' }}
               </h2>
               <p class="text-[#8a8f9e] text-xs mt-0.5">
-                {{
-                  dialog.isEdit ? 'Update expense record' : 'Log a new expense against a facility'
-                }}
+                {{ dialog.isEdit ? 'Update expense record' : 'Record a new expense' }}
               </p>
             </div>
-            <v-btn icon variant="text" @click="closeDialog" class="text-[#8a8f9e]">
+            <v-btn icon variant="text" @click="closeDialog" class="">
               <v-icon size="20">mdi-close</v-icon>
             </v-btn>
           </div>
@@ -318,26 +309,31 @@
                     density="compact"
                     variant="outlined"
                     :rules="[rules.required]"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                   />
                 </div>
 
                 <!-- Facility -->
                 <div>
-                  <label class="field-label">Bank Facility</label>
-                  <v-select
-                    v-model="form.facility_id"
-                    :items="facilityOptions"
-                    item-title="label"
-                    item-value="value"
-                    clearable
-                    density="compact"
-                    variant="outlined"
-                    class="dark-field"
-                    hide-details="auto"
-                    placeholder="Select facility (optional)"
-                  />
+                  <!-- REMOVE the entire Facility v-select block -->
+
+                  <!-- ADD: -->
+                  <div>
+                    <label class="field-label">Operations Account</label>
+                    <v-select
+                      v-model="form.operations_account_id"
+                      :items="opsAccountOptions"
+                      item-title="label"
+                      item-value="value"
+                      clearable
+                      density="compact"
+                      variant="outlined"
+                      class=""
+                      hide-details="auto"
+                      placeholder="Select account (optional)"
+                    />
+                  </div>
                 </div>
 
                 <!-- Category -->
@@ -351,7 +347,7 @@
                     density="compact"
                     variant="outlined"
                     :rules="[rules.required]"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                     @update:model-value="form.expense_type_id = null"
                   />
@@ -368,7 +364,7 @@
                     density="compact"
                     variant="outlined"
                     :rules="[rules.required]"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                     :disabled="!form.expense_category_id"
                     :placeholder="
@@ -384,24 +380,13 @@
                     v-model="form.description"
                     density="compact"
                     variant="outlined"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                     placeholder="Brief description of this expense"
                   />
                 </div>
 
                 <!-- Payment Bank -->
-                <div>
-                  <label class="field-label">Payment Bank</label>
-                  <v-text-field
-                    v-model="form.payment_bank"
-                    density="compact"
-                    variant="outlined"
-                    class="dark-field"
-                    hide-details="auto"
-                    placeholder="e.g. GTBank, Access, Zenith"
-                  />
-                </div>
 
                 <!-- Amount -->
                 <div>
@@ -412,7 +397,7 @@
                     density="compact"
                     variant="outlined"
                     :rules="[rules.required, rules.positive]"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                     placeholder="0.00"
                     prefix="₦"
@@ -426,36 +411,83 @@
                     v-model="form.reference_number"
                     density="compact"
                     variant="outlined"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                     placeholder="Receipt / invoice ref"
                   />
                 </div>
 
-                <!-- Document available toggle -->
-                <div class="flex items-center gap-3 self-center pt-4">
-                  <v-switch
-                    v-model="form.document_available"
-                    color="#f0c040"
-                    hide-details
-                    density="compact"
-                    class="dark-switch"
-                  />
-                  <span class="text-[#c8cad4] text-sm">Document Available</span>
-                </div>
+                <!-- Document available toggle + file upload -->
+                <div class="md:col-span-2">
+                  <div class="flex items-center gap-3 mb-3">
+                    <v-switch
+                      v-model="form.document_available"
+                      color="#f0c040"
+                      hide-details
+                      density="compact"
+                      @update:model-value="
+                        (value) => {
+                          if (!value) {
+                            form.document_file = null
+                            form.document_url = ''
+                          }
+                        }
+                      "
+                    />
+                    <span class="text-[#c8cad4] text-sm">Document Available</span>
+                  </div>
 
-                <!-- Document URL (shown if doc available) -->
-                <div v-if="form.document_available" class="md:col-span-2">
-                  <label class="field-label">Document URL / Path</label>
-                  <v-text-field
-                    v-model="form.document_url"
-                    density="compact"
-                    variant="outlined"
-                    class="dark-field"
-                    hide-details="auto"
-                    placeholder="https:// or storage path"
-                    prepend-inner-icon="mdi-link-variant"
-                  />
+                  <div v-if="form.document_available" class="space-y-2">
+                    <!-- Show current file if editing and one already exists -->
+                    <div
+                      v-if="dialog.isEdit && form.document_url && !form.document_file"
+                      class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08]"
+                    >
+                      <v-icon size="16" color="#4ade80">mdi-file-check-outline</v-icon>
+                      <span class="text-[#c8cad4] text-xs flex-1 truncate">
+                        {{ form.document_url.split('/').pop() }}
+                      </span>
+                      <v-btn
+                        size="x-small"
+                        variant="text"
+                        color="#f0c040"
+                        @click="
+                          () => {
+                            form.document_url = ''
+                            form.document_file = null
+                          }
+                        "
+                      >
+                        Replace
+                      </v-btn>
+                    </div>
+
+                    <!-- File input -->
+                    <v-file-input
+                      v-if="!form.document_url || form.document_file !== null"
+                      v-model="form.document_file"
+                      label="Upload Document"
+                      density="compact"
+                      variant="outlined"
+                      hide-details="auto"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xlsx"
+                      prepend-icon=""
+                      prepend-inner-icon="mdi-paperclip"
+                      :hint="uploadingDoc ? 'Uploading…' : 'PDF, image, Word or Excel'"
+                      persistent-hint
+                      clearable
+                    >
+                      <template #selection="{ fileNames }">
+                        <span class="text-[#c8cad4] text-xs truncate">{{ fileNames[0] }}</span>
+                      </template>
+                    </v-file-input>
+
+                    <!-- Upload progress indicator -->
+                    <div v-if="uploadingDoc" class="flex items-center gap-2 px-1">
+                      <v-progress-linear indeterminate color="#f0c040" height="2" class="flex-1" />
+                      <span class="text-[#8a8f9e] text-xs">Uploading…</span>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Notes -->
@@ -465,7 +497,7 @@
                     v-model="form.notes"
                     density="compact"
                     variant="outlined"
-                    class="dark-field"
+                    class=""
                     hide-details="auto"
                     rows="2"
                     placeholder="Any additional notes…"
@@ -477,8 +509,8 @@
 
           <v-divider color="rgba(255,255,255,0.06)" />
           <v-card-actions class="px-6 py-4 gap-2 justify-end">
-            <v-btn variant="text" class="text-[#8a8f9e]" @click="closeDialog">Cancel</v-btn>
-            <v-btn class="add-btn" :loading="saving" @click="saveExpense">
+            <v-btn variant="text" class="text-red" @click="closeDialog">Cancel</v-btn>
+            <v-btn color="green" variant="flat" :loading="saving" @click="saveExpense">
               {{ dialog.isEdit ? 'Update Expense' : 'Save Expense' }}
             </v-btn>
           </v-card-actions>
@@ -534,9 +566,19 @@ const search = ref('')
 const formRef = ref(null)
 const formValid = ref(false)
 
+const opsAccounts = ref([])
+
+async function loadOpsAccounts() {
+  const { data } = await supabase
+    .from('operations_accounts')
+    .select('id, name, bank_name, account_number')
+    .eq('status', 'active')
+  opsAccounts.value = data || []
+}
+
 const filters = reactive({
-  facilityId: null,
   categoryId: null,
+  opsAccountId: null,
   typeId: null,
   dateFrom: '',
   dateTo: ''
@@ -548,15 +590,15 @@ const snack = reactive({ show: false, text: '', color: 'success' })
 
 const defaultForm = () => ({
   expense_date: new Date().toISOString().split('T')[0],
-  facility_id: null,
   expense_category_id: null,
   expense_type_id: null,
   description: '',
-  payment_bank: '',
   amount: null,
+  operations_account_id: null,
   reference_number: '',
   document_available: false,
-  document_url: '',
+  document_url: '', // keeps the stored path/signed URL
+  document_file: null,
   notes: ''
 })
 const form = reactive(defaultForm())
@@ -597,15 +639,16 @@ async function loadFacilities() {
 async function loadExpenses() {
   loading.value = true
   const { data, error } = await supabase
-    .from('v_expenses_detail') // uses the view from seed SQL
+    .from('v_expenses_details') // uses the view from seed SQL
     .select('*')
     .order('expense_date', { ascending: false })
+  console.log('expenses:', data)
   if (!error) expenses.value = data || []
   loading.value = false
 }
 
 onMounted(async () => {
-  await Promise.all([loadCategories(), loadTypes(), loadFacilities(), loadExpenses()])
+  await Promise.all([loadCategories(), loadTypes(), loadOpsAccounts(), loadExpenses()])
 })
 
 // ─── Computed options ─────────────────────────────────────────
@@ -613,6 +656,12 @@ const facilityOptions = computed(() =>
   facilities.value.map((f) => ({
     value: f.id,
     label: `${f.banks?.name || 'Unknown'} — ${capitalise(f.facility_type)} (₦${fmtNumber(f.facility_amount)})`
+  }))
+)
+const opsAccountOptions = computed(() =>
+  opsAccounts.value.map((a) => ({
+    value: a.id,
+    label: `${a.name}${a.bank_name ? ' — ' + a.bank_name : ''}${a.account_number ? ' (' + a.account_number + ')' : ''}`
   }))
 )
 
@@ -633,7 +682,7 @@ const formTypeOptions = computed(() =>
 // ─── Filtered table data ──────────────────────────────────────
 const filteredExpenses = computed(() => {
   return expenses.value.filter((e) => {
-    if (filters.facilityId && e.facility_id !== filters.facilityId) return false
+    if (filters.opsAccountId && e.operations_account_id !== filters.opsAccountId) return false
     if (filters.categoryId && e.expense_category_id !== filters.categoryId) return false
     if (filters.typeId && e.expense_type_id !== filters.typeId) return false
     if (filters.dateFrom && e.expense_date < filters.dateFrom) return false
@@ -672,12 +721,14 @@ const summaryStats = computed(() => {
       trendColor: 'text-[#8a8f9e]'
     },
     {
-      label: 'Facilities Used',
-      value: new Set(filteredExpenses.value.filter((e) => e.facility_id).map((e) => e.facility_id))
-        .size,
+      label: 'Active Account',
+      value:
+        opsAccounts.value.find((a) => a.id === filters.opsAccountId)?.name ||
+        opsAccounts.value[0]?.name ||
+        '—',
       icon: 'mdi-bank-outline',
       color: '#a78bfa',
-      trend: 'Linked facilities',
+      trend: `${opsAccounts.value.length} account(s)`,
       trendColor: 'text-[#8a8f9e]'
     },
     {
@@ -728,13 +779,33 @@ const tableHeaders = [
   { title: 'Category', key: 'category_name', width: '160px', sortable: true },
   { title: 'Type', key: 'type_name', width: '180px', sortable: true },
   { title: 'Details', key: 'description', width: '180px', sortable: false },
-  { title: 'Facility', key: 'facility_label', width: '160px', sortable: false },
-  { title: 'Payment Bank', key: 'payment_bank', width: '130px', sortable: true },
+  { title: 'Account', key: 'ops_account_name', width: '180px', sortable: true },
   { title: 'Amount', key: 'amount', width: '130px', sortable: true, align: 'end' },
   { title: 'Doc', key: 'document_available', width: '60px', sortable: false, align: 'center' },
   { title: '', key: 'actions', width: '70px', sortable: false }
 ]
+// ─── Document upload ──────────────────────────────────────────
+const uploadingDoc = ref(false)
 
+async function uploadDocument(file, expenseId) {
+  const ext = file.name.split('.').pop()
+  const path = `expenses/${expenseId}/${Date.now()}.${ext}`
+
+  const { error } = await supabase.storage
+    .from('expense-documents')
+    .upload(path, file, { upsert: true, contentType: file.type })
+
+  if (error) throw error
+  return path // store the path; generate signed URL on demand when viewing
+}
+
+async function getSignedUrl(path) {
+  const { data, error } = await supabase.storage
+    .from('expense-documents')
+    .createSignedUrl(path, 60 * 60) // 1-hour expiry
+  if (error) throw error
+  return data.signedUrl
+}
 // ─── Dialog actions ───────────────────────────────────────────
 function openAddDialog() {
   Object.assign(form, defaultForm())
@@ -746,12 +817,11 @@ function openAddDialog() {
 function openEditDialog(item) {
   Object.assign(form, {
     expense_date: item.expense_date,
-    facility_id: item.facility_id,
     expense_category_id: item.expense_category_id,
     expense_type_id: item.expense_type_id,
     description: item.description || '',
-    payment_bank: item.payment_bank || '',
     amount: item.amount,
+    operations_account_id: item.operations_account_id || null,
     reference_number: item.reference_number || '',
     document_available: item.document_available || false,
     document_url: item.document_url || '',
@@ -772,36 +842,59 @@ async function saveExpense() {
   if (!valid) return
 
   saving.value = true
-  const payload = {
-    expense_date: form.expense_date,
-    facility_id: form.facility_id || null,
-    expense_category_id: form.expense_category_id,
-    expense_type_id: form.expense_type_id,
-    // Map category name for the legacy `category` column if it exists:
-    category: categories.value.find((c) => c.id === form.expense_category_id)?.name || '',
-    description: form.description || null,
-    payment_bank: form.payment_bank || null,
-    amount: form.amount,
-    reference_number: form.reference_number || null,
-    document_available: form.document_available,
-    document_url: form.document_url || null,
-    notes: form.notes || null
-  }
+  try {
+    // 1. Build base payload (no document_url yet)
+    const payload = {
+      expense_date: form.expense_date,
+      expense_category_id: form.expense_category_id,
+      expense_type_id: form.expense_type_id,
+      category: categories.value.find((c) => c.id === form.expense_category_id)?.name || '',
+      description: form.description || null,
+      amount: form.amount,
+      operations_account_id: form.operations_account_id || null,
+      reference_number: form.reference_number || null,
+      document_available: form.document_available,
+      document_url: form.document_url || null, // may be overwritten below
+      notes: form.notes || null
+    }
 
-  let error
-  if (dialog.isEdit) {
-    ;({ error } = await supabase.from('expenses').update(payload).eq('id', dialog.editId))
-  } else {
-    ;({ error } = await supabase.from('expenses').insert(payload))
-  }
+    // 2. Insert/update to get the row id
+    let expenseId = dialog.editId
+    let error
 
-  saving.value = false
-  if (error) {
-    showSnack('Error saving expense: ' + error.message, 'error')
-  } else {
+    if (dialog.isEdit) {
+      ;({ error } = await supabase.from('expenses').update(payload).eq('id', expenseId))
+    } else {
+      const { data: inserted, error: insertErr } = await supabase
+        .from('expenses')
+        .insert(payload)
+        .select('id')
+        .single()
+      error = insertErr
+      if (inserted) expenseId = inserted.id
+    }
+
+    if (error) throw error
+
+    // 3. If a new file was chosen, upload it and patch document_url
+    if (form.document_file && expenseId) {
+      uploadingDoc.value = true
+      const path = await uploadDocument(form.document_file, expenseId)
+      await supabase
+        .from('expenses')
+        .update({ document_url: path, document_available: true })
+        .eq('id', expenseId)
+      uploadingDoc.value = false
+    }
+
     showSnack(dialog.isEdit ? 'Expense updated' : 'Expense added', 'success')
     closeDialog()
     await loadExpenses()
+  } catch (err) {
+    showSnack('Error saving expense: ' + err.message, 'error')
+  } finally {
+    saving.value = false
+    uploadingDoc.value = false
   }
 }
 
@@ -823,8 +916,14 @@ async function deleteExpense() {
   }
 }
 
-function viewDocument(item) {
-  if (item.document_url) window.open(item.document_url, '_blank')
+async function viewDocument(item) {
+  if (!item.document_url) return
+  try {
+    const url = await getSignedUrl(item.document_url)
+    window.open(url, '_blank')
+  } catch {
+    showSnack('Could not load document', 'error')
+  }
 }
 
 function resetFilters() {
@@ -1025,9 +1124,9 @@ function showSnack(text, color = 'success') {
 :deep(.dark-field .v-field textarea) {
   color: #c8cad4 !important;
 }
-:deep(.dark-select .v-select__selection-text) {
+/* :deep(.dark-select .v-select__selection-text) {
   color: #c8cad4 !important;
-}
+} */
 :deep(.v-list) {
 }
 :deep(.v-list-item) {
