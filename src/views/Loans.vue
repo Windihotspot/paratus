@@ -120,19 +120,43 @@ const closeModal = () => {
   }
 }
 
+const loanPreview = computed(() => {
+  const amount = parseFloat(String(loan.value.loan_amount).replace(/,/g, '')) || 0
+  const rate = parseFloat(loan.value.agreed_rate) || 0
+  const tenure = parseInt(loan.value.tenure_days) || 0
+  const date = loan.value.disbursed_at
+  if (!amount || !rate || !tenure || !date) return {}
+  const expiry = new Date(date)
+  expiry.setDate(expiry.getDate() + tenure)
+  const interest = amount * (rate / 100)
+  return {
+    expiry: expiry.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }),
+    interest: formatCurrency(interest),
+    total: formatCurrency(amount + interest)
+  }
+})
+const selectLoanType = (type) => {
+  loan.value.loan_type = type
+  if (type === 'new') loan.value.parent_loan_id = null
+}
+
 const submitLoan = async () => {
   if (!formRef.value) return
+
   const formValid = await formRef.value.validate()
+
   if (!formValid) {
     ElMessage({ message: 'Please fix the form errors', type: 'error' })
     return
   }
+
   if (loan.value.loan_type === 'extension' && !loan.value.parent_loan_id) {
     ElMessage({ message: 'Please select the loan being extended', type: 'error' })
     return
   }
 
   loading.value = true
+
   ElMessage({
     message: isEditing.value ? 'Updating loan...' : 'Adding loan...',
     type: 'info',
@@ -141,21 +165,32 @@ const submitLoan = async () => {
 
   try {
     if (isEditing.value) {
-      const { error } = await supabase.rpc('update_new_loan', {
+      const payload = {
         p_loan_id: editingLoanId.value,
-        p_loan_amount: loan.value.loan_amount,
-        p_agreed_rate: loan.value.agreed_rate,
-        p_disbursed_at: loan.value.disbursed_at,
-        p_status: loan.value.status || 'active',
-        p_tenure_days: loan.value.tenure_days,
+        p_merchant_id: merchantId,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
-        p_agent_id: loan.value.agent_id || null
-      })
+        p_loan_amount: loan.value.loan_amount,
+        p_agreed_rate: loan.value.agreed_rate,
+        p_tenure_days: loan.value.tenure_days,
+        p_disbursed_at: loan.value.disbursed_at,
+        p_agent_id: loan.value.agent_id || null,
+        p_status: loan.value.status || 'active',
+        p_loan_type: loan.value.loan_type || 'new',
+        p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
+      }
+      console.log('Update Loan Payload:', payload)
+      const { error } = await supabase.rpc('update_new_loan_extension', payload)
+
       if (error) throw error
-      ElNotification({ title: 'Success', message: 'Loan updated!', type: 'success' })
+
+      ElNotification({
+        title: 'Success',
+        message: 'Loan updated!',
+        type: 'success'
+      })
     } else {
-      const { error } = await supabase.rpc('add_new_loan_extension', {
+      const payload = {
         p_merchant_id: merchantId,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
@@ -166,15 +201,31 @@ const submitLoan = async () => {
         p_agent_id: loan.value.agent_id,
         p_loan_type: loan.value.loan_type,
         p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
-      })
+      }
+
+      console.log('Add Loan Payload:', payload)
+
+      const { error } = await supabase.rpc('add_new_loan_extension', payload)
+
       if (error) throw error
-      ElNotification({ title: 'Success', message: 'Loan added!', type: 'success' })
+
+      ElNotification({
+        title: 'Success',
+        message: 'Loan added!',
+        type: 'success'
+      })
     }
+
     await fetchLoans()
     closeModal()
   } catch (err) {
-    console.error(err)
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+    console.log('Loan Submission Error:', err)
+
+    ElNotification({
+      title: 'Error',
+      message: err.message,
+      type: 'error'
+    })
   } finally {
     loading.value = false
   }
@@ -198,10 +249,11 @@ const fetchLoans = async () => {
   loading.value = true
   errorMessage.value = null
   try {
-    const { data, error } = await supabase.rpc('fetch_loans', {
+    const { data, error } = await supabase.rpc('fetch_nested_loans', {
       p_merchant_id: authStore.merchant.id,
       p_facility_id: authStore.selectedFacility?.id || null
     })
+    console.log('loans:', data)
     if (error) throw error
     loans.value = data || []
   } catch (err) {
@@ -600,7 +652,17 @@ watch(
   },
   { immediate: true }
 )
-
+const onDateSelected = (val) => {
+  if (val) {
+    const y = val.getFullYear()
+    const m = String(val.getMonth() + 1).padStart(2, '0')
+    const d = String(val.getDate()).padStart(2, '0')
+    loan.value.disbursed_at = `${y}-${m}-${d}`
+  } else {
+    loan.value.disbursed_at = null
+  }
+  disburseMenu.value = false
+}
 onMounted(() => {
   fetchAgents()
   fetchLoans()
@@ -686,7 +748,6 @@ onMounted(() => {
               <tr>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider w-10"></th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
-                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Type</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Acc.Number</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Pry-Contact</th>
@@ -721,7 +782,7 @@ onMounted(() => {
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                     {{ l.customer_name || 'N/A' }}
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap">
+                  <!-- <td class="px-4 py-3 whitespace-nowrap">
                     <span
                       :class="
                         l.loan_type === 'extension'
@@ -731,7 +792,7 @@ onMounted(() => {
                     >
                       {{ l.loan_type || 'new' }}
                     </span>
-                  </td>
+                  </td> -->
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                     {{ l.customer_account_number || 'N/A' }}
                   </td>
@@ -739,7 +800,7 @@ onMounted(() => {
                     {{ formatCurrency(l.loan_amount) }}
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                    {{ l.agent_name }}
+                    {{ l.agent_full_name }}
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                     {{ l.agreed_rate != null ? l.agreed_rate.toFixed(1) : '0.0' }}%
@@ -832,9 +893,9 @@ onMounted(() => {
                             <th>Disbursed</th>
                             <th>Tenure</th>
                             <th>Expiry</th>
-                            <th>Sales Amt</th>
+                            <!-- <th>Sales Amt</th>
                             <th>Direct Cost</th>
-                            <th>Profit</th>
+                            <th>Profit</th> -->
                             <th>Status</th>
                           </tr>
                         </thead>
@@ -846,7 +907,7 @@ onMounted(() => {
                             <td>{{ ext.disbursed_at }}</td>
                             <td>{{ ext.tenure_days }}d</td>
                             <td>{{ ext.expiry_date }}</td>
-                            <td class="text-green-700 font-medium">
+                            <!-- <td class="text-green-700 font-medium">
                               {{ formatCurrency(ext.sales_amount) }}
                             </td>
                             <td class="text-amber-700 font-medium">
@@ -854,7 +915,7 @@ onMounted(() => {
                             </td>
                             <td class="text-blue-700 font-medium">
                               {{ formatCurrency(ext.profit) }}
-                            </td>
+                            </td> -->
                             <td>
                               <span
                                 :class="{
@@ -870,38 +931,6 @@ onMounted(() => {
                             </td>
                           </tr>
                         </tbody>
-                        <tfoot>
-                          <tr class="extensions-total-row">
-                            <td
-                              colspan="6"
-                              class="text-right font-semibold text-xs text-gray-500 uppercase pr-4"
-                            >
-                              Totals
-                            </td>
-                            <td class="text-green-800 font-bold">
-                              {{
-                                formatCurrency(
-                                  l.extensions.reduce((s, e) => s + (e.sales_amount || 0), 0)
-                                )
-                              }}
-                            </td>
-                            <td class="text-amber-800 font-bold">
-                              {{
-                                formatCurrency(
-                                  l.extensions.reduce((s, e) => s + (e.direct_cost || 0), 0)
-                                )
-                              }}
-                            </td>
-                            <td class="text-blue-800 font-bold">
-                              {{
-                                formatCurrency(
-                                  l.extensions.reduce((s, e) => s + (e.profit || 0), 0)
-                                )
-                              }}
-                            </td>
-                            <td></td>
-                          </tr>
-                        </tfoot>
                       </table>
                     </div>
                   </td>
@@ -937,47 +966,47 @@ onMounted(() => {
     </v-dialog>
 
     <!-- Add / Edit Loan Modal -->
-    <v-dialog v-model="showModal" persistent max-width="800px">
-      <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
-        <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
-          <i class="fas fa-times fa-lg"></i>
-        </button>
-
-        <h2 class="text-lg font-bold mb-4">
-          {{ isEditing ? 'Edit Existing Loan' : 'Add a New Loan' }}
-        </h2>
-
-        <v-form ref="formRef" v-model="valid" lazy-validation>
-          <!-- Loan Type Toggle -->
-          <div class="loan-type-toggle mb-5" v-if="!isEditing">
-            <label class="toggle-label">Loan Type</label>
-            <div class="toggle-options">
-              <!-- <button
-                type="button"
-                :class="['toggle-opt', loan.loan_type === 'new' ? 'toggle-opt--active' : '']"
-                @click="
-                  loan.loan_type = 'new'
-                  loan.parent_loan_id = null
-                "
-              >
-                <i class="fa-solid fa-plus-circle"></i> New Loan
-              </button> -->
-              <button
-                type="button"
-                :class="[
-                  'toggle-opt',
-                  loan.loan_type === 'extension' ? 'toggle-opt--active toggle-opt--ext' : ''
-                ]"
-                @click="loan.loan_type = 'extension'"
-              >
-                <i class="fa-solid fa-code-branch"></i> Extension
-              </button>
-            </div>
+    <v-dialog v-model="showModal" persistent max-width="640px">
+      <div class="loan-dialog">
+        <!-- Header -->
+        <div class="ld-header">
+          <div>
+            <h2>{{ isEditing ? 'Edit loan' : loanTypeTitle }}</h2>
+            <p>{{ isEditing ? 'Update the loan details below' : loanTypeSub }}</p>
           </div>
+          <button class="ld-close" @click="closeModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
 
-          <!-- Parent loan selector (only for extensions) -->
-          <div v-if="loan.loan_type === 'extension'" class="mb-1">
+        <!-- Type strip (new only) -->
+        <div v-if="!isEditing" class="ld-type-strip">
+          <button
+            :class="['ld-type-btn', loan.loan_type === 'new' ? 'ld-type-btn--new' : '']"
+            @click="selectLoanType('new')"
+          >
+            <i class="fa-solid fa-plus-circle"></i> New loan
+          </button>
+          <button
+            :class="['ld-type-btn', loan.loan_type === 'extension' ? 'ld-type-btn--ext' : '']"
+            @click="selectLoanType('extension')"
+          >
+            <i class="fa-solid fa-code-branch"></i> Extension
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="ld-body">
+          <v-form ref="formRef" v-model="valid" lazy-validation>
+            <!-- Extension parent selector -->
+            <transition name="slide-down">
+              <div v-if="loan.loan_type === 'extension'" class="ld-ext-banner">
+                <i class="fa-solid fa-code-branch"></i>
+                <span>Select the parent loan, then fill in the new terms.</span>
+              </div>
+            </transition>
             <v-select
+              v-if="loan.loan_type === 'extension'"
               v-model="loan.parent_loan_id"
               :items="parentLoanOptions"
               item-value="id"
@@ -985,129 +1014,319 @@ onMounted(() => {
               label="Extending which loan?"
               variant="outlined"
               color="#27bfa0"
-              :rules="[(v) => !!v || 'Please select the loan being extended']"
+              :rules="[(v) => !!v || 'Required']"
+              class="mb-3"
             />
-          </div>
 
-          <v-select
-            :disabled="isEditing"
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.customer_id"
-            :items="customers"
-            item-value="id"
-            item-title="full_name"
-            label="Select Customer"
-            required
-          />
-
-          <v-select
-            :disabled="isEditing"
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.facility_id"
-            :items="facilities"
-            item-value="id"
-            item-title="bank_name"
-            label="Select Facility"
-            :rules="[(v) => !!v || 'Facility is required']"
-          />
-
-          <v-text-field
-            variant="outlined"
-            v-model="formattedLoanAmount"
-            color="#27bfa0"
-            label="Loan Amount"
-            :rules="[(v) => !!v || 'Loan amount is required']"
-          />
-
-          <v-select
-            v-model="loan.agent_id"
-            :items="agents"
-            item-title="full_name"
-            item-value="id"
-            label="Select Agent"
-            variant="outlined"
-            color="#27bfa0"
-            hide-details
-            :loading="loadingAgents"
-            class="mb-3"
-            :rules="[(v) => !!v || 'Agent is required']"
-          />
-
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.agreed_rate"
-            label="Agreed Rate (%)"
-            type="number"
-            :rules="[(v) => !!v || 'Rate is required']"
-          />
-
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.tenure_days"
-            label="Tenure (Days)"
-            type="number"
-            :rules="[(v) => !!v || 'Tenure is required']"
-          />
-
-          <v-menu
-            v-model="disburseMenu"
-            :close-on-content-click="false"
-            transition="scale-transition"
-            offset-y
-            min-width="290px"
-          >
-            <template v-slot:activator="{ props }">
-              <v-text-field
-                v-bind="props"
+            <div class="ld-section">Customer &amp; facility</div>
+            <div class="ld-row">
+              <v-select
+                :disabled="isEditing"
+                v-model="loan.customer_id"
+                :items="customers"
+                item-value="id"
+                item-title="full_name"
+                label="Customer"
                 variant="outlined"
                 color="#27bfa0"
-                :model-value="loan.disbursed_at"
-                label="Disbursement Date"
-                readonly
-                :rules="[(v) => !!v || 'Date is required']"
+                :rules="[(v) => !!v || 'Required']"
               />
-            </template>
-            <v-date-picker
-              :model-value="loan.disbursed_at ? new Date(loan.disbursed_at) : null"
-              @update:model-value="
-                (val) => {
-                  if (val) {
-                    const y = val.getFullYear()
-                    const m = String(val.getMonth() + 1).padStart(2, '0')
-                    const d = String(val.getDate()).padStart(2, '0')
-                    loan.disbursed_at = `${y}-${m}-${d}`
-                  } else {
-                    loan.disbursed_at = null
-                  }
-                  disburseMenu = false
-                }
-              "
-            />
-          </v-menu>
+              <v-select
+                :disabled="isEditing"
+                v-model="loan.facility_id"
+                :items="facilities"
+                item-value="id"
+                item-title="bank_name"
+                label="Facility / bank"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+            </div>
 
-          <div class="flex justify-end mt-6">
+            <div class="ld-section">Loan terms</div>
+            <div class="ld-row">
+              <v-text-field
+                v-model="formattedLoanAmount"
+                label="Loan amount (₦)"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+              <v-select
+                v-model="loan.agent_id"
+                :items="agents"
+                item-title="full_name"
+                item-value="id"
+                label="Primary contact"
+                variant="outlined"
+                color="#27bfa0"
+                :loading="loadingAgents"
+                :rules="[(v) => !!v || 'Required']"
+              />
+            </div>
+            <div class="ld-row">
+              <v-text-field
+                v-model="loan.agreed_rate"
+                label="Agreed rate (%)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+              <v-text-field
+                v-model="loan.tenure_days"
+                label="Tenure (days)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+            </div>
+            <v-menu
+              v-model="disburseMenu"
+              :close-on-content-click="false"
+              offset-y
+              min-width="290px"
+            >
+              <template v-slot:activator="{ props }">
+                <v-text-field
+                  v-bind="props"
+                  variant="outlined"
+                  color="#27bfa0"
+                  :model-value="loan.disbursed_at"
+                  label="Disbursement date"
+                  readonly
+                  :rules="[(v) => !!v || 'Required']"
+                />
+              </template>
+              <v-date-picker
+                :model-value="loan.disbursed_at ? new Date(loan.disbursed_at) : null"
+                @update:model-value="onDateSelected"
+              />
+            </v-menu>
+
+            <!-- Live preview -->
+            <!-- <div v-if="loanPreview.expiry" class="ld-preview">
+              <div class="ld-preview-item">
+                <span>Expiry date</span>
+                <strong>{{ loanPreview.expiry }}</strong>
+              </div>
+              <div class="ld-preview-item">
+                <span>Interest</span>
+                <strong class="green">{{ loanPreview.interest }}</strong>
+              </div>
+              <div class="ld-preview-item">
+                <span>Total repayment</span>
+                <strong class="purple">{{ loanPreview.total }}</strong>
+              </div>
+            </div> -->
+          </v-form>
+        </div>
+
+        <!-- Footer -->
+        <div class="ld-footer">
+          <span class="ld-hint"><i class="fas fa-shield-alt"></i> All fields required</span>
+          <div class="ld-actions">
             <v-btn text @click="closeModal">Cancel</v-btn>
-            <v-btn color="green" class="ml-3" :loading="loading" @click="submitLoan">
+            <v-btn
+              :color="loan.loan_type === 'extension' ? 'deep-purple' : 'green'"
+              class="ml-2"
+              :loading="loading"
+              @click="submitLoan"
+            >
               {{
                 isEditing
                   ? 'Update'
                   : loan.loan_type === 'extension'
-                    ? 'Save Extension'
-                    : 'Save Loan'
+                    ? 'Save extension'
+                    : 'Save loan'
               }}
             </v-btn>
           </div>
-        </v-form>
+        </div>
       </div>
     </v-dialog>
   </MainLayout>
 </template>
 
 <style scoped>
+.loan-dialog {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.ld-header {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: #ffffff;
+}
+
+.ld-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 3px;
+}
+
+.ld-header p {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.ld-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.ld-close:hover {
+  background: #f3f4f6;
+}
+
+.ld-type-strip {
+  padding: 14px 24px;
+  background: #f9fafb;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  gap: 10px;
+}
+
+.ld-type-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+.ld-type-btn--new {
+  border-color: #27bfa0;
+  background: #f0fdf9;
+  color: #0f6e56;
+}
+.ld-type-btn--ext {
+  border-color: #7f77dd;
+  background: #f4f3fe;
+  color: #3c3489;
+}
+
+.ld-body {
+  padding: 20px 24px 4px;
+  background: #ffffff;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.ld-section {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin: 16px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ld-section::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #f0f0f0;
+}
+
+.ld-ext-banner {
+  background: #f4f3fe;
+  border: 1px solid #c7c5f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #3c3489;
+}
+
+.ld-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ld-preview {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 4px 0 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.ld-preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ld-preview-item span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+.ld-preview-item strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.ld-preview-item strong.green {
+  color: #1d9e75;
+}
+.ld-preview-item strong.purple {
+  color: #534ab7;
+}
+
+.ld-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ld-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ld-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .custom-btn {
   background-color: #27bfa0;
 }
