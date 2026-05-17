@@ -782,7 +782,7 @@ const tableHeaders = [
   { title: 'Account', key: 'ops_account_name', width: '180px', sortable: true },
   { title: 'Amount', key: 'amount', width: '130px', sortable: true, align: 'end' },
   { title: 'Doc', key: 'document_available', width: '60px', sortable: false, align: 'center' },
-  { title: '', key: 'actions', width: '70px', sortable: false }
+  { title: 'Actions', key: 'actions', width: '70px', sortable: false }
 ]
 // ─── Document upload ──────────────────────────────────────────
 const uploadingDoc = ref(false)
