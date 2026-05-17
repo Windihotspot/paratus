@@ -26,9 +26,7 @@
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
           <div v-for="stat in summaryStats" :key="stat.label" class="stat-card bg-white rounded-lg">
             <div class="flex items-start justify-between mb-3">
-              <span class="text-[#8a8f9e] text-xs font-medium uppercase tracking-widest">{{
-                stat.label
-              }}</span>
+              <span class="text-xs font-semibold uppercase tracking-widest">{{ stat.label }}</span>
               <v-icon :color="stat.color" size="16">{{ stat.icon }}</v-icon>
             </div>
             <div class="text-white font-bold text-xl tabular-nums">{{ stat.value }}</div>
@@ -88,7 +86,7 @@
               :disabled="!filters.categoryId"
             />
           </div>
-          <div class="flex-1 min-w-[130px]">
+          <!-- <div class="flex-1 min-w-[130px]">
             <label class="filter-label">From</label>
             <v-text-field
               v-model="filters.dateFrom"
@@ -98,8 +96,8 @@
               hide-details
               class=""
             />
-          </div>
-          <div class="flex-1 min-w-[130px]">
+          </div> -->
+          <!-- <div class="flex-1 min-w-[130px]">
             <label class="filter-label">To</label>
             <v-text-field
               v-model="filters.dateTo"
@@ -109,7 +107,7 @@
               hide-details
               class=""
             />
-          </div>
+          </div> -->
           <v-btn
             variant="flat"
             color="red"
@@ -145,9 +143,12 @@
             </div>
           </div>
         </div> -->
-
+        <div v-if="loading" class="loading-state">
+          <v-progress-circular indeterminate color="#27bfa0" size="44" width="3" />
+          <p>Loading expenses...</p>
+        </div>
         <!-- ─── MAIN TABLE ─────────────────────────────────────── -->
-        <div class="">
+        <div v-else class="">
           <div
             class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/[0.05]"
           >
@@ -176,7 +177,7 @@
           >
             <!-- Date -->
             <template #item.expense_date="{ item }">
-              <span class="font-semibold text-xs">
+              <span class="text-xs">
                 {{ formatDate(item.expense_date) }}
               </span>
             </template>
@@ -196,12 +197,12 @@
 
             <!-- Type -->
             <template #item.type_name="{ item }">
-              <span class="font-semibold text-xs">{{ item.type_name }}</span>
+              <span class="text-xs">{{ item.type_name }}</span>
             </template>
 
             <!-- Description -->
             <template #item.description="{ item }">
-              <span class="font-semibold text-xs max-w-[180px] truncate block">
+              <span class="text-xs max-w-[180px] truncate block">
                 {{ item.description || '—' }}
               </span>
             </template>
@@ -213,14 +214,13 @@
             <!-- ADD: -->
             <template #item.ops_account_name="{ item }">
               <div v-if="item.operations_account_id">
-                <div class="text-xs font-semibold">{{ item.ops_account_name }}</div>
-                <div class="text-[10px]">{{ item.ops_bank_name }}</div>
+                <div class="text-xs">{{ item.ops_account_name }}</div>
               </div>
               <span v-else class="text-xs">—</span>
             </template>
             <!-- Amount -->
             <template #item.amount="{ item }">
-              <span class="font-semibold text-sm">
+              <span class="text-sm">
                 {{ formatNGN(item.amount) }}
               </span>
             </template>
@@ -1017,6 +1017,18 @@ function showSnack(text, color = 'success') {
 </script>
 
 <style scoped>
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+  color: #9ca3af;
+  font-size: 14px;
+  gap: 12px;
+  background: #fff;
+  border-radius: 14px;
+}
 /* ── Page base ───────────────────────────────────────── */
 .v-btn {
   text-transform: none;
