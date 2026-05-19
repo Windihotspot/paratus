@@ -134,7 +134,7 @@ const router = createRouter({
       path: '/expenses',
       name: 'expenses',
       component: ExpensesPage,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin', 'staff'] }
     }
   ]
 })
