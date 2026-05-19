@@ -381,6 +381,42 @@ const totalDrawdowns = computed(
 //   editingDrawdownId.value = null
 // }
 
+const showDeleteDrawdownModal = ref(false)
+const drawdownToDelete = ref(null)
+
+const openDeleteDrawdownModal = (drawdown) => {
+  drawdownToDelete.value = drawdown
+  showDeleteDrawdownModal.value = true
+}
+
+const cancelDeleteDrawdown = () => {
+  showDeleteDrawdownModal.value = false
+  drawdownToDelete.value = null
+}
+
+const confirmDeleteDrawdown = async () => {
+  if (!drawdownToDelete.value) return
+  loading.value = true
+  try {
+    const { error } = await supabase.rpc('delete_facility_drawdown', {
+      p_drawdown_id: drawdownToDelete.value.id
+    })
+    if (error) throw error
+    ElNotification({ title: 'Deleted', message: 'Drawdown deleted successfully!', type: 'success' })
+    await authStore.fetchFacilities()
+  } catch (err) {
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to delete drawdown',
+      type: 'error'
+    })
+  } finally {
+    loading.value = false
+    showDeleteDrawdownModal.value = false
+    drawdownToDelete.value = null
+  }
+}
+
 onMounted(() => {
   fetchBanks()
   authStore.fetchFacilities()
@@ -571,6 +607,15 @@ onMounted(() => {
                                 @click="openDrawdownModal(facility, drawdown)"
                               >
                                 <i class="fas fa-pen"></i>
+                              </button>
+                            </td>
+                            <td>
+                              <button
+                                @click="openDeleteDrawdownModal(drawdown)"
+                                class="action-btn action-btn--delete"
+                                title="Delete"
+                              >
+                                <i class="fas fa-trash"></i>
                               </button>
                             </td>
                           </tr>
@@ -955,6 +1000,44 @@ onMounted(() => {
                 class="mr-2"
               />
               Delete Facility
+            </button>
+          </div>
+        </div>
+      </div>
+    </v-dialog>
+    <!-- ─── Delete Drawdown Confirmation Modal ─── -->
+    <v-dialog v-model="showDeleteDrawdownModal" max-width="420px">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon modal-icon--red">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+              <h2 class="modal-title">Delete Drawdown</h2>
+              <p class="modal-subtitle">This action cannot be undone</p>
+            </div>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p class="delete-message">
+            Are you sure you want to delete the drawdown of
+            <strong>{{ formatCurrency(drawdownToDelete?.amount) }}</strong>
+            recorded on <strong>{{ formatDate(drawdownToDelete?.date) }}</strong
+            >?
+          </p>
+          <div class="modal-actions">
+            <button class="btn-cancel" @click="cancelDeleteDrawdown">Cancel</button>
+            <button class="btn-delete" @click="confirmDeleteDrawdown" :disabled="loading">
+              <v-progress-circular
+                v-if="loading"
+                indeterminate
+                size="16"
+                width="2"
+                color="white"
+                class="mr-2"
+              />
+              Delete Drawdown
             </button>
           </div>
         </div>
