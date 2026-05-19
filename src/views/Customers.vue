@@ -69,11 +69,7 @@ const closeModal = () => {
 // Fetch available banks
 const fetchFacilities = async () => {
   loading.value = true
-<<<<<<< HEAD
   const { data, error } = await supabase.rpc('get_merchant_facilities_v2_v2', {
-=======
-  const { data, error } = await supabase.rpc('get_merchant_facilities_v1', {
->>>>>>> operations
     p_merchant_id: merchantId
   })
   console.log('merchant facilities:', data)

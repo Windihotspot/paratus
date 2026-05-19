@@ -44,14 +44,11 @@ const sidebarItems = [
     path: '/agents',
     icon: 'mdi-account-tie' // User with tie icon
   },
-<<<<<<< HEAD
-=======
   {
     title: 'Expenses',
     path: '/expenses',
     icon: 'mdi-account-tie' // User with tie icon
   },
->>>>>>> operations
   // {
   //   title: 'Revenue',
   //   path: '/revenue',

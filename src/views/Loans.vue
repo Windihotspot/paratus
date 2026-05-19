@@ -39,242 +39,10 @@ const toggleRow = (id) => {
   else expandedRows.value.add(id)
   expandedRows.value = new Set(expandedRows.value)
 }
-<<<<<<< HEAD
-const statusCategories = ['All', 'Active', 'Active < 5 days', 'Closed']
-
-const selectedStatus = ref('All')
-
-const downloadLoanPDF = async (loan) => {
-  const logo = await getBase64FromUrl(logoImage)
-  const statusBadge = getStatusBadge(loan)
-
-  const docDefinition = {
-    // ✅ Add watermark as a background image
-    background: (currentPage, pageSize) => {
-      return {
-        image: logo,
-        width: 300, // adjust size
-        opacity: 0.08, // make it faint
-        absolutePosition: { x: (pageSize.width - 300) / 2, y: (pageSize.height - 300) / 2 }
-      }
-    },
-
-    content: [
-      // HEADER — logo on far right, title on left
-      {
-        columns: [
-          {
-            text: 'PoF Due-Date Notification',
-            style: 'header',
-            alignment: 'left',
-            margin: [0, 20, 0, 0]
-          },
-          {
-            image: logo,
-            width: 80,
-            alignment: 'right'
-          }
-        ],
-        margin: [0, 0, 0, 20]
-      },
-
-      // CUSTOMER INFORMATION
-      {
-        text: 'Customer Information',
-        style: 'sectionHeader'
-      },
-      {
-        columns: [
-          { text: `Name: ${loan.customer_name || 'N/A'}`, width: '50%' }
-          // { text: `Customer ID: ${loan.customer_id || 'N/A'}`, width: '50%' }
-        ]
-      },
-      {
-        columns: [
-          { text: `Email: ${loan.customer_email || 'N/A'}`, width: '50%' },
-          { text: `Phone: ${loan.customer_phone || 'N/A'}`, width: '50%' }
-        ]
-      },
-      {
-        text: `Account Number: ${loan.customer_account_number || 'N/A'}`,
-        margin: [0, 0, 0, 15]
-      },
-
-      // POF DETAILS
-      {
-        text: 'PoF Details',
-        style: 'sectionHeader'
-      },
-
-      {
-        style: 'loanTable',
-        table: {
-          widths: ['40%', '60%'],
-          body: [
-            ['Loan Amount', formatCurrency(loan.loan_amount)],
-            ['Agreed Rate', `${loan.agreed_rate || 0}%`],
-            // ['Tenure (Days)', loan.tenure_days],
-            ['Disbursed At', loan.disbursed_at || 'N/A'],
-            ['Expiry Date', loan.expiry_date || 'N/A'],
-            [
-              'Status',
-              {
-                text: statusBadge.text,
-                color: statusBadge.color,
-                bold: true
-              }
-            ],
-            ['Primary Contact', loan.agent_name || 'N/A']
-          ]
-        },
-        layout: {
-          fillColor: (rowIndex) => (rowIndex % 2 === 0 ? '#f9f9f9' : null)
-        }
-      },
-
-      // FACILITY INFORMATION
-      {
-        text: 'Bank Information',
-        style: 'sectionHeader'
-      },
-      {
-        columns: [
-          { text: `Bank Name: ${loan.facility_name || 'N/A'}`, width: '50%' }
-          // { text: `Facility Amount: ${formatCurrency(loan.facility_amount)}`, width: '50%' }
-        ]
-      },
-      {
-        text: '',
-        margin: [0, 0, 0, 15]
-      },
-
-      // IMPORTANT INFORMATION
-      {
-        text: 'Important Information',
-        style: 'sectionHeader'
-      },
-      {
-        text: 'Renewal: Kindly make every effort to renew your PoF facility before the expiration date to avoid undue urgency or last-minute pressure.',
-        margin: [0, 0, 0, 15]
-      },
-      {
-        text: 'Please act fast!',
-        bold: true,
-        color: '#d32f2f',
-        margin: [0, 5, 0, 10]
-      },
-      {
-        text: 'Signed,\nManagement',
-        alignment: 'left',
-        italics: true
-      },
-
-      // FOOTER
-      {
-        text: `Generated on ${new Date().toLocaleString()}`,
-        style: 'footer',
-        alignment: 'right',
-        margin: [0, 30, 0, 0]
-      }
-    ],
-
-    styles: {
-      header: { fontSize: 18, bold: true, color: '#1f5aa3' },
-      sectionHeader: {
-        fontSize: 13,
-        bold: true,
-        color: '#27bfa0',
-        margin: [0, 10, 0, 5]
-      },
-      loanTable: { margin: [0, 0, 0, 15], fontSize: 11 },
-      footer: { fontSize: 9, italics: true, color: '#777' }
-    },
-
-    pageMargins: [40, 50, 40, 40]
-  }
-
-  pdfMake.createPdf(docDefinition).download(`${loan.customer_name || 'PoF'}.pdf`)
-}
-
-const disburseMenu = ref(false)
-
-const loan = ref({
-  customer_id: '',
-  facility_id: '',
-  loan_amount: '',
-  agreed_rate: '',
-  tenure_days: '',
-  disbursed_at: '',
-  agent_id: ''
-})
-
-// const fetchFacilities = async () => {
-//   loading.value = true
-//   const { data, error } = await supabase.rpc('get_merchant_facilities_v2', {
-//     p_merchant_id: merchantId
-//   })
-//   console.log('merchant facilities:', data)
-//   facilities.value = data
-
-//   if (error) {
-//     console.log('Error fetching facilities:', error)
-//   } else {
-//     facilities.value = (data || []).map((f) => ({
-//       id: f.id, // facility UUID
-//       name: f.name || f.bank_name || 'Unnamed Facility' // adjust to your column name
-//     }))
-//   }
-
-//   loading.value = false // set loading to false when done
-// }
-
-const getLoanStatusWithDays = (loan) => {
-  if (!loan.expiry_date || !loan.status) return loan.status || 'N/A'
-
-  const today = new Date()
-  const expiry = new Date(loan.expiry_date)
-
-  const diffTime = expiry - today // milliseconds
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) // convert to days
-
-  if (diffDays > 0) {
-    return `${loan.status} - less ${diffDays} day${diffDays > 1 ? 's' : ''}`
-  } else {
-    return `${loan.status} - expired`
-  }
-}
-
-const getStatusBadge = (loan) => {
-  if (!loan.status || !loan.expiry_date) return { text: 'N/A', color: 'gray' }
-
-  const today = new Date()
-  const expiry = new Date(loan.expiry_date)
-  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
-
-  if (loan.status === 'active') {
-    if (diffDays > 0) {
-      if (diffDays <= 5) {
-        return { text: `active < ${diffDays} day${diffDays > 1 ? 's' : ''}`, color: 'red' }
-      } else {
-        return { text: 'active', color: 'green' } // more than 5 days left
-      }
-    } else {
-      return { text: 'closed', color: 'red' } // expired → closed
-    }
-  }
-
-  if (loan.status === 'completed') return { text: 'completed', color: 'red' }
-  if (loan.status === 'defaulted') return { text: 'defaulted', color: 'blue' }
-
-  return { text: loan.status, color: 'gray' }
-}
-
-=======
 const isExpanded = (id) => expandedRows.value.has(id)
 
 // ── Form ────────────────────────────────────────────────
 const disburseMenu = ref(false)
->>>>>>> operations
 const isEditing = ref(false)
 const editingLoanId = ref(null)
 
@@ -463,9 +231,6 @@ const submitLoan = async () => {
   }
 }
 
-<<<<<<< HEAD
-// fetch merchant loans
-=======
 // ── Fetch ────────────────────────────────────────────────
 const fetchCustomers = async () => {
   try {
@@ -480,7 +245,6 @@ const fetchCustomers = async () => {
   }
 }
 
->>>>>>> operations
 const fetchLoans = async () => {
   loading.value = true
   errorMessage.value = null
@@ -500,98 +264,7 @@ const fetchLoans = async () => {
   }
 }
 
-<<<<<<< HEAD
-const formatLoanForExport = (loan) => {
-  return {
-    'Loan ID': loan.id,
-    'Customer Name': loan.customer_name,
-    'Customer Emails': (loan.customer_emails || []).map((e) => e.email).join(', '),
-    'Customer Phone': loan.customer_phone,
-    'Account Number': loan.customer_account_number,
-
-    'Facility Name': loan.facility_name,
-    'Facility Amount': loan.facility_amount,
-    'Facility Rate (%)': loan.facility_rate,
-    'Facility Status': loan.facility_status,
-
-    'Loan Amount': loan.loan_amount,
-    'Agreed Rate (%)': loan.agreed_rate,
-    Profit: loan.profit,
-    'Interest Payable': loan.interest_payable,
-
-    'Tenure (Days)': loan.tenure_days,
-    'Disbursed At': loan.disbursed_at,
-    'Expiry Date': loan.expiry_date,
-
-    'Agent Name': loan.agent_name,
-    Status: loan.status,
-
-    'Created At': loan.created_at
-  }
-}
-
-const downloadLoanExcel = (loan) => {
-  const formatted = [formatLoanForExport(loan)]
-
-  const ws = XLSX.utils.json_to_sheet(formatted)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Loan')
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-
-  saveAs(
-    new Blob([wbout], { type: 'application/octet-stream' }),
-    `${loan.customer_name || 'Loan'}.xlsx`
-  )
-}
-
-const downloadAllLoansExcel = () => {
-  if (!loans.value?.length) {
-    ElMessage({ message: 'No loans available to export', type: 'warning' })
-    return
-  }
-
-  const formatted = loans.value.map(formatLoanForExport)
-
-  const ws = XLSX.utils.json_to_sheet(formatted)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Loans Report')
-
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-
-  saveAs(
-    new Blob([wbout], { type: 'application/octet-stream' }),
-    `Loans_Report_${new Date().toISOString().split('T')[0]}.xlsx`
-  )
-}
-
-const availableStatuses = computed(() => {
-  const statuses = new Set(loans.value.map((l) => l.status || 'N/A'))
-  return ['All', ...Array.from(statuses)]
-})
-
-const formatCurrency = (value) => {
-  if (!value) return '₦0.00'
-  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
-}
-
-const selectedFacility = computed(() => authStore.selectedFacility)
-
-watch(
-  () => selectedFacility.value?.id,
-  async (newVal, oldVal) => {
-    console.log('🔄 Facility changed in store:', oldVal, '➡️', newVal)
-    if (newVal && newVal !== oldVal) {
-      await fetchLoans()
-      await fetchCustomers()
-    }
-  },
-  { immediate: true }
-)
-
-=======
 // ── Delete ───────────────────────────────────────────────
->>>>>>> operations
 const showDeleteModal = ref(false)
 const loanToDelete = ref(null)
 const openDeleteModal = (l) => {
@@ -867,21 +540,9 @@ const sendLoanSMS = async (l) => {
   }
 }
 
-<<<<<<< HEAD
-const sendLoanEmail = async (loan) => {
-  // ✅ Build + deduplicate emails
-  const allEmails = Array.from(
-    new Set(
-      [
-        loan.customer_email, // main email
-        ...(loan.customer_emails?.map((e) => e.email) || [])
-      ].filter(Boolean)
-    ) // remove null/undefined
-=======
 const sendLoanEmail = async (l) => {
   const allEmails = Array.from(
     new Set([l.customer_email, ...(l.customer_emails?.map((e) => e.email) || [])].filter(Boolean))
->>>>>>> operations
   )
   if (!allEmails.length) {
     ElNotification({
@@ -898,24 +559,13 @@ const sendLoanEmail = async (l) => {
       'Confirm Email',
       { confirmButtonText: 'Yes, Send', cancelButtonText: 'Cancel', type: 'warning' }
     )
-<<<<<<< HEAD
-
-    sendingEmail[loan.id] = true
-
-    // ✅ Start full-page loading
-=======
     sendingEmail[l.id] = true
->>>>>>> operations
     loadingInstance = ElLoading.service({
       lock: true,
       text: 'Sending Email...',
       background: 'rgba(0,0,0,0.5)'
     })
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-<<<<<<< HEAD
-
-=======
->>>>>>> operations
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-email-service',
       {
@@ -940,15 +590,9 @@ const sendLoanEmail = async (l) => {
   }
 }
 
-const sendLoanKudiEmail = async (loan) => {
-  // ✅ Build + deduplicate emails
+const sendLoanKudiEmail = async (l) => {
   const allEmails = Array.from(
-    new Set(
-      [
-        loan.customer_email, // main email
-        ...(loan.customer_emails?.map((e) => e.email) || [])
-      ].filter(Boolean)
-    ) // remove null/undefined
+    new Set([l.customer_email, ...(l.customer_emails?.map((e) => e.email) || [])].filter(Boolean))
   )
   if (!allEmails.length) {
     ElNotification({
@@ -961,11 +605,7 @@ const sendLoanKudiEmail = async (loan) => {
   let loadingInstance = null
   try {
     await ElMessageBox.confirm(
-<<<<<<< HEAD
-      `Send Email to ${loan.customer_name} (${emailsListStr})?`,
-=======
       `Send Email to ${l.customer_name} (${allEmails.join(', ')})?`,
->>>>>>> operations
       'Confirm Email',
       { confirmButtonText: 'Yes, Send', cancelButtonText: 'Cancel', type: 'warning' }
     )
@@ -976,10 +616,6 @@ const sendLoanKudiEmail = async (loan) => {
       background: 'rgba(0,0,0,0.5)'
     })
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-<<<<<<< HEAD
-
-=======
->>>>>>> operations
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
       {
@@ -1124,135 +760,29 @@ onMounted(() => {
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <<<<<<< HEAD
-              <tr v-for="loan in filteredLoans" :key="loan.id">
-                <!-- Customer -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.customer_name || 'N/A' }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.customer_account_number || 'N/A' }}
-                </td>
-
-                <!-- Loan Amount -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ formatCurrency(loan.loan_amount) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.agent_name }}
-                </td>
-
-                <!-- Agreed Rate -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.agreed_rate != null ? loan.agreed_rate.toFixed(1) : '0.00' }}%
-                </td>
-
-                <!-- Disbursement Date -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.disbursed_at }}
-                </td>
-
-                <!-- Interest Payable -->
-                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{
-                    loan.interest_payable != null
-                      ? formatCurrency(loan.interest_payable)
-                      : formatCurrency(0)
-                  }}
-                </td> -->
-
-                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.profit != null ? formatCurrency(loan.profit) : formatCurrency(0) }}
-                </td> -->
-
-                <!-- Duration -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.tenure_days }} days
-                </td>
-
-                <!-- Rate / Day -->
-                <!-- <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.rate_day != null ? loan.rate_day.toFixed(4) : '0.0000' }}
-                </td> -->
-
-                <!-- Expiry Date -->
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {{ loan.expiry_date }}
-                </td>
-
-                <!-- Status -->
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span
-                    :class="{
-                      'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                      'bg-green-100 text-green-800': getStatusBadge(loan).color === 'green',
-                      'bg-red-100 text-red-800': getStatusBadge(loan).color === 'red',
-                      'bg-blue-100 text-blue-800': getStatusBadge(loan).color === 'blue',
-                      'bg-gray-100 text-gray-800': getStatusBadge(loan).color === 'gray'
-                    }"
-                  >
-                    {{ getStatusBadge(loan).text }}
-                  </span>
-                </td>
-
-                <!-- Actions -->
-                <td class="px-8 flex gap-4 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <el-tooltip content="Send sms by Termii" placement="top">
+              <template v-for="l in filteredLoans" :key="l.id">
+                <!-- Main row -->
+                <tr :class="{ 'bg-green-50/30': isExpanded(l.id) }">
+                  <!-- Expand toggle (only show if has extensions) -->
+                  <td class="px-4 py-3 text-center">
                     <button
-                      class="text-purple-600 hover:text-purple-900"
-                      :disabled="sendingSMS[loan.id]"
-                      @click="sendLoanSMS(loan)"
-                      title="Send SMS"
+                      v-if="l.extensions?.length"
+                      @click="toggleRow(l.id)"
+                      class="expand-toggle"
+                      :class="{ active: isExpanded(l.id) }"
                     >
-                      <i :class="sendingSMS[loan.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"></i>
+                      <i
+                        class="fa-solid fa-chevron-right"
+                        style="font-size: 10px; transition: transform 0.2s"
+                        :style="isExpanded(l.id) ? 'transform:rotate(90deg)' : ''"
+                      ></i>
+                      <span class="ext-badge">{{ l.extensions.length }}</span>
                     </button>
-                  </el-tooltip>
-
-                  <el-tooltip content="Send email by Termii" placement="top">
-                    <button
-                      class="text-indigo-600 hover:text-indigo-900"
-                      :disabled="sendingEmail[loan.id]"
-                      @click="sendLoanEmail(loan)"
-                      title="Send Email"
-                    >
-                      <i class="fas fa-envelope"></i>
-                    </button>
-                  </el-tooltip>
-
-                  <el-tooltip content="Send email by kudi" placement="top">
-                    <button
-                      class="text-green-600 hover:text-green-900"
-                      :disabled="sendingEmail[loan.id]"
-                      @click="sendLoanKudiEmail(loan)"
-                      title="Send Email"
-                    >
-                      <i class="fas fa-envelope"></i>
-                    </button>
-                  </el-tooltip>
-                  =======
-                  <template v-for="l in filteredLoans" :key="l.id">
-                    <!-- Main row -->
-                    <tr :class="{ 'bg-green-50/30': isExpanded(l.id) }">
-                      <!-- Expand toggle (only show if has extensions) -->
-                      <td class="px-4 py-3 text-center">
-                        <button
-                          v-if="l.extensions?.length"
-                          @click="toggleRow(l.id)"
-                          class="expand-toggle"
-                          :class="{ active: isExpanded(l.id) }"
-                        >
-                          <i
-                            class="fa-solid fa-chevron-right"
-                            style="font-size: 10px; transition: transform 0.2s"
-                            :style="isExpanded(l.id) ? 'transform:rotate(90deg)' : ''"
-                          ></i>
-                          <span class="ext-badge">{{ l.extensions.length }}</span>
-                        </button>
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.customer_name || 'N/A' }}
-                      </td>
-                      <!-- <td class="px-4 py-3 whitespace-nowrap">
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.customer_name || 'N/A' }}
+                  </td>
+                  <!-- <td class="px-4 py-3 whitespace-nowrap">
                     <span
                       :class="
                         l.loan_type === 'extension'
@@ -1263,128 +793,121 @@ onMounted(() => {
                       {{ l.loan_type || 'new' }}
                     </span>
                   </td> -->
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.customer_account_number || 'N/A' }}
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ formatCurrency(l.loan_amount) }}
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.agent_full_name }}
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.agreed_rate != null ? l.agreed_rate.toFixed(1) : '0.0' }}%
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.disbursed_at }}
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.tenure_days }} days
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                        {{ l.expiry_date }}
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap">
-                        <span
-                          :class="{
-                            'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                            'bg-green-100 text-green-800': getStatusBadge(l).color === 'green',
-                            'bg-red-100 text-red-800': getStatusBadge(l).color === 'red',
-                            'bg-blue-100 text-blue-800': getStatusBadge(l).color === 'blue',
-                            'bg-gray-100 text-gray-800': getStatusBadge(l).color === 'gray'
-                          }"
-                          >{{ getStatusBadge(l).text }}</span
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.customer_account_number || 'N/A' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ formatCurrency(l.loan_amount) }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.agent_full_name }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.agreed_rate != null ? l.agreed_rate.toFixed(1) : '0.0' }}%
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.disbursed_at }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.tenure_days }} days
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.expiry_date }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <span
+                      :class="{
+                        'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                        'bg-green-100 text-green-800': getStatusBadge(l).color === 'green',
+                        'bg-red-100 text-red-800': getStatusBadge(l).color === 'red',
+                        'bg-blue-100 text-blue-800': getStatusBadge(l).color === 'blue',
+                        'bg-gray-100 text-gray-800': getStatusBadge(l).color === 'gray'
+                      }"
+                      >{{ getStatusBadge(l).text }}</span
+                    >
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="flex gap-3 justify-center items-center">
+                      <el-tooltip content="Send SMS" placement="top">
+                        <button
+                          class="text-purple-600 hover:text-purple-900"
+                          :disabled="sendingSMS[l.id]"
+                          @click="sendLoanSMS(l)"
                         >
-                      </td>
-                      <td class="px-4 py-3 whitespace-nowrap">
-                        <div class="flex gap-3 justify-center items-center">
-                          <el-tooltip content="Send SMS" placement="top">
-                            <button
-                              class="text-purple-600 hover:text-purple-900"
-                              :disabled="sendingSMS[l.id]"
-                              @click="sendLoanSMS(l)"
-                            >
-                              <i
-                                :class="sendingSMS[l.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"
-                              ></i>
-                            </button>
-                          </el-tooltip>
-                          <el-tooltip content="Send email (Termii)" placement="top">
-                            <button
-                              class="text-indigo-600 hover:text-indigo-900"
-                              :disabled="sendingEmail[l.id]"
-                              @click="sendLoanEmail(l)"
-                            >
-                              <i class="fas fa-envelope"></i>
-                            </button>
-                          </el-tooltip>
-                          <el-tooltip content="Send email (Kudi)" placement="top">
-                            <button
-                              class="text-green-600 hover:text-green-900"
-                              :disabled="sendingEmail[l.id]"
-                              @click="sendLoanKudiEmail(l)"
-                            >
-                              <i class="fas fa-envelope"></i>
-                            </button>
-                          </el-tooltip>
-                          <button
-                            class="text-green-600 hover:text-green-900"
-                            @click="downloadLoanExcel(l)"
-                          >
-                            <i class="fas fa-download"></i>
-                          </button>
-                          <button
-                            class="text-red-600 hover:text-red-900"
-                            @click="downloadLoanPDF(l)"
-                          >
-                            <i class="fas fa-file-pdf"></i>
-                          </button>
-                          <button class="text-blue-600 hover:text-blue-900" @click="editLoan(l)">
-                            <i class="fas fa-edit"></i>
-                          </button>
-                          <button
-                            class="text-red-600 hover:text-red-900"
-                            @click="openDeleteModal(l)"
-                          >
-                            <i class="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    >>>>>>> operations
+                          <i
+                            :class="sendingSMS[l.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"
+                          ></i>
+                        </button>
+                      </el-tooltip>
+                      <el-tooltip content="Send email (Termii)" placement="top">
+                        <button
+                          class="text-indigo-600 hover:text-indigo-900"
+                          :disabled="sendingEmail[l.id]"
+                          @click="sendLoanEmail(l)"
+                        >
+                          <i class="fas fa-envelope"></i>
+                        </button>
+                      </el-tooltip>
+                      <el-tooltip content="Send email (Kudi)" placement="top">
+                        <button
+                          class="text-green-600 hover:text-green-900"
+                          :disabled="sendingEmail[l.id]"
+                          @click="sendLoanKudiEmail(l)"
+                        >
+                          <i class="fas fa-envelope"></i>
+                        </button>
+                      </el-tooltip>
+                      <button
+                        class="text-green-600 hover:text-green-900"
+                        @click="downloadLoanExcel(l)"
+                      >
+                        <i class="fas fa-download"></i>
+                      </button>
+                      <button class="text-red-600 hover:text-red-900" @click="downloadLoanPDF(l)">
+                        <i class="fas fa-file-pdf"></i>
+                      </button>
+                      <button class="text-blue-600 hover:text-blue-900" @click="editLoan(l)">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="text-red-600 hover:text-red-900" @click="openDeleteModal(l)">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
 
-                    <!-- Extensions expansion row -->
-                    <tr v-if="isExpanded(l.id)" class="extensions-expansion-row">
-                      <td colspan="12" class="p-0">
-                        <div class="extensions-content">
-                          <div class="extensions-header">
-                            <i class="fa-solid fa-code-branch"></i>
-                            Extensions for <strong>{{ l.customer_name }}</strong>
-                          </div>
-                          <table class="w-full extensions-table">
-                            <thead>
-                              <tr>
-                                <th>#</th>
-                                <th>Loan Amount</th>
-                                <th>Agreed Rate</th>
-                                <th>Disbursed</th>
-                                <th>Tenure</th>
-                                <th>Expiry</th>
-                                <!-- <th>Sales Amt</th>
+                <!-- Extensions expansion row -->
+                <tr v-if="isExpanded(l.id)" class="extensions-expansion-row">
+                  <td colspan="12" class="p-0">
+                    <div class="extensions-content">
+                      <div class="extensions-header">
+                        <i class="fa-solid fa-code-branch"></i>
+                        Extensions for <strong>{{ l.customer_name }}</strong>
+                      </div>
+                      <table class="w-full extensions-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>Loan Amount</th>
+                            <th>Agreed Rate</th>
+                            <th>Disbursed</th>
+                            <th>Tenure</th>
+                            <th>Expiry</th>
+                            <!-- <th>Sales Amt</th>
                             <th>Direct Cost</th>
                             <th>Profit</th> -->
-                                <th>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr v-for="(ext, idx) in l.extensions" :key="ext.id">
-                                <td>{{ idx + 1 }}</td>
-                                <td>{{ formatCurrency(ext.loan_amount) }}</td>
-                                <td>{{ ext.agreed_rate }}%</td>
-                                <td>{{ ext.disbursed_at }}</td>
-                                <td>{{ ext.tenure_days }}d</td>
-                                <td>{{ ext.expiry_date }}</td>
-                                <!-- <td class="text-green-700 font-medium">
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="(ext, idx) in l.extensions" :key="ext.id">
+                            <td>{{ idx + 1 }}</td>
+                            <td>{{ formatCurrency(ext.loan_amount) }}</td>
+                            <td>{{ ext.agreed_rate }}%</td>
+                            <td>{{ ext.disbursed_at }}</td>
+                            <td>{{ ext.tenure_days }}d</td>
+                            <td>{{ ext.expiry_date }}</td>
+                            <!-- <td class="text-green-700 font-medium">
                               {{ formatCurrency(ext.sales_amount) }}
                             </td>
                             <td class="text-amber-700 font-medium">
@@ -1393,31 +916,26 @@ onMounted(() => {
                             <td class="text-blue-700 font-medium">
                               {{ formatCurrency(ext.profit) }}
                             </td> -->
-                                <td>
-                                  <span
-                                    :class="{
-                                      'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
-                                      'bg-green-100 text-green-800':
-                                        getStatusBadge(ext).color === 'green',
-                                      'bg-red-100 text-red-800':
-                                        getStatusBadge(ext).color === 'red',
-                                      'bg-blue-100 text-blue-800':
-                                        getStatusBadge(ext).color === 'blue',
-                                      'bg-gray-100 text-gray-800':
-                                        getStatusBadge(ext).color === 'gray'
-                                    }"
-                                    >{{ getStatusBadge(ext).text }}</span
-                                  >
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  </template>
-                </td>
-              </tr>
+                            <td>
+                              <span
+                                :class="{
+                                  'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                                  'bg-green-100 text-green-800':
+                                    getStatusBadge(ext).color === 'green',
+                                  'bg-red-100 text-red-800': getStatusBadge(ext).color === 'red',
+                                  'bg-blue-100 text-blue-800': getStatusBadge(ext).color === 'blue',
+                                  'bg-gray-100 text-gray-800': getStatusBadge(ext).color === 'gray'
+                                }"
+                                >{{ getStatusBadge(ext).text }}</span
+                              >
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -1852,8 +1370,6 @@ onMounted(() => {
   gap: 8px;
   justify-content: center;
 }
-<<<<<<< HEAD
-=======
 .toggle-opt--active {
   border-color: #27bfa0;
   background: #f0fdfa;
@@ -1972,5 +1488,4 @@ onMounted(() => {
 .extensions-total-row td {
   padding: 9px 12px;
 }
->>>>>>> operations
 </style>
