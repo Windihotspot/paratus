@@ -82,7 +82,6 @@ const fetchBanks = async () => {
   else banks.value = data
 }
 
-<<<<<<< HEAD
 // Fetch merchant facilities
 const fetchFacilities = async () => {
   loading.value = true
@@ -95,10 +94,7 @@ const fetchFacilities = async () => {
   loading.value = false
 }
 
-// Open/Close modal
 // Open/Close modal for edit
-=======
->>>>>>> operations
 const openFacilityModal = (facility = null) => {
   if (facility) {
     isEditing.value = true
