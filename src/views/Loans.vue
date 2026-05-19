@@ -1,10 +1,15 @@
 <script setup>
 import { ref, onMounted, watch, computed, reactive } from 'vue'
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage, ElNotification, ElMessageBox, ElLoading } from 'element-plus'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
 import { useFormattedFields } from '@/composables/useFormmatedFields'
+import * as XLSX from 'xlsx'
+import { saveAs } from 'file-saver'
+import * as pdfMake from 'pdfmake/build/pdfmake'
+import logoImage from '@/assets/New Logo_with_Paratus.png'
+
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
 const loans = ref([])
@@ -14,17 +19,11 @@ const showModal = ref(false)
 const loading = ref(false)
 const formRef = ref(null)
 const valid = ref(false)
-const merchant = authStore.merchant
 const errorMessage = ref(null)
-import * as XLSX from 'xlsx'
-import { saveAs } from 'file-saver'
-import * as pdfMake from 'pdfmake/build/pdfmake'
-import * as pdfFonts from 'pdfmake/build/vfs_fonts'
-import logoImage from '@/assets/New Logo_with_Paratus.png' // ✅ correct way for Vite
 
 const loadingAgents = ref(false)
-
 const agents = ref([])
+
 const fetchAgents = async () => {
   loadingAgents.value = true
   const { data, error } = await supabase.rpc('get_merchant_agents', { p_merchant_id: merchantId })
@@ -33,16 +32,14 @@ const fetchAgents = async () => {
   loadingAgents.value = false
 }
 
-// Helper: convert imported logo to base64
-const getBase64FromUrl = async (url) => {
-  const res = await fetch(url)
-  const blob = await res.blob()
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve(reader.result)
-    reader.readAsDataURL(blob)
-  })
+// ── Expansion (for extensions) ──────────────────────────
+const expandedRows = ref(new Set())
+const toggleRow = (id) => {
+  if (expandedRows.value.has(id)) expandedRows.value.delete(id)
+  else expandedRows.value.add(id)
+  expandedRows.value = new Set(expandedRows.value)
 }
+<<<<<<< HEAD
 const statusCategories = ['All', 'Active', 'Active < 5 days', 'Closed']
 
 const selectedStatus = ref('All')
@@ -272,8 +269,53 @@ const getStatusBadge = (loan) => {
   return { text: loan.status, color: 'gray' }
 }
 
+=======
+const isExpanded = (id) => expandedRows.value.has(id)
+
+// ── Form ────────────────────────────────────────────────
+const disburseMenu = ref(false)
+>>>>>>> operations
 const isEditing = ref(false)
 const editingLoanId = ref(null)
+
+const loan = ref({
+  customer_id: null,
+  facility_id: null,
+  loan_amount: null,
+  agreed_rate: null,
+  tenure_days: null,
+  disbursed_at: null,
+  agent_id: null,
+  loan_type: 'new', // 'new' | 'extension'
+  parent_loan_id: null
+})
+
+const formattedLoanAmount = useFormattedFields(loan, 'loan_amount', { currency: true })
+
+// Parent loan options (for extension dropdown — all root loans)
+const parentLoanOptions = computed(() =>
+  loans.value.map((l) => ({
+    id: l.id,
+    label: `${l.customer_name} — ${formatCurrency(l.loan_amount)} (${l.disbursed_at})`
+  }))
+)
+
+const openModal = () => {
+  isEditing.value = false
+  editingLoanId.value = null
+  loan.value = {
+    customer_id: null,
+    facility_id: null,
+    loan_amount: null,
+    agreed_rate: null,
+    tenure_days: null,
+    disbursed_at: null,
+    agent_id: null,
+    loan_type: 'new',
+    parent_loan_id: null
+  }
+  showModal.value = true
+}
 
 const editLoan = (loanData) => {
   isEditing.value = true
@@ -284,98 +326,14 @@ const editLoan = (loanData) => {
     loan_amount: loanData.loan_amount,
     agreed_rate: loanData.agreed_rate,
     tenure_days: loanData.tenure_days,
-    disbursed_at: loanData.disbursed_at
+    disbursed_at: loanData.disbursed_at,
+    agent_id: loanData.agent_id,
+    loan_type: loanData.loan_type || 'new',
+    parent_loan_id: loanData.parent_loan_id || null
   }
-
   showModal.value = true
 }
 
-const submitLoan = async () => {
-  if (!formRef.value) return
-  const formValid = await formRef.value.validate()
-  if (!formValid) {
-    ElMessage({ message: 'Please fix the form errors', type: 'error' })
-    return
-  }
-
-  loading.value = true
-  ElMessage({
-    message: isEditing.value ? 'Updating loan...' : 'Adding loan...',
-    type: 'info',
-    duration: 1500
-  })
-
-  try {
-    if (isEditing.value) {
-      // Build payload
-      const payload = {
-        p_loan_id: editingLoanId.value,
-        p_loan_amount: loan.value.loan_amount,
-        p_agreed_rate: loan.value.agreed_rate,
-        p_disbursed_at: loan.value.disbursed_at,
-        p_status: loan.value.status || 'active',
-        p_tenure_days: loan.value.tenure_days,
-        p_customer_id: loan.value.customer_id,
-        p_facility_id: loan.value.facility_id,
-        p_agent_id: loan.value.agent_id || null // ensure null if undefined
-      }
-
-      // Log the payload
-      console.log('RPC payload:', payload)
-
-      // Call RPC
-      const { data, error } = await supabase.rpc('update_new_loan', payload)
-
-      // Log the result
-      console.log('RPC result:', data, 'RPC error:', error)
-
-      if (error) {
-        ElNotification({ title: 'Error', message: error.message, type: 'error' })
-        return
-      }
-
-      ElNotification({ title: 'Success', message: 'Loan updated successfully!', type: 'success' })
-    } else {
-      // Add new loan (your existing logic)
-      const { data, error } = await supabase.rpc('add_new_loan', {
-        p_merchant_id: merchantId,
-        p_customer_id: loan.value.customer_id,
-        p_facility_id: loan.value.facility_id,
-        p_loan_amount: loan.value.loan_amount,
-        p_agreed_rate: loan.value.agreed_rate,
-        p_tenure_days: loan.value.tenure_days,
-        p_disbursed_at: loan.value.disbursed_at,
-        p_agent_id: loan.value.agent_id
-      })
-      if (error) throw error
-      ElNotification({ title: 'Success', message: 'Loan added successfully!', type: 'success' })
-    }
-
-    await fetchLoans()
-    closeModal()
-    // Reset form
-    loan.value = {
-      customer_id: null,
-      facility_id: null,
-      loan_amount: null,
-      agreed_rate: null,
-      tenure_days: null,
-      disbursed_at: null,
-      agent_name: null
-    }
-    isEditing.value = false
-    editingLoanId.value = null
-    formRef.value.reset()
-  } catch (err) {
-    console.error('Error submitting loan:', err)
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
-  } finally {
-    loading.value = false
-  }
-}
-
-const formattedLoanAmount = useFormattedFields(loan, 'loan_amount', { currency: true })
-const openModal = () => (showModal.value = true)
 const closeModal = () => {
   showModal.value = false
   isEditing.value = false
@@ -387,61 +345,162 @@ const closeModal = () => {
     loan_amount: null,
     agreed_rate: null,
     tenure_days: null,
-    disbursed_at: null
+    disbursed_at: null,
+    agent_id: null,
+    loan_type: 'new',
+    parent_loan_id: null
   }
 }
 
-const fetchCustomers = async () => {
+const loanPreview = computed(() => {
+  const amount = parseFloat(String(loan.value.loan_amount).replace(/,/g, '')) || 0
+  const rate = parseFloat(loan.value.agreed_rate) || 0
+  const tenure = parseInt(loan.value.tenure_days) || 0
+  const date = loan.value.disbursed_at
+  if (!amount || !rate || !tenure || !date) return {}
+  const expiry = new Date(date)
+  expiry.setDate(expiry.getDate() + tenure)
+  const interest = amount * (rate / 100)
+  return {
+    expiry: expiry.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' }),
+    interest: formatCurrency(interest),
+    total: formatCurrency(amount + interest)
+  }
+})
+const selectLoanType = (type) => {
+  loan.value.loan_type = type
+  if (type === 'new') loan.value.parent_loan_id = null
+}
+
+const submitLoan = async () => {
+  if (!formRef.value) return
+
+  const formValid = await formRef.value.validate()
+
+  if (!formValid) {
+    ElMessage({ message: 'Please fix the form errors', type: 'error' })
+    return
+  }
+
+  if (loan.value.loan_type === 'extension' && !loan.value.parent_loan_id) {
+    ElMessage({ message: 'Please select the loan being extended', type: 'error' })
+    return
+  }
+
   loading.value = true
-  errorMessage.value = null
+
+  ElMessage({
+    message: isEditing.value ? 'Updating loan...' : 'Adding loan...',
+    type: 'info',
+    duration: 1500
+  })
 
   try {
-    const { data, error } = await supabase.rpc('get_merchant_customers', {
-      p_merchant_id: authStore.merchant.id,
-      p_facility_id: authStore.selectedFacility?.id || null
-    })
+    if (isEditing.value) {
+      const payload = {
+        p_loan_id: editingLoanId.value,
+        p_merchant_id: merchantId,
+        p_customer_id: loan.value.customer_id,
+        p_facility_id: loan.value.facility_id,
+        p_loan_amount: loan.value.loan_amount,
+        p_agreed_rate: loan.value.agreed_rate,
+        p_tenure_days: loan.value.tenure_days,
+        p_disbursed_at: loan.value.disbursed_at,
+        p_agent_id: loan.value.agent_id || null,
+        p_status: loan.value.status || 'active',
+        p_loan_type: loan.value.loan_type || 'new',
+        p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
+      }
+      console.log('Update Loan Payload:', payload)
+      const { error } = await supabase.rpc('update_new_loan_extension', payload)
 
-    if (error) throw error
+      if (error) throw error
 
-    // Sort latest first
-    customers.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      ElNotification({
+        title: 'Success',
+        message: 'Loan updated!',
+        type: 'success'
+      })
+    } else {
+      const payload = {
+        p_merchant_id: merchantId,
+        p_customer_id: loan.value.customer_id,
+        p_facility_id: loan.value.facility_id,
+        p_loan_amount: loan.value.loan_amount,
+        p_agreed_rate: loan.value.agreed_rate,
+        p_tenure_days: loan.value.tenure_days,
+        p_disbursed_at: loan.value.disbursed_at,
+        p_agent_id: loan.value.agent_id,
+        p_loan_type: loan.value.loan_type,
+        p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
+      }
 
-    console.log('Sorted customers:', customers.value)
+      console.log('Add Loan Payload:', payload)
+
+      const { error } = await supabase.rpc('add_new_loan_extension', payload)
+
+      if (error) throw error
+
+      ElNotification({
+        title: 'Success',
+        message: 'Loan added!',
+        type: 'success'
+      })
+    }
+
+    await fetchLoans()
+    closeModal()
   } catch (err) {
-    console.error('fetchCustomers error:', err)
-    errorMessage.value = 'Failed to load customers'
+    console.log('Loan Submission Error:', err)
+
+    ElNotification({
+      title: 'Error',
+      message: err.message,
+      type: 'error'
+    })
   } finally {
     loading.value = false
   }
 }
 
+<<<<<<< HEAD
 // fetch merchant loans
+=======
+// ── Fetch ────────────────────────────────────────────────
+const fetchCustomers = async () => {
+  try {
+    const { data, error } = await supabase.rpc('get_merchant_customers', {
+      p_merchant_id: authStore.merchant.id,
+      p_facility_id: authStore.selectedFacility?.id || null
+    })
+    if (error) throw error
+    customers.value = (data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  } catch (err) {
+    console.error('fetchCustomers error:', err)
+  }
+}
+
+>>>>>>> operations
 const fetchLoans = async () => {
   loading.value = true
   errorMessage.value = null
-
-  const facilityId = authStore.selectedFacility?.id || null
-  console.log('📥 Fetching loans for Merchant:', authStore.merchant.id)
-  console.log('🏦 With Facility ID:', facilityId)
-
   try {
-    const { data, error } = await supabase.rpc('fetch_loans', {
+    const { data, error } = await supabase.rpc('fetch_nested_loans', {
       p_merchant_id: authStore.merchant.id,
-      p_facility_id: facilityId
+      p_facility_id: authStore.selectedFacility?.id || null
     })
-
+    console.log('loans:', data)
     if (error) throw error
-
-    console.log('✅ Loans fetched:', data)
     loans.value = data || []
   } catch (err) {
-    console.error('❌ fetchLoans error:', err)
+    console.error(err)
     errorMessage.value = 'Failed to load loans'
   } finally {
     loading.value = false
   }
 }
 
+<<<<<<< HEAD
 const formatLoanForExport = (loan) => {
   return {
     'Loan ID': loan.id,
@@ -530,28 +589,28 @@ watch(
   { immediate: true }
 )
 
+=======
+// ── Delete ───────────────────────────────────────────────
+>>>>>>> operations
 const showDeleteModal = ref(false)
 const loanToDelete = ref(null)
-
-const openDeleteModal = (loanData) => {
-  loanToDelete.value = loanData
+const openDeleteModal = (l) => {
+  loanToDelete.value = l
   showDeleteModal.value = true
 }
-
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  loanToDelete.value = null
+}
 const confirmDeleteLoan = async () => {
   if (!loanToDelete.value) return
   loading.value = true
-
   try {
-    const { data, error } = await supabase.rpc('delete_loan', {
-      p_loan_id: loanToDelete.value.id
-    })
+    const { error } = await supabase.rpc('delete_loan', { p_loan_id: loanToDelete.value.id })
     if (error) throw error
-
-    ElNotification({ title: 'Deleted', message: 'Loan deleted successfully!', type: 'success' })
+    ElNotification({ title: 'Deleted', message: 'Loan deleted!', type: 'success' })
     await fetchLoans()
   } catch (err) {
-    console.error('Error deleting loan:', err)
     ElNotification({ title: 'Error', message: err.message, type: 'error' })
   } finally {
     loading.value = false
@@ -560,93 +619,231 @@ const confirmDeleteLoan = async () => {
   }
 }
 
-const cancelDelete = () => {
-  showDeleteModal.value = false
-  loanToDelete.value = null
-}
-
+// ── Status / Filter ──────────────────────────────────────
+const statusCategories = ['All', 'Active', 'Active < 5 days', 'Closed']
+const selectedStatus = ref('All')
 const searchQuery = ref('')
+
+const getStatusBadge = (l) => {
+  if (!l.status || !l.expiry_date) return { text: 'N/A', color: 'gray' }
+  const today = new Date()
+  const expiry = new Date(l.expiry_date)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+  if (l.status === 'active') {
+    if (diffDays > 5) return { text: 'active', color: 'green' }
+    if (diffDays > 0)
+      return { text: `active < ${diffDays} day${diffDays > 1 ? 's' : ''}`, color: 'red' }
+    return { text: 'closed', color: 'red' }
+  }
+  if (l.status === 'completed') return { text: 'completed', color: 'blue' }
+  if (l.status === 'defaulted') return { text: 'defaulted', color: 'blue' }
+  return { text: l.status, color: 'gray' }
+}
 
 const filteredLoans = computed(() => {
   let filtered = loans.value
-
   if (selectedStatus.value !== 'All') {
-    filtered = filtered.filter((loan) => {
-      const badge = getStatusBadge(loan).text.toLowerCase()
-      const selected = selectedStatus.value.toLowerCase()
-
-      if (selected === 'active') return badge === 'active'
-      if (selected === 'active < 5 days') return badge.startsWith('active <')
-      if (selected === 'closed') return badge === 'closed'
-      if (selected === 'completed') return badge === 'completed'
-      if (selected === 'defaulted') return badge === 'defaulted'
-      if (selected === 'n/a') return badge === 'n/a'
-
+    filtered = filtered.filter((l) => {
+      const badge = getStatusBadge(l).text.toLowerCase()
+      const sel = selectedStatus.value.toLowerCase()
+      if (sel === 'active') return badge === 'active'
+      if (sel === 'active < 5 days') return badge.startsWith('active <')
+      if (sel === 'closed') return badge === 'closed'
       return false
     })
   }
-
-  // Search filter
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter((loan) =>
-      Object.values(loan).some((val) =>
-        String(val || '')
+    const q = searchQuery.value.toLowerCase()
+    filtered = filtered.filter((l) =>
+      Object.values(l).some((v) =>
+        String(v || '')
           .toLowerCase()
-          .includes(query)
+          .includes(q)
       )
     )
   }
-
   return filtered
 })
-const getStatusColor = (status) => {
-  switch (status.toLowerCase()) {
-    case 'active':
-      return 'green'
-    case 'active < 5 days':
-      return 'red'
-    case 'closed':
-      return 'red'
-    case 'completed':
-      return 'blue'
-    case 'defaulted':
-      return 'blue'
-    default:
-      return 'gray'
-  }
+
+// ── Helpers ──────────────────────────────────────────────
+const formatCurrency = (value) => {
+  if (!value) return '₦0.00'
+  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value)
 }
 
-import { ElMessageBox, ElLoading } from 'element-plus'
-const sendingEmail = reactive({})
+const getBase64FromUrl = async (url) => {
+  const res = await fetch(url)
+  const blob = await res.blob()
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.readAsDataURL(blob)
+  })
+}
 
+const formatLoanForExport = (l) => ({
+  'Loan ID': l.id,
+  Type: l.loan_type || 'new',
+  'Customer Name': l.customer_name,
+  'Customer Phone': l.customer_phone,
+  'Account Number': l.customer_account_number,
+  'Facility Name': l.facility_name,
+  'Loan Amount': l.loan_amount,
+  'Agreed Rate (%)': l.agreed_rate,
+  'Bank Rate (%)': l.facility_rate,
+  'Sales Amount': l.sales_amount,
+  'Direct Cost': l.direct_cost,
+  Profit: l.profit,
+  'Tenure (Days)': l.tenure_days,
+  'Disbursed At': l.disbursed_at,
+  'Expiry Date': l.expiry_date,
+  Agent: l.agent_name,
+  Status: l.status
+})
+
+const downloadLoanExcel = (l) => {
+  const rows = [formatLoanForExport(l)]
+  if (l.extensions?.length) {
+    l.extensions.forEach((ext, i) =>
+      rows.push({
+        ...formatLoanForExport({
+          ...ext,
+          customer_name: l.customer_name,
+          facility_name: l.facility_name
+        }),
+        Type: `Extension ${i + 1}`
+      })
+    )
+  }
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Loan')
+  saveAs(
+    new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], {
+      type: 'application/octet-stream'
+    }),
+    `${l.customer_name || 'Loan'}.xlsx`
+  )
+}
+
+const downloadAllLoansExcel = () => {
+  if (!loans.value?.length) {
+    ElMessage({ message: 'No loans to export', type: 'warning' })
+    return
+  }
+  const rows = []
+  loans.value.forEach((l) => {
+    rows.push(formatLoanForExport(l))
+    l.extensions?.forEach((ext, i) =>
+      rows.push({
+        ...formatLoanForExport({
+          ...ext,
+          customer_name: l.customer_name,
+          facility_name: l.facility_name
+        }),
+        Type: `Extension ${i + 1}`
+      })
+    )
+  })
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Loans Report')
+  saveAs(
+    new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], {
+      type: 'application/octet-stream'
+    }),
+    `Loans_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+  )
+}
+
+const downloadLoanPDF = async (l) => {
+  const logo = await getBase64FromUrl(logoImage)
+  const statusBadge = getStatusBadge(l)
+  const docDefinition = {
+    background: (currentPage, pageSize) => ({
+      image: logo,
+      width: 300,
+      opacity: 0.08,
+      absolutePosition: { x: (pageSize.width - 300) / 2, y: (pageSize.height - 300) / 2 }
+    }),
+    content: [
+      {
+        columns: [
+          { text: 'PoF Due-Date Notification', style: 'header', margin: [0, 20, 0, 0] },
+          { image: logo, width: 80, alignment: 'right' }
+        ],
+        margin: [0, 0, 0, 20]
+      },
+      { text: 'Customer Information', style: 'sectionHeader' },
+      { columns: [{ text: `Name: ${l.customer_name || 'N/A'}`, width: '50%' }] },
+      { columns: [{ text: `Phone: ${l.customer_phone || 'N/A'}`, width: '50%' }] },
+      { text: `Account Number: ${l.customer_account_number || 'N/A'}`, margin: [0, 0, 0, 15] },
+      { text: 'PoF Details', style: 'sectionHeader' },
+      {
+        style: 'loanTable',
+        table: {
+          widths: ['40%', '60%'],
+          body: [
+            ['Loan Amount', formatCurrency(l.loan_amount)],
+            ['Agreed Rate', `${l.agreed_rate || 0}%`],
+            ['Disbursed At', l.disbursed_at || 'N/A'],
+            ['Expiry Date', l.expiry_date || 'N/A'],
+            ['Type', l.loan_type || 'new'],
+            ['Status', { text: statusBadge.text, color: statusBadge.color, bold: true }],
+            ['Primary Contact', l.agent_name || 'N/A']
+          ]
+        },
+        layout: { fillColor: (r) => (r % 2 === 0 ? '#f9f9f9' : null) }
+      },
+      { text: 'Bank Information', style: 'sectionHeader' },
+      { text: `Bank Name: ${l.facility_name || 'N/A'}` },
+      { text: '', margin: [0, 0, 0, 15] },
+      { text: 'Important Information', style: 'sectionHeader' },
+      {
+        text: 'Renewal: Kindly make every effort to renew your PoF facility before the expiration date.',
+        margin: [0, 0, 0, 15]
+      },
+      { text: 'Please act fast!', bold: true, color: '#d32f2f', margin: [0, 5, 0, 10] },
+      { text: 'Signed,\nManagement', alignment: 'left', italics: true },
+      {
+        text: `Generated on ${new Date().toLocaleString()}`,
+        style: 'footer',
+        alignment: 'right',
+        margin: [0, 30, 0, 0]
+      }
+    ],
+    styles: {
+      header: { fontSize: 18, bold: true, color: '#1f5aa3' },
+      sectionHeader: { fontSize: 13, bold: true, color: '#27bfa0', margin: [0, 10, 0, 5] },
+      loanTable: { margin: [0, 0, 0, 15], fontSize: 11 },
+      footer: { fontSize: 9, italics: true, color: '#777' }
+    },
+    pageMargins: [40, 50, 40, 40]
+  }
+  pdfMake.createPdf(docDefinition).download(`${l.customer_name || 'PoF'}.pdf`)
+}
+
+// ── SMS / Email ──────────────────────────────────────────
+const sendingEmail = reactive({})
 const sendingSMS = reactive({})
 
-const sendLoanSMS = async (loan) => {
-  if (!loan.customer_phone) {
+const sendLoanSMS = async (l) => {
+  if (!l.customer_phone) {
     ElNotification({
       title: 'No Phone Number',
-      message: `Customer ${loan.customer_name} does not have a phone number.`,
+      message: `No phone for ${l.customer_name}`,
       type: 'warning'
     })
     return
   }
-
   try {
     await ElMessageBox.confirm(
-      `Send SMS to ${loan.customer_name} (${loan.customer_phone})?`,
+      `Send SMS to ${l.customer_name} (${l.customer_phone})?`,
       'Confirm SMS',
-      {
-        confirmButtonText: 'Yes, Send',
-        cancelButtonText: 'Cancel',
-        type: 'warning'
-      }
+      { confirmButtonText: 'Yes, Send', cancelButtonText: 'Cancel', type: 'warning' }
     )
-
-    sendingSMS[loan.id] = true
-
+    sendingSMS[l.id] = true
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-sms-service',
       {
@@ -654,39 +851,23 @@ const sendLoanSMS = async (loan) => {
         headers: {
           'Content-Type': 'application/json',
           apikey: anonKey,
-          Authorization: `Bearer ${anonKey}` // 🔴 REQUIRED
+          Authorization: `Bearer ${anonKey}`
         },
-        body: JSON.stringify({
-          loan_id: loan.id
-        })
+        body: JSON.stringify({ loan_id: l.id })
       }
     )
-
     const result = await res.json()
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Failed to send SMS')
-    }
-
-    ElNotification({
-      title: 'Success',
-      message: 'SMS sent successfully!',
-      type: 'success'
-    })
+    if (!res.ok) throw new Error(result.error || 'Failed to send SMS')
+    ElNotification({ title: 'Success', message: 'SMS sent!', type: 'success' })
   } catch (err) {
-    if (err !== 'cancel') {
-      console.log(err)
-      ElNotification({
-        title: 'Error',
-        message: err.message || 'Failed to send SMS',
-        type: 'error'
-      })
-    }
+    if (err !== 'cancel')
+      ElNotification({ title: 'Error', message: err.message || 'Failed', type: 'error' })
   } finally {
-    sendingSMS[loan.id] = false
+    sendingSMS[l.id] = false
   }
 }
 
+<<<<<<< HEAD
 const sendLoanEmail = async (loan) => {
   // ✅ Build + deduplicate emails
   const allEmails = Array.from(
@@ -696,42 +877,45 @@ const sendLoanEmail = async (loan) => {
         ...(loan.customer_emails?.map((e) => e.email) || [])
       ].filter(Boolean)
     ) // remove null/undefined
+=======
+const sendLoanEmail = async (l) => {
+  const allEmails = Array.from(
+    new Set([l.customer_email, ...(l.customer_emails?.map((e) => e.email) || [])].filter(Boolean))
+>>>>>>> operations
   )
-
-  if (allEmails.length === 0) {
+  if (!allEmails.length) {
     ElNotification({
       title: 'No Email',
-      message: `Customer ${loan.customer_name} does not have any email addresses.`,
+      message: `No email for ${l.customer_name}`,
       type: 'warning'
     })
     return
   }
-
-  const emailsListStr = allEmails.join(', ')
-
   let loadingInstance = null
   try {
     await ElMessageBox.confirm(
-      `Send Email to ${loan.customer_name} (${emailsListStr})?`,
+      `Send Email to ${l.customer_name} (${allEmails.join(', ')})?`,
       'Confirm Email',
-      {
-        confirmButtonText: 'Yes, Send',
-        cancelButtonText: 'Cancel',
-        type: 'warning'
-      }
+      { confirmButtonText: 'Yes, Send', cancelButtonText: 'Cancel', type: 'warning' }
     )
+<<<<<<< HEAD
 
     sendingEmail[loan.id] = true
 
     // ✅ Start full-page loading
+=======
+    sendingEmail[l.id] = true
+>>>>>>> operations
     loadingInstance = ElLoading.service({
       lock: true,
       text: 'Sending Email...',
-      background: 'rgba(0, 0, 0, 0.5)'
+      background: 'rgba(0,0,0,0.5)'
     })
-
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+<<<<<<< HEAD
 
+=======
+>>>>>>> operations
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/termii-email-service',
       {
@@ -739,36 +923,19 @@ const sendLoanEmail = async (loan) => {
         headers: {
           'Content-Type': 'application/json',
           apikey: anonKey,
-          Authorization: `Bearer ${anonKey}` // 👈 important
+          Authorization: `Bearer ${anonKey}`
         },
-        body: JSON.stringify({ loan_id: loan.id })
+        body: JSON.stringify({ loan_id: l.id })
       }
     )
-
     const result = await res.json()
-
-    if (res.ok && result.success) {
-      ElNotification({
-        title: 'Success',
-        message: 'Email sent successfully!',
-        type: 'success'
-      })
-    } else {
-      throw new Error(result.error || 'Failed to send email')
-    }
+    if (!res.ok || !result.success) throw new Error(result.error || 'Failed')
+    ElNotification({ title: 'Success', message: 'Email sent!', type: 'success' })
   } catch (err) {
-    if (err !== 'cancel') {
-      console.log(err)
-      ElNotification({
-        title: 'Error',
-        message: err.message || 'Failed to send email',
-        type: 'error'
-      })
-    }
+    if (err !== 'cancel')
+      ElNotification({ title: 'Error', message: err.message || 'Failed', type: 'error' })
   } finally {
-    sendingEmail[loan.id] = false
-
-    // ✅ Stop full-page loading
+    sendingEmail[l.id] = false
     if (loadingInstance) loadingInstance.close()
   }
 }
@@ -783,40 +950,36 @@ const sendLoanKudiEmail = async (loan) => {
       ].filter(Boolean)
     ) // remove null/undefined
   )
-
-  if (allEmails.length === 0) {
+  if (!allEmails.length) {
     ElNotification({
       title: 'No Email',
-      message: `Customer ${loan.customer_name} does not have any email addresses.`,
+      message: `No email for ${l.customer_name}`,
       type: 'warning'
     })
     return
   }
-
-  const emailsListStr = allEmails.join(', ')
   let loadingInstance = null
   try {
     await ElMessageBox.confirm(
+<<<<<<< HEAD
       `Send Email to ${loan.customer_name} (${emailsListStr})?`,
+=======
+      `Send Email to ${l.customer_name} (${allEmails.join(', ')})?`,
+>>>>>>> operations
       'Confirm Email',
-      {
-        confirmButtonText: 'Yes, Send',
-        cancelButtonText: 'Cancel',
-        type: 'warning'
-      }
+      { confirmButtonText: 'Yes, Send', cancelButtonText: 'Cancel', type: 'warning' }
     )
-
-    sendingEmail[loan.id] = true
-
-    // ✅ Start full-page loading
+    sendingEmail[l.id] = true
     loadingInstance = ElLoading.service({
       lock: true,
       text: 'Sending Email...',
-      background: 'rgba(0, 0, 0, 0.5)'
+      background: 'rgba(0,0,0,0.5)'
     })
-
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+<<<<<<< HEAD
 
+=======
+>>>>>>> operations
     const res = await fetch(
       'https://ytvqldflnqwflahxjjzu.supabase.co/functions/v1/send-loan-expiry-email',
       {
@@ -824,40 +987,46 @@ const sendLoanKudiEmail = async (loan) => {
         headers: {
           'Content-Type': 'application/json',
           apikey: anonKey,
-          Authorization: `Bearer ${anonKey}` // 👈 important
+          Authorization: `Bearer ${anonKey}`
         },
-        body: JSON.stringify({ loan_id: loan.id })
+        body: JSON.stringify({ loan_id: l.id })
       }
     )
-
     const result = await res.json()
-
-    if (res.ok && result.success) {
-      ElNotification({
-        title: 'Success',
-        message: 'Email sent successfully!',
-        type: 'success'
-      })
-    } else {
-      throw new Error(result.error || 'Failed to send email')
-    }
+    if (!res.ok || !result.success) throw new Error(result.error || 'Failed')
+    ElNotification({ title: 'Success', message: 'Email sent!', type: 'success' })
   } catch (err) {
-    if (err !== 'cancel') {
-      console.log(err)
-      ElNotification({
-        title: 'Error',
-        message: err.message || 'Failed to send email',
-        type: 'error'
-      })
-    }
+    if (err !== 'cancel')
+      ElNotification({ title: 'Error', message: err.message || 'Failed', type: 'error' })
   } finally {
-    sendingEmail[loan.id] = false
-
-    // ✅ Stop full-page loading
+    sendingEmail[l.id] = false
     if (loadingInstance) loadingInstance.close()
   }
 }
 
+// ── Watchers / Mount ─────────────────────────────────────
+const selectedFacility = computed(() => authStore.selectedFacility)
+watch(
+  () => selectedFacility.value?.id,
+  async (newVal, oldVal) => {
+    if (newVal && newVal !== oldVal) {
+      await fetchLoans()
+      await fetchCustomers()
+    }
+  },
+  { immediate: true }
+)
+const onDateSelected = (val) => {
+  if (val) {
+    const y = val.getFullYear()
+    const m = String(val.getMonth() + 1).padStart(2, '0')
+    const d = String(val.getDate()).padStart(2, '0')
+    loan.value.disbursed_at = `${y}-${m}-${d}`
+  } else {
+    loan.value.disbursed_at = null
+  }
+  disburseMenu.value = false
+}
 onMounted(() => {
   fetchAgents()
   fetchLoans()
@@ -873,9 +1042,8 @@ onMounted(() => {
       <div class="bg-white flex rounded shadow justify-between items-center border-b p-4 mb-4">
         <div class="mb-2">
           <h1 class="text-xl font-bold mt-4">Database</h1>
-          <p class="text-gray-500 text-sm mt-1">View and Manage your loans records</p>
+          <p class="text-gray-500 text-sm mt-1">View and Manage your loan records</p>
         </div>
-
         <v-btn
           @click="openModal"
           size="medium"
@@ -888,16 +1056,15 @@ onMounted(() => {
         </v-btn>
       </div>
 
-      <!-- Loading State -->
+      <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center min-h-[200px]">
         <v-progress-circular indeterminate color="#27bfa0" size="40" width="4" />
         <span class="mt-2 text-gray-600 text-sm">Loading Loans</span>
       </div>
 
-      <!-- Loans Table -->
+      <!-- Table -->
       <div v-else-if="loans.length > 0" class="overflow-x-auto">
         <div class="flex items-center justify-between pt-2 pb-4">
-          <!-- LEFT SIDE -->
           <div class="flex items-center space-x-6">
             <v-btn
               color="green"
@@ -910,9 +1077,6 @@ onMounted(() => {
               </span>
               Export Loans
             </v-btn>
-
-            <i class="fa-solid fa-filter text-green"></i>
-
             <v-select
               v-model="selectedStatus"
               :items="statusCategories"
@@ -924,8 +1088,6 @@ onMounted(() => {
               color="green"
             />
           </div>
-
-          <!-- RIGHT SIDE -->
           <div class="w-64">
             <v-text-field
               v-model="searchQuery"
@@ -934,7 +1096,6 @@ onMounted(() => {
               density="compact"
               hide-details
               variant="outlined"
-              class="max-w-xs rounded-md"
               label="Search"
               color="#27bfa0"
             >
@@ -945,30 +1106,25 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="overflow-y-auto max-h-[500px] bg-white shadow rounded-lg">
-          <!-- Export All Loans -->
-
+        <div class="overflow-y-auto max-h-[600px] bg-white shadow rounded-lg">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-green-50 font-semibold sticky top-0 z-10">
               <tr>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Acc.number</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Pry-contact</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Bank Rate</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
-                <!-- <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">
-                  Interest Payable
-                </th> -->
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
-                <!-- <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Rate / Dy</th> -->
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Expiry Date</th>
-                <th class="px-6 py-3 text-left text-xs uppercase tracking-wider">Status</th>
-                <th class="px-6 py-3 text-center text-xs uppercase tracking-wider">Actions</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider w-10"></th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Customer</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Acc.Number</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Loan Amount</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Pry-Contact</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Bank Rate</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Expiry Date</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Status</th>
+                <th class="px-4 py-3 text-center text-xs uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-
             <tbody class="bg-white divide-y divide-gray-200">
+              <<<<<<< HEAD
               <tr v-for="loan in filteredLoans" :key="loan.id">
                 <!-- Customer -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
@@ -1073,28 +1229,193 @@ onMounted(() => {
                       <i class="fas fa-envelope"></i>
                     </button>
                   </el-tooltip>
+                  =======
+                  <template v-for="l in filteredLoans" :key="l.id">
+                    <!-- Main row -->
+                    <tr :class="{ 'bg-green-50/30': isExpanded(l.id) }">
+                      <!-- Expand toggle (only show if has extensions) -->
+                      <td class="px-4 py-3 text-center">
+                        <button
+                          v-if="l.extensions?.length"
+                          @click="toggleRow(l.id)"
+                          class="expand-toggle"
+                          :class="{ active: isExpanded(l.id) }"
+                        >
+                          <i
+                            class="fa-solid fa-chevron-right"
+                            style="font-size: 10px; transition: transform 0.2s"
+                            :style="isExpanded(l.id) ? 'transform:rotate(90deg)' : ''"
+                          ></i>
+                          <span class="ext-badge">{{ l.extensions.length }}</span>
+                        </button>
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.customer_name || 'N/A' }}
+                      </td>
+                      <!-- <td class="px-4 py-3 whitespace-nowrap">
+                    <span
+                      :class="
+                        l.loan_type === 'extension'
+                          ? 'type-pill type-pill--ext'
+                          : 'type-pill type-pill--new'
+                      "
+                    >
+                      {{ l.loan_type || 'new' }}
+                    </span>
+                  </td> -->
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.customer_account_number || 'N/A' }}
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ formatCurrency(l.loan_amount) }}
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.agent_full_name }}
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.agreed_rate != null ? l.agreed_rate.toFixed(1) : '0.0' }}%
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.disbursed_at }}
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.tenure_days }} days
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                        {{ l.expiry_date }}
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap">
+                        <span
+                          :class="{
+                            'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                            'bg-green-100 text-green-800': getStatusBadge(l).color === 'green',
+                            'bg-red-100 text-red-800': getStatusBadge(l).color === 'red',
+                            'bg-blue-100 text-blue-800': getStatusBadge(l).color === 'blue',
+                            'bg-gray-100 text-gray-800': getStatusBadge(l).color === 'gray'
+                          }"
+                          >{{ getStatusBadge(l).text }}</span
+                        >
+                      </td>
+                      <td class="px-4 py-3 whitespace-nowrap">
+                        <div class="flex gap-3 justify-center items-center">
+                          <el-tooltip content="Send SMS" placement="top">
+                            <button
+                              class="text-purple-600 hover:text-purple-900"
+                              :disabled="sendingSMS[l.id]"
+                              @click="sendLoanSMS(l)"
+                            >
+                              <i
+                                :class="sendingSMS[l.id] ? 'fas fa-spinner fa-spin' : 'fas fa-sms'"
+                              ></i>
+                            </button>
+                          </el-tooltip>
+                          <el-tooltip content="Send email (Termii)" placement="top">
+                            <button
+                              class="text-indigo-600 hover:text-indigo-900"
+                              :disabled="sendingEmail[l.id]"
+                              @click="sendLoanEmail(l)"
+                            >
+                              <i class="fas fa-envelope"></i>
+                            </button>
+                          </el-tooltip>
+                          <el-tooltip content="Send email (Kudi)" placement="top">
+                            <button
+                              class="text-green-600 hover:text-green-900"
+                              :disabled="sendingEmail[l.id]"
+                              @click="sendLoanKudiEmail(l)"
+                            >
+                              <i class="fas fa-envelope"></i>
+                            </button>
+                          </el-tooltip>
+                          <button
+                            class="text-green-600 hover:text-green-900"
+                            @click="downloadLoanExcel(l)"
+                          >
+                            <i class="fas fa-download"></i>
+                          </button>
+                          <button
+                            class="text-red-600 hover:text-red-900"
+                            @click="downloadLoanPDF(l)"
+                          >
+                            <i class="fas fa-file-pdf"></i>
+                          </button>
+                          <button class="text-blue-600 hover:text-blue-900" @click="editLoan(l)">
+                            <i class="fas fa-edit"></i>
+                          </button>
+                          <button
+                            class="text-red-600 hover:text-red-900"
+                            @click="openDeleteModal(l)"
+                          >
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    >>>>>>> operations
 
-                  <button
-                    class="text-green-600 hover:text-green-900"
-                    @click="downloadLoanExcel(loan)"
-                  >
-                    <i class="fas fa-download"></i>
-                  </button>
-
-                  <button
-                    class="text-red-600 hover:text-red-900"
-                    @click="downloadLoanPDF(loan)"
-                    title="Download PDF"
-                  >
-                    <i class="fas fa-file-pdf"></i>
-                  </button>
-
-                  <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editLoan(loan)">
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  <button class="text-red-600 hover:text-red-900" @click="openDeleteModal(loan)">
-                    <i class="fas fa-trash"></i>
-                  </button>
+                    <!-- Extensions expansion row -->
+                    <tr v-if="isExpanded(l.id)" class="extensions-expansion-row">
+                      <td colspan="12" class="p-0">
+                        <div class="extensions-content">
+                          <div class="extensions-header">
+                            <i class="fa-solid fa-code-branch"></i>
+                            Extensions for <strong>{{ l.customer_name }}</strong>
+                          </div>
+                          <table class="w-full extensions-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Loan Amount</th>
+                                <th>Agreed Rate</th>
+                                <th>Disbursed</th>
+                                <th>Tenure</th>
+                                <th>Expiry</th>
+                                <!-- <th>Sales Amt</th>
+                            <th>Direct Cost</th>
+                            <th>Profit</th> -->
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(ext, idx) in l.extensions" :key="ext.id">
+                                <td>{{ idx + 1 }}</td>
+                                <td>{{ formatCurrency(ext.loan_amount) }}</td>
+                                <td>{{ ext.agreed_rate }}%</td>
+                                <td>{{ ext.disbursed_at }}</td>
+                                <td>{{ ext.tenure_days }}d</td>
+                                <td>{{ ext.expiry_date }}</td>
+                                <!-- <td class="text-green-700 font-medium">
+                              {{ formatCurrency(ext.sales_amount) }}
+                            </td>
+                            <td class="text-amber-700 font-medium">
+                              {{ formatCurrency(ext.direct_cost) }}
+                            </td>
+                            <td class="text-blue-700 font-medium">
+                              {{ formatCurrency(ext.profit) }}
+                            </td> -->
+                                <td>
+                                  <span
+                                    :class="{
+                                      'px-2 inline-flex text-xs leading-5 font-semibold rounded-full': true,
+                                      'bg-green-100 text-green-800':
+                                        getStatusBadge(ext).color === 'green',
+                                      'bg-red-100 text-red-800':
+                                        getStatusBadge(ext).color === 'red',
+                                      'bg-blue-100 text-blue-800':
+                                        getStatusBadge(ext).color === 'blue',
+                                      'bg-gray-100 text-gray-800':
+                                        getStatusBadge(ext).color === 'gray'
+                                    }"
+                                    >{{ getStatusBadge(ext).text }}</span
+                                  >
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -1102,7 +1423,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Empty State -->
+      <!-- Empty -->
       <div v-else class="fill-height align-center justify-center">
         <div class="mx-auto text-center align-center w-[200px] h-[200px]">
           <div class="empty-text font-semibold mt-8">No Loans</div>
@@ -1110,7 +1431,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Delete loan modal -->
+    <!-- Delete modal -->
     <v-dialog v-model="showDeleteModal" max-width="400px">
       <v-card>
         <v-card-title class="text-lg font-bold">Delete Loan</v-card-title>
@@ -1126,166 +1447,530 @@ onMounted(() => {
       </v-card>
     </v-dialog>
 
-    <!-- Add Loan Modal -->
-    <v-dialog v-model="showModal" persistent max-width="800px">
-      <div class="w-full mx-auto p-6 bg-white shadow-lg rounded-lg relative">
-        <button @click="closeModal" class="absolute top-4 right-4 text-gray-600 hover:text-red-500">
-          <i class="fas fa-times fa-lg"></i>
-        </button>
+    <!-- Add / Edit Loan Modal -->
+    <v-dialog v-model="showModal" persistent max-width="640px">
+      <div class="loan-dialog">
+        <!-- Header -->
+        <div class="ld-header">
+          <div>
+            <h2>{{ isEditing ? 'Edit loan' : loanTypeTitle }}</h2>
+            <p>{{ isEditing ? 'Update the loan details below' : loanTypeSub }}</p>
+          </div>
+          <button class="ld-close" @click="closeModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
 
-        <h2 class="text-lg font-bold mb-4">
-          {{ isEditing ? 'Edit Existing Loan' : 'Add a New Loan' }}
-        </h2>
-
-        <v-form ref="formRef" v-model="valid" lazy-validation>
-          <v-select
-            :disabled="isEditing"
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.customer_id"
-            :items="customers"
-            item-value="id"
-            item-title="full_name"
-            label="Select Customer"
-            required
-          ></v-select>
-          <v-select
-            :disabled="isEditing"
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.facility_id"
-            :items="facilities"
-            item-value="id"
-            item-title="bank_name"
-            label="Select Facility"
-            :rules="[(v) => !!v || 'Facility is required']"
-          />
-
-          <v-text-field
-            variant="outlined"
-            v-model="formattedLoanAmount"
-            color="#27bfa0"
-            label="Loan Amount"
-            :rules="[(v) => !!v || 'Loan amount is required']"
-          />
-          <v-select
-            v-model="loan.agent_id"
-            :items="agents"
-            item-title="full_name"
-            item-value="id"
-            label="Select Agent"
-            variant="outlined"
-            color="#27bfa0"
-            hide-details
-            :loading="loadingAgents"
-            class="mb-3"
-            :rules="[(v) => !!v || 'Agent is required']"
-          />
-
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.agreed_rate"
-            label="Agreed Rate (%)"
-            type="number"
-            :rules="[(v) => !!v || 'Rate is required']"
-          />
-          <v-text-field
-            variant="outlined"
-            color="#27bfa0"
-            v-model="loan.tenure_days"
-            label="Tenure (Days)"
-            type="number"
-            :rules="[(v) => !!v || 'Tenure is required']"
-          />
-          <v-menu
-            v-model="disburseMenu"
-            :close-on-content-click="false"
-            transition="scale-transition"
-            offset-y
-            min-width="290px"
+        <!-- Type strip (new only) -->
+        <div v-if="!isEditing" class="ld-type-strip">
+          <button
+            :class="['ld-type-btn', loan.loan_type === 'new' ? 'ld-type-btn--new' : '']"
+            @click="selectLoanType('new')"
           >
-            <template v-slot:activator="{ props }">
-              <v-text-field
-                v-bind="props"
+            <i class="fa-solid fa-plus-circle"></i> New loan
+          </button>
+          <button
+            :class="['ld-type-btn', loan.loan_type === 'extension' ? 'ld-type-btn--ext' : '']"
+            @click="selectLoanType('extension')"
+          >
+            <i class="fa-solid fa-code-branch"></i> Extension
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="ld-body">
+          <v-form ref="formRef" v-model="valid" lazy-validation>
+            <!-- Extension parent selector -->
+            <transition name="slide-down">
+              <div v-if="loan.loan_type === 'extension'" class="ld-ext-banner">
+                <i class="fa-solid fa-code-branch"></i>
+                <span>Select the parent loan, then fill in the new terms.</span>
+              </div>
+            </transition>
+            <v-select
+              v-if="loan.loan_type === 'extension'"
+              v-model="loan.parent_loan_id"
+              :items="parentLoanOptions"
+              item-value="id"
+              item-title="label"
+              label="Extending which loan?"
+              variant="outlined"
+              color="#27bfa0"
+              :rules="[(v) => !!v || 'Required']"
+              class="mb-3"
+            />
+
+            <div class="ld-section">Customer &amp; facility</div>
+            <div class="ld-row">
+              <v-select
+                :disabled="isEditing"
+                v-model="loan.customer_id"
+                :items="customers"
+                item-value="id"
+                item-title="full_name"
+                label="Customer"
                 variant="outlined"
                 color="#27bfa0"
-                :model-value="loan.disbursed_at"
-                label="Disbursement Date"
-                readonly
-                :rules="[(v) => !!v || 'Disbursement date is required']"
+                :rules="[(v) => !!v || 'Required']"
               />
-            </template>
+              <v-select
+                :disabled="isEditing"
+                v-model="loan.facility_id"
+                :items="facilities"
+                item-value="id"
+                item-title="bank_name"
+                label="Facility / bank"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+            </div>
 
-            <v-date-picker
-              :model-value="loan.disbursed_at ? new Date(loan.disbursed_at) : null"
-              @update:model-value="
-                (val) => {
-                  if (val) {
-                    const year = val.getFullYear()
-                    const month = String(val.getMonth() + 1).padStart(2, '0')
-                    const day = String(val.getDate()).padStart(2, '0')
-                    loan.disbursed_at = `${year}-${month}-${day}` // stays correct, no UTC shift
-                  } else {
-                    loan.disbursed_at = null
-                  }
-                  disburseMenu = false
-                }
-              "
-            />
-          </v-menu>
+            <div class="ld-section">Loan terms</div>
+            <div class="ld-row">
+              <v-text-field
+                v-model="formattedLoanAmount"
+                label="Loan amount (₦)"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+              <v-select
+                v-model="loan.agent_id"
+                :items="agents"
+                item-title="full_name"
+                item-value="id"
+                label="Primary contact"
+                variant="outlined"
+                color="#27bfa0"
+                :loading="loadingAgents"
+                :rules="[(v) => !!v || 'Required']"
+              />
+            </div>
+            <div class="ld-row">
+              <v-text-field
+                v-model="loan.agreed_rate"
+                label="Agreed rate (%)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+              <v-text-field
+                v-model="loan.tenure_days"
+                label="Tenure (days)"
+                type="number"
+                variant="outlined"
+                color="#27bfa0"
+                :rules="[(v) => !!v || 'Required']"
+              />
+            </div>
+            <v-menu
+              v-model="disburseMenu"
+              :close-on-content-click="false"
+              offset-y
+              min-width="290px"
+            >
+              <template v-slot:activator="{ props }">
+                <v-text-field
+                  v-bind="props"
+                  variant="outlined"
+                  color="#27bfa0"
+                  :model-value="loan.disbursed_at"
+                  label="Disbursement date"
+                  readonly
+                  :rules="[(v) => !!v || 'Required']"
+                />
+              </template>
+              <v-date-picker
+                :model-value="loan.disbursed_at ? new Date(loan.disbursed_at) : null"
+                @update:model-value="onDateSelected"
+              />
+            </v-menu>
 
-          <div class="flex justify-end mt-6">
+            <!-- Live preview -->
+            <!-- <div v-if="loanPreview.expiry" class="ld-preview">
+              <div class="ld-preview-item">
+                <span>Expiry date</span>
+                <strong>{{ loanPreview.expiry }}</strong>
+              </div>
+              <div class="ld-preview-item">
+                <span>Interest</span>
+                <strong class="green">{{ loanPreview.interest }}</strong>
+              </div>
+              <div class="ld-preview-item">
+                <span>Total repayment</span>
+                <strong class="purple">{{ loanPreview.total }}</strong>
+              </div>
+            </div> -->
+          </v-form>
+        </div>
+
+        <!-- Footer -->
+        <div class="ld-footer">
+          <span class="ld-hint"><i class="fas fa-shield-alt"></i> All fields required</span>
+          <div class="ld-actions">
             <v-btn text @click="closeModal">Cancel</v-btn>
-            <v-btn color="green" class="ml-3" :loading="loading" @click="submitLoan">
-              {{ isEditing ? 'Update' : 'Save' }}
+            <v-btn
+              :color="loan.loan_type === 'extension' ? 'deep-purple' : 'green'"
+              class="ml-2"
+              :loading="loading"
+              @click="submitLoan"
+            >
+              {{
+                isEditing
+                  ? 'Update'
+                  : loan.loan_type === 'extension'
+                    ? 'Save extension'
+                    : 'Save loan'
+              }}
             </v-btn>
           </div>
-        </v-form>
+        </div>
       </div>
     </v-dialog>
   </MainLayout>
 </template>
 
 <style scoped>
-.el-message.el-message-top-left {
-  left: 20px; /* push from the left */
-  right: auto; /* override default center */
-  transform: none; /* remove centering */
+.loan-dialog {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
+.ld-header {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  background: #ffffff;
+}
+
+.ld-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 3px;
+}
+
+.ld-header p {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.ld-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.ld-close:hover {
+  background: #f3f4f6;
+}
+
+.ld-type-strip {
+  padding: 14px 24px;
+  background: #f9fafb;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  gap: 10px;
+}
+
+.ld-type-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.15s;
+}
+.ld-type-btn--new {
+  border-color: #27bfa0;
+  background: #f0fdf9;
+  color: #0f6e56;
+}
+.ld-type-btn--ext {
+  border-color: #7f77dd;
+  background: #f4f3fe;
+  color: #3c3489;
+}
+
+.ld-body {
+  padding: 20px 24px 4px;
+  background: #ffffff;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.ld-section {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin: 16px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ld-section::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #f0f0f0;
+}
+
+.ld-ext-banner {
+  background: #f4f3fe;
+  border: 1px solid #c7c5f0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #3c3489;
+}
+
+.ld-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ld-preview {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 4px 0 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.ld-preview-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ld-preview-item span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9ca3af;
+}
+.ld-preview-item strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.ld-preview-item strong.green {
+  color: #1d9e75;
+}
+.ld-preview-item strong.purple {
+  color: #534ab7;
+}
+
+.ld-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ld-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ld-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .custom-btn {
   background-color: #27bfa0;
-}
-.v-slider {
-  --v-slider-track-size: 4px;
-  --v-slider-thumb-size: 12px;
-}
-
-.v-tab {
-  text-transform: none;
 }
 .v-btn {
   text-transform: none;
 }
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
+.v-tab {
+  text-transform: none;
 }
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+
+/* Loan type toggle */
+.loan-type-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-:deep(.v-tab__slider) {
-  height: 4px !important; /* Adjust thickness */
-  background-color: #15803d !important; /* Change color if needed */
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a8899;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
+.toggle-options {
+  display: flex;
+  gap: 10px;
 }
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.toggle-opt {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  background: #fff;
+  color: #5a6a7e;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
 }
+<<<<<<< HEAD
+=======
+.toggle-opt--active {
+  border-color: #27bfa0;
+  background: #f0fdfa;
+  color: #1a9e85;
+}
+.toggle-opt--ext.toggle-opt--active {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+/* Type pills in table */
+.type-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.type-pill--new {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.type-pill--ext {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+/* Expand toggle */
+.expand-toggle {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #7a8899;
+  transition: all 0.15s;
+}
+.expand-toggle:hover,
+.expand-toggle.active {
+  border-color: #27bfa0;
+  background: #f0fdfa;
+  color: #27bfa0;
+}
+.ext-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Extensions panel */
+.extensions-expansion-row td {
+  background: #f8f5ff;
+}
+.extensions-content {
+  padding: 12px 20px 16px 48px;
+  border-top: 1px dashed #c7c7f4;
+}
+.extensions-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6366f1;
+  margin-bottom: 12px;
+}
+.extensions-table {
+  border-collapse: collapse;
+}
+.extensions-table thead tr {
+  background: #eef2ff;
+}
+.extensions-table thead th {
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6366f1;
+  text-align: left;
+}
+.extensions-table tbody tr {
+  background: #fff;
+  border-bottom: 1px solid #e8e8f8;
+}
+.extensions-table tbody tr:hover {
+  background: #f5f5ff;
+}
+.extensions-table tbody td {
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: #374151;
+}
+.extensions-total-row {
+  background: #f0f0fc !important;
+  border-top: 2px solid #6366f1 !important;
+}
+.extensions-total-row td {
+  padding: 9px 12px;
+}
+>>>>>>> operations
 </style>

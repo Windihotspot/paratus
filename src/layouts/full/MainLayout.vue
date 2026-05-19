@@ -17,22 +17,20 @@ onMounted(() => {
     <!--- Header -->
     <!-- ---------------------------------------------- -->
     <v-app-bar app elevation="1" class="pa-2">
-     <v-btn
-  class="hidden-md-and-up"
-  icon
-  @click="drawer = !drawer"
->
-  <v-icon icon="mdi-menu" />
-</v-btn>
+      <v-btn class="hidden-md-and-up" icon @click="drawer = !drawer">
+        <v-icon icon="mdi-menu" />
+      </v-btn>
 
-
-      <img src="/src/assets/New Logo_with_Paratus.png" alt="Logo" class="w-24 h-24 mb-2 hidden md:flex" />
+      <img
+        src="/src/assets/New Logo_with_Paratus.png"
+        alt="Logo"
+        class="w-24 h-24 mb-2 hidden md:flex"
+      />
 
       <div class="logo pa-4 hidden md:flex items-center space-x-2">
- <img src="@/assets/paratus-logo.jpeg" class="w-20 h-20" alt="">
-  <span class="text-sm text-gray-600">Powered By: Uppertech One Ltd</span>
-</div>
-
+        <img src="@/assets/paratus-logo.jpeg" class="w-20 h-20" alt="" />
+        <span class="text-sm text-gray-600">Powered By: Uppertech One Ltd</span>
+      </div>
 
       <v-spacer></v-spacer>
       <HeaderView />

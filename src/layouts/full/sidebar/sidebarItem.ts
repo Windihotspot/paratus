@@ -15,6 +15,11 @@ const sidebarItems = [
     icon: 'mdi-domain' // Building / Database icon
   },
   {
+    title: 'Facilities - Bank',
+    path: '/facilities-bank',
+    icon: 'mdi-domain' // Building / Database icon
+  },
+  {
     title: 'Applications',
     path: '/applications',
     icon: 'mdi-account-group' // Users icon
@@ -30,10 +35,23 @@ const sidebarItems = [
     icon: 'mdi-cash-multiple' // Loans / Money icon
   },
   {
+    title: 'Loans - Facilities',
+    path: '/facilities-loans',
+    icon: 'mdi-cash-multiple' // Loans / Money icon
+  },
+  {
     title: 'Agents',
     path: '/agents',
     icon: 'mdi-account-tie' // User with tie icon
   },
+<<<<<<< HEAD
+=======
+  {
+    title: 'Expenses',
+    path: '/expenses',
+    icon: 'mdi-account-tie' // User with tie icon
+  },
+>>>>>>> operations
   // {
   //   title: 'Revenue',
   //   path: '/revenue',
