@@ -166,7 +166,7 @@ const submitLoan = async () => {
   try {
     if (isEditing.value) {
       if (loan.value.loan_type === 'extension') {
-        const { error } = await supabase.rpc('update_loan_extension_v2_record', {
+        const { error } = await supabase.rpc('update_loan_extension_v2_record_latest', {
           p_loan_id: editingLoanId.value,
           p_merchant_id: merchantId,
           p_tenure_days: Number(loan.value.tenure_days)
@@ -992,12 +992,12 @@ const confirmDeleteExtension = async () => {
                             </td>
                             <td>
                               <div class="flex gap-6 justify-center">
-                                <!-- <button
+                                <button
                                   class="text-blue-600 hover:text-blue-900"
                                   @click="editLoan(ext)"
                                 >
                                   <i class="fas fa-edit"></i>
-                                </button> -->
+                                </button>
                                 <button
                                   class="text-red-600 hover:text-red-900"
                                   @click="openDeleteExtensionModal(ext)"
