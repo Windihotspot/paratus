@@ -992,12 +992,12 @@ const confirmDeleteExtension = async () => {
                             </td>
                             <td>
                               <div class="flex gap-6 justify-center">
-                                <button
+                                <!-- <button
                                   class="text-blue-600 hover:text-blue-900"
                                   @click="editLoan(ext)"
                                 >
                                   <i class="fas fa-edit"></i>
-                                </button>
+                                </button> -->
                                 <button
                                   class="text-red-600 hover:text-red-900"
                                   @click="openDeleteExtensionModal(ext)"
