@@ -165,30 +165,33 @@ const submitLoan = async () => {
 
   try {
     if (isEditing.value) {
-      const payload = {
-        p_loan_id: editingLoanId.value,
-        p_merchant_id: merchantId,
-        p_customer_id: loan.value.customer_id,
-        p_facility_id: loan.value.facility_id,
-        p_loan_amount: loan.value.loan_amount,
-        p_agreed_rate: loan.value.agreed_rate,
-        p_tenure_days: loan.value.tenure_days,
-        p_disbursed_at: loan.value.disbursed_at,
-        p_agent_id: loan.value.agent_id || null,
-        p_status: loan.value.status || 'active',
-        p_loan_type: loan.value.loan_type || 'new',
-        p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
+      if (loan.value.loan_type === 'extension') {
+        const { error } = await supabase.rpc('update_loan_extension', {
+          p_loan_id: editingLoanId.value,
+          p_merchant_id: merchantId,
+          p_tenure_days: Number(loan.value.tenure_days)
+        })
+        if (error) throw error
+        ElNotification({ title: 'Success', message: 'Extension updated!', type: 'success' })
+      } else {
+        const payload = {
+          p_loan_id: editingLoanId.value,
+          p_merchant_id: merchantId,
+          p_customer_id: loan.value.customer_id,
+          p_facility_id: loan.value.facility_id,
+          p_loan_amount: loan.value.loan_amount,
+          p_agreed_rate: loan.value.agreed_rate,
+          p_tenure_days: Number(loan.value.tenure_days),
+          p_disbursed_at: loan.value.disbursed_at,
+          p_agent_id: loan.value.agent_id || null,
+          p_status: loan.value.status || 'active',
+          p_loan_type: 'new',
+          p_parent_loan_id: null
+        }
+        const { error } = await supabase.rpc('update_new_loan_extension', payload)
+        if (error) throw error
+        ElNotification({ title: 'Success', message: 'Loan updated!', type: 'success' })
       }
-      console.log('Update Loan Payload:', payload)
-      const { error } = await supabase.rpc('update_new_loan_extension', payload)
-
-      if (error) throw error
-
-      ElNotification({
-        title: 'Success',
-        message: 'Loan updated!',
-        type: 'success'
-      })
     } else {
       const payload = {
         p_merchant_id: merchantId,
@@ -196,7 +199,7 @@ const submitLoan = async () => {
         p_facility_id: loan.value.facility_id,
         p_loan_amount: loan.value.loan_amount,
         p_agreed_rate: loan.value.agreed_rate,
-        p_tenure_days: loan.value.tenure_days,
+        p_tenure_days: Number(loan.value.tenure_days),
         p_disbursed_at: loan.value.disbursed_at,
         p_agent_id: loan.value.agent_id,
         p_loan_type: loan.value.loan_type,
@@ -206,12 +209,11 @@ const submitLoan = async () => {
       console.log('Add Loan Payload:', payload)
 
       const { error } = await supabase.rpc('add_new_loan_extension', payload)
-
       if (error) throw error
 
       ElNotification({
         title: 'Success',
-        message: 'Loan added!',
+        message: loan.value.loan_type === 'extension' ? 'Loan extended!' : 'Loan added!', // 👈
         type: 'success'
       })
     }
@@ -220,17 +222,16 @@ const submitLoan = async () => {
     closeModal()
   } catch (err) {
     console.log('Loan Submission Error:', err)
-
-    ElNotification({
-      title: 'Error',
-      message: err.message,
-      type: 'error'
-    })
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
   } finally {
     loading.value = false
   }
 }
-
+const isNewExtension = computed(
+  () => !isEditing.value && loan.value.loan_type === 'extension' && !!loan.value.parent_loan_id
+)
+// Keep this — used in submitLoan branching only
+const isExtensionEdit = computed(() => isEditing.value && loan.value.loan_type === 'extension')
 // ── Fetch ────────────────────────────────────────────────
 const fetchCustomers = async () => {
   try {
@@ -249,7 +250,7 @@ const fetchLoans = async () => {
   loading.value = true
   errorMessage.value = null
   try {
-    const { data, error } = await supabase.rpc('fetch_nested_loans', {
+    const { data, error } = await supabase.rpc('fetch_nested_loans_v1', {
       p_merchant_id: authStore.merchant.id,
       p_facility_id: authStore.selectedFacility?.id || null
     })
@@ -279,7 +280,7 @@ const confirmDeleteLoan = async () => {
   if (!loanToDelete.value) return
   loading.value = true
   try {
-    const { error } = await supabase.rpc('delete_loan', { p_loan_id: loanToDelete.value.id })
+    const { error } = await supabase.rpc('delete_loan_v1', { p_loan_id: loanToDelete.value.id })
     if (error) throw error
     ElNotification({ title: 'Deleted', message: 'Loan deleted!', type: 'success' })
     await fetchLoans()
@@ -669,6 +670,68 @@ onMounted(() => {
   fetchCustomers()
   authStore.fetchFacilities()
 })
+const deleteExtension = async (ext) => {
+  try {
+    const { error } = await supabase.rpc('delete_extension_loan', {
+      p_loan_id: ext.id
+    })
+    if (error) throw error
+    ElNotification({ title: 'Deleted', message: 'Extension removed', type: 'success' })
+    await fetchLoans()
+  } catch (err) {
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  }
+}
+watch(
+  () => loan.value.parent_loan_id,
+  (newParentId) => {
+    if (!newParentId || loan.value.loan_type !== 'extension') return
+
+    const parent = loans.value.find((l) => l.id === newParentId)
+    if (!parent) return
+
+    loan.value.customer_id = parent.customer_id
+    loan.value.facility_id = parent.facility_id
+    loan.value.loan_amount = parent.loan_amount
+    loan.value.agreed_rate = parent.agreed_rate
+    loan.value.disbursed_at = parent.disbursed_at
+    loan.value.agent_id = parent.agent_id
+    // tenure_days left empty for user to fill
+    loan.value.tenure_days = null
+  }
+)
+// Add these refs
+const showDeleteExtensionModal = ref(false)
+const extensionToDelete = ref(null)
+
+const openDeleteExtensionModal = (ext) => {
+  extensionToDelete.value = ext
+  showDeleteExtensionModal.value = true
+}
+
+const cancelDeleteExtension = () => {
+  showDeleteExtensionModal.value = false
+  extensionToDelete.value = null
+}
+
+const confirmDeleteExtension = async () => {
+  if (!extensionToDelete.value) return
+  loading.value = true
+  try {
+    const { error } = await supabase.rpc('delete_extension_loan', {
+      p_loan_id: extensionToDelete.value.id
+    })
+    if (error) throw error
+    ElNotification({ title: 'Deleted', message: 'Extension removed', type: 'success' })
+    await fetchLoans()
+  } catch (err) {
+    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+  } finally {
+    loading.value = false
+    showDeleteExtensionModal.value = false
+    extensionToDelete.value = null
+  }
+}
 </script>
 
 <template>
@@ -897,6 +960,7 @@ onMounted(() => {
                             <th>Direct Cost</th>
                             <th>Profit</th> -->
                             <th>Status</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -907,15 +971,6 @@ onMounted(() => {
                             <td>{{ ext.disbursed_at }}</td>
                             <td>{{ ext.tenure_days }}d</td>
                             <td>{{ ext.expiry_date }}</td>
-                            <!-- <td class="text-green-700 font-medium">
-                              {{ formatCurrency(ext.sales_amount) }}
-                            </td>
-                            <td class="text-amber-700 font-medium">
-                              {{ formatCurrency(ext.direct_cost) }}
-                            </td>
-                            <td class="text-blue-700 font-medium">
-                              {{ formatCurrency(ext.profit) }}
-                            </td> -->
                             <td>
                               <span
                                 :class="{
@@ -929,6 +984,31 @@ onMounted(() => {
                                 >{{ getStatusBadge(ext).text }}</span
                               >
                             </td>
+                            <td>
+                              <div class="flex gap-6 justify-center">
+                                <button
+                                  class="text-blue-600 hover:text-blue-900"
+                                  @click="editLoan(ext)"
+                                >
+                                  <i class="fas fa-edit"></i>
+                                </button>
+                                <button
+                                  class="text-red-600 hover:text-red-900"
+                                  @click="openDeleteExtensionModal(ext)"
+                                >
+                                  <i class="fas fa-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                            <!-- <td class="text-green-700 font-medium">
+                              {{ formatCurrency(ext.sales_amount) }}
+                            </td>
+                            <td class="text-amber-700 font-medium">
+                              {{ formatCurrency(ext.direct_cost) }}
+                            </td>
+                            <td class="text-blue-700 font-medium">
+                              {{ formatCurrency(ext.profit) }}
+                            </td> -->
                           </tr>
                         </tbody>
                       </table>
@@ -964,7 +1044,20 @@ onMounted(() => {
         </v-card-actions>
       </v-card>
     </v-dialog>
-
+    <v-dialog v-model="showDeleteExtensionModal" max-width="400px">
+      <v-card>
+        <v-card-title class="text-lg font-bold">Delete Extension</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete extension
+          <strong>#{{ extensionToDelete?.tenure_days }}d</strong>
+          (disbursed {{ extensionToDelete?.disbursed_at }})? This cannot be undone.
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn text color="gray" @click="cancelDeleteExtension">Cancel</v-btn>
+          <v-btn color="red" dark @click="confirmDeleteExtension" :loading="loading">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <!-- Add / Edit Loan Modal -->
     <v-dialog v-model="showModal" persistent max-width="640px">
       <div class="loan-dialog">
@@ -1002,7 +1095,12 @@ onMounted(() => {
             <transition name="slide-down">
               <div v-if="loan.loan_type === 'extension'" class="ld-ext-banner">
                 <i class="fa-solid fa-code-branch"></i>
-                <span>Select the parent loan, then fill in the new terms.</span>
+                <span v-if="!loan.parent_loan_id"
+                  >Select the parent loan to auto-fill the fields.</span
+                >
+                <span v-else
+                  >Fields are pre-filled from the parent loan. Only set the new tenure.</span
+                >
               </div>
             </transition>
             <v-select
@@ -1018,35 +1116,38 @@ onMounted(() => {
               class="mb-3"
             />
 
-            <div class="ld-section">Customer &amp; facility</div>
-            <div class="ld-row">
-              <v-select
-                :disabled="isEditing"
-                v-model="loan.customer_id"
-                :items="customers"
-                item-value="id"
-                item-title="full_name"
-                label="Customer"
-                variant="outlined"
-                color="#27bfa0"
-                :rules="[(v) => !!v || 'Required']"
-              />
-              <v-select
-                :disabled="isEditing"
-                v-model="loan.facility_id"
-                :items="facilities"
-                item-value="id"
-                item-title="bank_name"
-                label="Facility / bank"
-                variant="outlined"
-                color="#27bfa0"
-                :rules="[(v) => !!v || 'Required']"
-              />
+            <div v-if="!isNewExtension">
+              <div class="ld-section">Customer</div>
+              <div class="ld-row">
+                <v-select
+                  :disabled="isEditing || isNewExtension"
+                  v-model="loan.customer_id"
+                  :items="customers"
+                  item-value="id"
+                  item-title="full_name"
+                  label="Customer"
+                  variant="outlined"
+                  color="#27bfa0"
+                  :rules="[(v) => !!v || 'Required']"
+                />
+                <v-select
+                  :disabled="isEditing || isNewExtension"
+                  v-model="loan.facility_id"
+                  :items="facilities"
+                  item-value="id"
+                  item-title="bank_name"
+                  label="Facility / bank"
+                  variant="outlined"
+                  color="#27bfa0"
+                  :rules="[(v) => !!v || 'Required']"
+                />
+              </div>
             </div>
 
             <div class="ld-section">Loan terms</div>
             <div class="ld-row">
               <v-text-field
+                :disabled="isNewExtension"
                 v-model="formattedLoanAmount"
                 label="Loan amount (₦)"
                 variant="outlined"
@@ -1054,6 +1155,7 @@ onMounted(() => {
                 :rules="[(v) => !!v || 'Required']"
               />
               <v-select
+                :disabled="isNewExtension"
                 v-model="loan.agent_id"
                 :items="agents"
                 item-title="full_name"
@@ -1067,6 +1169,7 @@ onMounted(() => {
             </div>
             <div class="ld-row">
               <v-text-field
+                :disabled="isNewExtension"
                 v-model="loan.agreed_rate"
                 label="Agreed rate (%)"
                 type="number"
@@ -1084,6 +1187,7 @@ onMounted(() => {
               />
             </div>
             <v-menu
+              :disabled="isNewExtension"
               v-model="disburseMenu"
               :close-on-content-click="false"
               offset-y
@@ -1091,6 +1195,7 @@ onMounted(() => {
             >
               <template v-slot:activator="{ props }">
                 <v-text-field
+                  :disabled="isNewExtension"
                   v-bind="props"
                   variant="outlined"
                   color="#27bfa0"
