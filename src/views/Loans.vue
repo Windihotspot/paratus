@@ -166,7 +166,7 @@ const submitLoan = async () => {
   try {
     if (isEditing.value) {
       if (loan.value.loan_type === 'extension') {
-        const { error } = await supabase.rpc('update_loan_extension', {
+        const { error } = await supabase.rpc('update_loan_extension_v2_record', {
           p_loan_id: editingLoanId.value,
           p_merchant_id: merchantId,
           p_tenure_days: Number(loan.value.tenure_days)
@@ -188,7 +188,7 @@ const submitLoan = async () => {
           p_loan_type: 'new',
           p_parent_loan_id: null
         }
-        const { error } = await supabase.rpc('update_new_loan_extension', payload)
+        const { error } = await supabase.rpc('update_new_loan_extension_latest', payload)
         if (error) throw error
         ElNotification({ title: 'Success', message: 'Loan updated!', type: 'success' })
       }
@@ -208,7 +208,7 @@ const submitLoan = async () => {
 
       console.log('Add Loan Payload:', payload)
 
-      const { error } = await supabase.rpc('add_new_loan_extension', payload)
+      const { error } = await supabase.rpc('add_new_loan_extension_latest', payload)
       if (error) throw error
 
       ElNotification({
@@ -250,7 +250,7 @@ const fetchLoans = async () => {
   loading.value = true
   errorMessage.value = null
   try {
-    const { data, error } = await supabase.rpc('fetch_nested_loans_v1', {
+    const { data, error } = await supabase.rpc('fetch_nested_loans_v2', {
       p_merchant_id: authStore.merchant.id,
       p_facility_id: authStore.selectedFacility?.id || null
     })
@@ -280,7 +280,9 @@ const confirmDeleteLoan = async () => {
   if (!loanToDelete.value) return
   loading.value = true
   try {
-    const { error } = await supabase.rpc('delete_loan_v1', { p_loan_id: loanToDelete.value.id })
+    const { error } = await supabase.rpc('delete_loan_v1_record', {
+      p_loan_id: loanToDelete.value.id
+    })
     if (error) throw error
     ElNotification({ title: 'Deleted', message: 'Loan deleted!', type: 'success' })
     await fetchLoans()
@@ -718,7 +720,7 @@ const confirmDeleteExtension = async () => {
   if (!extensionToDelete.value) return
   loading.value = true
   try {
-    const { error } = await supabase.rpc('delete_extension_loan', {
+    const { error } = await supabase.rpc('delete_loan_v1_record_latest', {
       p_loan_id: extensionToDelete.value.id
     })
     if (error) throw error
@@ -816,6 +818,7 @@ const confirmDeleteExtension = async () => {
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Pry-Contact</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Bank Rate</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Disbursed</th>
+                <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Initial Tenure</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Duration</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Expiry Date</th>
                 <th class="px-4 py-3 text-left text-xs uppercase tracking-wider">Status</th>
@@ -870,6 +873,9 @@ const confirmDeleteExtension = async () => {
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                     {{ l.disbursed_at }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                    {{ l.base_tenure_days }} days
                   </td>
                   <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                     {{ l.tenure_days }} days

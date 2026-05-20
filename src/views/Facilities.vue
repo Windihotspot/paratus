@@ -11,6 +11,13 @@ const merchantId = authStore.merchant.id
 const showModal = ref(false)
 const facilities = computed(() => authStore.facilities)
 
+const toLocalDateString = (val) => {
+  const y = val.getFullYear()
+  const m = String(val.getMonth() + 1).padStart(2, '0')
+  const d = String(val.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 const loading = ref(false)
 const formRef = ref(null)
 const valid = ref(false)
@@ -781,7 +788,7 @@ onMounted(() => {
                     @update:model-value="
                       (val) => {
                         facilityForm.drawdown_date_obj = val
-                        facilityForm.drawdown_date = val ? val.toISOString().split('T')[0] : null
+                        facilityForm.drawdown_date = toLocalDateString(val)
                         disburseMenu = false
                       }
                     "
@@ -901,7 +908,7 @@ onMounted(() => {
                   @update:model-value="
                     (val) => {
                       drawdownForm.date_obj = val
-                      drawdownForm.date = val.toISOString().split('T')[0]
+                      drawdownForm.date = toLocalDateString(val)
                       disburseMenu = false
                     }
                   "
