@@ -150,11 +150,6 @@ const submitLoan = async () => {
     return
   }
 
-  if (loan.value.loan_type === 'extension' && !loan.value.parent_loan_id) {
-    ElMessage({ message: 'Please select the loan being extended', type: 'error' })
-    return
-  }
-
   loading.value = true
 
   ElMessage({
@@ -1099,18 +1094,22 @@ const confirmDeleteExtension = async () => {
           <v-form ref="formRef" v-model="valid" lazy-validation>
             <!-- Extension parent selector -->
             <transition name="slide-down">
-              <div v-if="loan.loan_type === 'extension'" class="ld-ext-banner">
+              <div v-if="loan.loan_type === 'extension' && !isExtensionEdit" class="ld-ext-banner">
                 <i class="fa-solid fa-code-branch"></i>
                 <span v-if="!loan.parent_loan_id"
                   >Select the parent loan to auto-fill the fields.</span
                 >
-                <span v-else
-                  >Fields are pre-filled from the parent loan. Only set the new tenure.</span
-                >
+                <span v-else-if="isExtensionEdit">
+                  Editing extension tenure only. Parent loan details are locked.
+                </span>
+
+                <span v-else>
+                  Fields are pre-filled from the parent loan. Only set the new tenure.
+                </span>
               </div>
             </transition>
             <v-select
-              v-if="loan.loan_type === 'extension'"
+              v-if="loan.loan_type === 'extension' && !isExtensionEdit"
               v-model="loan.parent_loan_id"
               :items="parentLoanOptions"
               item-value="id"
@@ -1126,7 +1125,7 @@ const confirmDeleteExtension = async () => {
               <div class="ld-section">Customer</div>
               <div class="ld-row">
                 <v-select
-                  :disabled="isEditing || isNewExtension"
+                  :disabled="isExtensionEdit || isNewExtension || isEditing"
                   v-model="loan.customer_id"
                   :items="customers"
                   item-value="id"
@@ -1137,7 +1136,7 @@ const confirmDeleteExtension = async () => {
                   :rules="[(v) => !!v || 'Required']"
                 />
                 <v-select
-                  :disabled="isEditing || isNewExtension"
+                  :disabled="isExtensionEdit || isNewExtension || isEditing"
                   v-model="loan.facility_id"
                   :items="facilities"
                   item-value="id"
@@ -1153,7 +1152,7 @@ const confirmDeleteExtension = async () => {
             <div class="ld-section">Loan terms</div>
             <div class="ld-row">
               <v-text-field
-                :disabled="isNewExtension"
+                :disabled="isNewExtension || isExtensionEdit"
                 v-model="formattedLoanAmount"
                 label="Loan amount (₦)"
                 variant="outlined"
@@ -1161,7 +1160,7 @@ const confirmDeleteExtension = async () => {
                 :rules="[(v) => !!v || 'Required']"
               />
               <v-select
-                :disabled="isNewExtension"
+                :disabled="isNewExtension || isExtensionEdit"
                 v-model="loan.agent_id"
                 :items="agents"
                 item-title="full_name"
@@ -1175,7 +1174,7 @@ const confirmDeleteExtension = async () => {
             </div>
             <div class="ld-row">
               <v-text-field
-                :disabled="isNewExtension"
+                :disabled="isNewExtension || isExtensionEdit"
                 v-model="loan.agreed_rate"
                 label="Agreed rate (%)"
                 type="number"
@@ -1193,7 +1192,7 @@ const confirmDeleteExtension = async () => {
               />
             </div>
             <v-menu
-              :disabled="isNewExtension"
+              :disabled="isNewExtension || isExtensionEdit"
               v-model="disburseMenu"
               :close-on-content-click="false"
               offset-y
@@ -1201,7 +1200,7 @@ const confirmDeleteExtension = async () => {
             >
               <template v-slot:activator="{ props }">
                 <v-text-field
-                  :disabled="isNewExtension"
+                  :disabled="isNewExtension || isExtensionEdit"
                   v-bind="props"
                   variant="outlined"
                   color="#27bfa0"
