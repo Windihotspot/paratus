@@ -146,7 +146,10 @@ const submitLoan = async () => {
   const formValid = await formRef.value.validate()
 
   if (!formValid) {
-    ElMessage({ message: 'Please fix the form errors', type: 'error' })
+    ElMessage({
+      message: 'Please fix the form errors',
+      type: 'error'
+    })
     return
   }
 
@@ -159,65 +162,109 @@ const submitLoan = async () => {
   })
 
   try {
+    /*
+    ============================================================
+    UPDATE EXISTING LOAN
+    ============================================================
+    */
+
     if (isEditing.value) {
+      /*
+      ------------------------------------------------------------
+      UPDATE EXTENSION
+      ------------------------------------------------------------
+      */
+
       if (loan.value.loan_type === 'extension') {
         const { error } = await supabase.rpc('update_loan_extension_v2_record_latest', {
           p_loan_id: editingLoanId.value,
           p_merchant_id: merchantId,
           p_tenure_days: Number(loan.value.tenure_days)
         })
+
         if (error) throw error
-        ElNotification({ title: 'Success', message: 'Extension updated!', type: 'success' })
+
+        ElNotification({
+          title: 'Success',
+          message: 'Extension updated!',
+          type: 'success'
+        })
       } else {
+        /*
+        ------------------------------------------------------------
+        UPDATE NORMAL LOAN
+        ------------------------------------------------------------
+        */
+
         const payload = {
           p_loan_id: editingLoanId.value,
           p_merchant_id: merchantId,
           p_customer_id: loan.value.customer_id,
           p_facility_id: loan.value.facility_id,
-          p_loan_amount: loan.value.loan_amount,
-          p_agreed_rate: loan.value.agreed_rate,
+          p_loan_amount: Number(loan.value.loan_amount),
+          p_agreed_rate: Number(loan.value.agreed_rate),
           p_tenure_days: Number(loan.value.tenure_days),
           p_disbursed_at: loan.value.disbursed_at,
           p_agent_id: loan.value.agent_id || null,
-          p_status: loan.value.status || 'active',
-          p_loan_type: 'new',
-          p_parent_loan_id: null
+          p_status: loan.value.status || 'active'
         }
-        const { error } = await supabase.rpc('update_new_loan_extension_latest', payload)
+
+        console.log('Update Loan Payload:', payload)
+
+        const { error } = await supabase.rpc('update_single_loan', payload)
+
         if (error) throw error
-        ElNotification({ title: 'Success', message: 'Loan updated!', type: 'success' })
+
+        ElNotification({
+          title: 'Success',
+          message: 'Loan updated!',
+          type: 'success'
+        })
       }
     } else {
+      /*
+      ============================================================
+      CREATE NEW LOAN / EXTENSION
+      ============================================================
+      */
+
       const payload = {
         p_merchant_id: merchantId,
         p_customer_id: loan.value.customer_id,
         p_facility_id: loan.value.facility_id,
-        p_loan_amount: loan.value.loan_amount,
-        p_agreed_rate: loan.value.agreed_rate,
+        p_loan_amount: Number(loan.value.loan_amount),
+        p_agreed_rate: Number(loan.value.agreed_rate),
         p_tenure_days: Number(loan.value.tenure_days),
         p_disbursed_at: loan.value.disbursed_at,
-        p_agent_id: loan.value.agent_id,
+        p_agent_id: loan.value.agent_id || null,
         p_loan_type: loan.value.loan_type,
         p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
       }
 
       console.log('Add Loan Payload:', payload)
 
-      const { error } = await supabase.rpc('add_new_loan_extension_latest', payload)
+      const { error } = await supabase.rpc('add_new_loan_extension_latest_v2', payload)
+
       if (error) throw error
 
       ElNotification({
         title: 'Success',
-        message: loan.value.loan_type === 'extension' ? 'Loan extended!' : 'Loan added!', // 👈
+        message: loan.value.loan_type === 'extension' ? 'Loan extended!' : 'Loan added!',
         type: 'success'
       })
     }
 
     await fetchLoans()
+
     closeModal()
   } catch (err) {
     console.log('Loan Submission Error:', err)
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+
+    ElNotification({
+      title: 'Error',
+      message: err.message,
+      type: 'error'
+    })
   } finally {
     loading.value = false
   }
