@@ -1197,6 +1197,18 @@ const formatActionDetails = (log: any) => {
                   </v-btn>
                 </div>
 
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Marital Status:</b> {{ selectedApp.application.marital_status }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.marital_status, 'Marital status')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+
                 <!-- LGA -->
                 <div class="flex items-center justify-between text-sm">
                   <div><b>LGA:</b> {{ selectedApp.application.lga_of_origin }}</div>
