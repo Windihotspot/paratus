@@ -10,21 +10,25 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import { ElMessageBox } from 'element-plus'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import paratus from '@/assets/paratus-logo.jpeg'
+
 const authStore = useAuthStore()
 const facilities = computed(() => authStore.facilities)
 const merchantId = authStore.merchant?.id
+
 // --- NEW: Agent Loan Export ---
 
 const showExportDialog = ref(false)
-const exportingAgent = ref(null) // the agent row clicked
-const exportFacilityId = ref(null) // selected facility filter
-const exportStatusFilter = ref('All') // selected status filter
+const exportingAgent = ref(null)
+const exportFacilityId = ref(null)
+const exportStatusFilter = ref('All')
 const exportLoading = ref(false)
 const exportExcelLoading = ref(false)
 
 const exportStatusOptions = ['All', 'Active', 'Active < 5 days', 'Closed', 'Completed', 'Defaulted']
 
-// Reuse from loans page
+// --- NEW: Send Report ---
+const sendingAgentId = ref(null) // Track which agent's report is being sent
+
 const getStatusBadge = (loan) => {
   if (!loan.status || !loan.expiry_date) return { text: 'N/A', color: 'gray' }
   const today = new Date()
@@ -122,7 +126,7 @@ const exportAgentLoansExcel = async () => {
   } catch (err) {
     ElNotification({ title: 'Error', message: err.message, type: 'error' })
   } finally {
-    exportLoading.value = false
+    exportExcelLoading.value = false
   }
 }
 
@@ -179,7 +183,6 @@ const exportAgentLoansPDF = async () => {
 
     const docDefinition = {
       pageOrientation: 'landscape',
-      // ✅ Add this
       background: (currentPage, pageSize) => {
         return {
           image: logo,
@@ -244,6 +247,117 @@ const exportAgentLoansPDF = async () => {
     ElNotification({ title: 'Error', message: err.message, type: 'error' })
   } finally {
     exportLoading.value = false
+  }
+}
+
+// --- NEW: Send report to agent via email ---
+const sendAgentLoanReport = async (agent) => {
+  console.log('🚀 sendAgentLoanReport called')
+  console.log('👤 Agent received:', agent)
+  console.log('📌 merchantId:', merchantId)
+
+  try {
+    console.log('⏳ Showing confirmation dialog...')
+
+    await ElMessageBox.confirm(
+      `Send loan report to ${agent.full_name} (${agent.email})?`,
+      'Confirm',
+      { confirmButtonText: 'Send', cancelButtonText: 'Cancel', type: 'warning' }
+    )
+
+    console.log('✅ User confirmed sending report')
+  } catch (err) {
+    console.log('❌ User cancelled confirmation:', err)
+    return
+  }
+
+  sendingAgentId.value = agent.id
+  console.log('📤 sendingAgentId set:', sendingAgentId.value)
+
+  try {
+    console.log('🔐 Getting Supabase session...')
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+    console.log('🔑 Session response:', sessionData)
+    console.log('⚠️ Session error:', sessionError)
+
+    const session = sessionData
+
+    if (!session?.session?.access_token) {
+      console.error('❌ No access token found')
+      throw new Error('Not authenticated')
+    }
+
+    console.log('✅ Access token exists')
+    console.log(
+      '🔑 Token preview:',
+      session.session.access_token.substring(0, 20) + '...'
+    )
+
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-agent-loan-report`
+
+    console.log('🌐 Edge Function URL:', functionUrl)
+
+    const requestBody = {
+      agent_id: agent.id,
+      merchant_id: merchantId,
+      facility_id: null,
+      status_filter: 'All'
+    }
+
+    console.log('📦 Request body:', requestBody)
+
+    console.log('📡 Sending request...')
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.session.access_token}`
+      },
+      body: JSON.stringify(requestBody)
+    })
+
+    console.log('📥 Raw response:', response)
+    console.log('📥 Response status:', response.status)
+    console.log('📥 Response OK:', response.ok)
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()))
+
+    const result = await response.json()
+
+    console.log('📄 Response JSON:', result)
+
+    if (!response.ok) {
+      console.error('❌ Edge function failed:', result)
+      throw new Error(result.error || 'Failed to send report')
+    }
+
+    console.log('✅ Report sent successfully')
+    console.log('📨 Recipient:', agent.email)
+
+    ElNotification({
+      title: 'Success',
+      message: `Report sent to ${agent.email}`,
+      type: 'success',
+      duration: 3000
+    })
+
+  } catch (err) {
+    console.error('🔥 Error sending report:', err)
+    console.error('🔥 Error message:', err.message)
+    console.error('🔥 Full error object:', JSON.stringify(err, null, 2))
+
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to send report',
+      type: 'error'
+    })
+
+  } finally {
+    console.log('🧹 Clearing sendingAgentId')
+    sendingAgentId.value = null
+    console.log('✅ sendingAgentId:', sendingAgentId.value)
   }
 }
 
@@ -330,7 +444,7 @@ const editAgent = (a) => {
   isEditing.value = true
   editingAgentId.value = a.id
   agent.value = {
-    id: a.id, // ✅ include this
+    id: a.id,
     full_name: a.full_name || a.name || '',
     alias: a.alias || '',
     phone: a.phone || '',
@@ -345,7 +459,6 @@ const editAgent = (a) => {
 
 // submit add / edit
 const submitAgent = async () => {
-  // if formRef supports validate
   if (formRef.value && formRef.value.validate) {
     const ok = await formRef.value.validate()
     if (!ok) {
@@ -356,7 +469,6 @@ const submitAgent = async () => {
   loading.value = true
   try {
     if (isEditing.value) {
-      // 👇 Log payload for update
       const updatePayload = {
         p_id: agent.value.id,
         p_full_name: agent.value.full_name?.trim() || null,
@@ -382,7 +494,6 @@ const submitAgent = async () => {
         p_phone: agent.value.phone || null,
         p_email: agent.value.email || null,
         p_location: agent.value.location || null,
-        // Convert empty string to null for numeric fields
         p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
         p_remark: agent.value.remark || null,
         p_status: agent.value.status || 'active'
@@ -491,9 +602,8 @@ const downloadAllAgentsExcel = async () => {
   ElMessage({ message: 'Export complete!', type: 'success' })
 }
 
-// single agent pdf
 const downloadAgentPDF = async (a) => {
-  const logo = await getBase64FromUrl(logoImage)
+  const logo = await getBase64FromUrl(paratus)
   const docDefinition = {
     content: [
       {
@@ -576,8 +686,6 @@ const downloadSingleAgentExcel = async (a) => {
   ]
 
   const ws = XLSX.utils.json_to_sheet(data)
-
-  // Optional: better column width
   ws['!cols'] = Object.keys(data[0]).map(() => ({ wch: 22 }))
 
   const wb = XLSX.utils.book_new()
@@ -730,17 +838,30 @@ onMounted(() => {
                   <button
                     class="text-green-700 hover:text-green-900"
                     @click="downloadSingleAgentExcel(a)"
+                    title="Export Agent"
                   >
                     <i class="fas fa-file-excel"></i>
                   </button>
 
-                  <button class="text-green-600 hover:text-green-900" @click="downloadAgentPDF(a)">
+                  <button class="text-green-600 hover:text-green-900" @click="downloadAgentPDF(a)" title="Download PDF">
                     <i class="fas fa-download"></i>
                   </button>
 
-                  <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editAgent(a)">
+                  <button class="text-blue-600 hover:text-blue-900 mr-2" @click="editAgent(a)" title="Edit">
                     <i class="fas fa-edit"></i>
                   </button>
+
+                  <!-- NEW: Send Report button -->
+                  <button
+                    class="text-purple-600 hover:text-purple-900"
+                    @click="sendAgentLoanReport(a)"
+                    :disabled="sendingAgentId === a.id"
+                    title="Send Loan Report"
+                  >
+                    <i v-if="sendingAgentId === a.id" class="fas fa-spinner fa-spin"></i>
+                    <i v-else class="fas fa-envelope"></i>
+                  </button>
+
                   <button
                     class="text-teal-600 hover:text-teal-900"
                     title="Export Loans"
@@ -748,7 +869,7 @@ onMounted(() => {
                   >
                     <i class="fas fa-file-export"></i>
                   </button>
-                  <button class="text-red-600 hover:text-red-900" @click="openDeleteModal(a)">
+                  <button class="text-red-600 hover:text-red-900" @click="openDeleteModal(a)" title="Delete">
                     <i class="fas fa-trash"></i>
                   </button>
                 </td>
@@ -927,9 +1048,9 @@ onMounted(() => {
 
 <style scoped>
 .el-message.el-message-top-left {
-  left: 20px; /* push from the left */
-  right: auto; /* override default center */
-  transform: none; /* remove centering */
+  left: 20px;
+  right: auto;
+  transform: none;
 }
 
 .custom-btn {
@@ -955,8 +1076,8 @@ onMounted(() => {
   opacity: 0;
 }
 :deep(.v-tab__slider) {
-  height: 4px !important; /* Adjust thickness */
-  background-color: #15803d !important; /* Change color if needed */
+  height: 4px !important;
+  background-color: #15803d !important;
 }
 .fade-enter-active,
 .fade-leave-active {
