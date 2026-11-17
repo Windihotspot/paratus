@@ -135,6 +135,14 @@ const router = createRouter({
       name: 'expenses',
       component: ExpensesPage,
       meta: { roles: ['admin', 'staff'] }
+    },
+    {
+      path: '/approvals',
+      name: 'Approvals',
+      component: () => import('@/views/ApprovalRequests.vue'),
+      meta: {
+        roles: ['admin', 'super_admin']
+      }
     }
   ]
 })

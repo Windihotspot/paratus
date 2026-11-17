@@ -1,7 +1,10 @@
+
 <script setup>
 import { ref, onMounted } from 'vue'
 import SidebarView from './sidebar/SidebarView.vue'
 import HeaderView from './header/HeaderView.vue'
+import NotificationsBanner from '@/components/NotificationsBanner.vue'
+
 const drawer = ref()
 const innerW = window.innerWidth
 
@@ -14,10 +17,13 @@ onMounted(() => {
 
 <template>
   <v-app>
-    <!--- Header -->
-    <!-- ---------------------------------------------- -->
+    <!-- Header -->
     <v-app-bar app elevation="1" class="pa-2">
-      <v-btn class="hidden-md-and-up" icon @click="drawer = !drawer">
+      <v-btn
+        class="hidden-md-and-up"
+        icon
+        @click="drawer = !drawer"
+      >
         <v-icon icon="mdi-menu" />
       </v-btn>
 
@@ -28,16 +34,21 @@ onMounted(() => {
       />
 
       <div class="logo pa-4 hidden md:flex items-center space-x-2">
-        <img src="@/assets/paratus-logo.jpeg" class="w-20 h-20" alt="" />
-        <span class="text-sm text-gray-600">Powered By: Uppertech One Ltd</span>
+        <img
+          src="@/assets/paratus-logo.jpeg"
+          class="w-20 h-20"
+          alt=""
+        />
+        <span class="text-sm text-gray-600">
+          Powered By: Uppertech One Ltd
+        </span>
       </div>
 
-      <v-spacer></v-spacer>
+      <v-spacer />
       <HeaderView />
     </v-app-bar>
-    <!-- ---------------------------------------------- -->
-    <!--- Sidebar -->
-    <!-- ---------------------------------------------- -->
+
+    <!-- Sidebar -->
     <v-navigation-drawer
       left
       :permanent="$vuetify.display.mdAndUp"
@@ -51,12 +62,11 @@ onMounted(() => {
       <SidebarView />
     </v-navigation-drawer>
 
-    <!-- ---------------------------------------------- -->
+    <!-- Page Wrapper -->
+    <v-main class="page-wrapper">
+      <!-- Sticky Notifications -->
+      <NotificationsBanner />
 
-    <!-- ---------------------------------------------- -->
-    <!--- Page Wrapper -->
-    <!-- ---------------------------------------------- -->
-    <v-main class="mt-4 page-wrapper">
       <v-container fluid class="page-wrapper">
         <slot />
       </v-container>
@@ -70,7 +80,7 @@ onMounted(() => {
 }
 
 .side-bar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
+  display: none;
 }
 
 .page-wrapper {
@@ -90,6 +100,7 @@ onMounted(() => {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

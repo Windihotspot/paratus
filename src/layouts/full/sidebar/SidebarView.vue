@@ -33,7 +33,8 @@ const filteredMenu = computed(() => {
         'Dashboard',
         'Banks',
         'Facilities',
-        'Logs'
+        'Logs',
+        'Approvals'
       ].includes(item.title)
     }
 

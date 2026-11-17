@@ -5,6 +5,11 @@ const sidebarItems = [
     icon: 'mdi-view-dashboard' // Dashboard icon
   },
   {
+  title: 'Approvals',
+  path: '/approvals',
+  icon: 'mdi-clipboard-check-outline'
+},
+  {
     title: 'Banks',
     path: '/banks',
     icon: 'mdi-bank-outline' // bank icon
