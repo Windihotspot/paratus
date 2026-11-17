@@ -27,12 +27,10 @@ const filteredMenu = computed(() => {
     if (role.value === 'staff') {
       return ![
         'Users',
-        'Logs',
         'Profit & Loss',
+        'Loans - Facilities',
+        'Facilities - Bank',
         'Dashboard',
-        'Loans',
-        'Agents',
-        'Customers',
         'Banks',
         'Facilities'
       ].includes(item.title)
