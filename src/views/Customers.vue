@@ -5,6 +5,8 @@ import { supabase } from '@/services/supabase.js'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElNotification, ElMessageBox } from 'element-plus'
 import { usePhoneNumber } from '@/composables/usePhoneNumber.js'
+import { useGatedRpc } from '@/composables/useGatedRpc.js'
+const { gatedRpc } = useGatedRpc()
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
 const errorMessage = ref(null)
@@ -89,7 +91,9 @@ const fetchFacilities = async () => {
 
 const submitCustomer = async () => {
   if (!formRef.value) return
+
   const formValid = await formRef.value.validate()
+
   if (!formValid) {
     ElMessage({
       message: 'Please fix the form errors',
@@ -102,98 +106,99 @@ const submitCustomer = async () => {
   loading.value = true
 
   try {
-    if (isEditingCustomer.value) {
-      ElMessage({ message: 'Updating customer...', type: 'info', duration: 1500 })
+    // Build email payload
+    const emailsPayload = []
 
-      const emailsPayload = []
-
-      if (customer.value.primary_email) {
-        emailsPayload.push({
-          email: customer.value.primary_email.trim(),
-          is_primary: true
-        })
-      }
-
-      customer.value.other_emails
-        .filter((e) => e && e.trim())
-        .forEach((e) => {
-          emailsPayload.push({
-            email: e.trim(),
-            is_primary: false
-          })
-        })
-
-      const { data, error } = await supabase.rpc('update_customer_with_emails', {
-        p_customer_id: editingCustomerId.value,
-        p_first_name: customer.value.first_name,
-        p_last_name: customer.value.last_name,
-        p_middle_name: customer.value.middle_name ?? null,
-        p_gender: customer.value.gender ?? null,
-        p_dob: customer.value.dob ?? null,
-        p_phone: customer.value.phone?.trim() || null,
-        p_national_id_type: customer.value.national_id_type ?? null,
-        p_national_id_number: customer.value.national_id_number ?? null,
-        p_marital_status: customer.value.marital_status ?? null,
-        p_account_number: customer.value.account_number,
-        p_status: customer.value.status || 'active',
-        p_address: customer.value.address ?? null,
-        p_bank_id: customer.value.bank_id ?? null,
-        p_notification_preference: customer.value.notification_preference,
-        p_emails: emailsPayload
-      })
-
-      if (error) throw error
-      ElNotification({
-        title: 'Success',
-        message: 'Customer updated successfully!',
-        type: 'success'
-      })
-    } else {
-      // 🟢 Add new customer
-      ElMessage({ message: 'Adding customer...', type: 'info', duration: 1500 })
-
-      const emailsPayload = []
-
-      if (customer.value.primary_email) {
-        emailsPayload.push({
-          email: customer.value.primary_email.trim(),
-          is_primary: true
-        })
-      }
-
-      customer.value.other_emails
-        .filter((e) => e && e.trim())
-        .forEach((e) => {
-          emailsPayload.push({
-            email: e.trim(),
-            is_primary: false
-          })
-        })
-
-      const { data, error } = await supabase.rpc('add_customer_with_emails', {
-        p_merchant_id: merchantId,
-        p_first_name: customer.value.first_name,
-        p_last_name: customer.value.last_name,
-        p_phone: customer.value.phone?.trim() || null,
-        p_account_number: customer.value.account_number,
-        p_facility_id: customer.value.facility_id,
-        p_notification_preference: customer.value.notification_preference,
-        p_emails: emailsPayload
-      })
-
-      if (error) throw error
-
-      ElNotification({
-        title: 'Success',
-        message: 'Customer added successfully!',
-        type: 'success'
+    if (customer.value.primary_email) {
+      emailsPayload.push({
+        email: customer.value.primary_email.trim(),
+        is_primary: true
       })
     }
 
+    customer.value.other_emails
+      .filter((e) => e && e.trim())
+      .forEach((e) => {
+        emailsPayload.push({
+          email: e.trim(),
+          is_primary: false
+        })
+      })
+
+    const isUpdate = isEditingCustomer.value
+
+    const fn = isUpdate ? 'update_customer_with_emails' : 'add_customer_with_emails'
+
+    // RPC parameters
+    const params = isUpdate
+      ? {
+          p_customer_id: editingCustomerId.value,
+          p_first_name: customer.value.first_name,
+          p_last_name: customer.value.last_name,
+          p_middle_name: customer.value.middle_name ?? null,
+          p_gender: customer.value.gender ?? null,
+          p_dob: customer.value.dob ?? null,
+          p_phone: customer.value.phone?.trim() || null,
+          p_national_id_type: customer.value.national_id_type ?? null,
+          p_national_id_number: customer.value.national_id_number ?? null,
+          p_marital_status: customer.value.marital_status ?? null,
+          p_account_number: customer.value.account_number,
+          p_status: customer.value.status || 'active',
+          p_address: customer.value.address ?? null,
+          p_bank_id: customer.value.bank_id ?? null,
+          p_notification_preference: customer.value.notification_preference,
+          p_emails: emailsPayload
+        }
+      : {
+          p_merchant_id: merchantId,
+          p_first_name: customer.value.first_name,
+          p_last_name: customer.value.last_name,
+          p_phone: customer.value.phone?.trim() || null,
+          p_account_number: customer.value.account_number,
+          p_facility_id: customer.value.facility_id,
+          p_notification_preference: customer.value.notification_preference,
+          p_emails: emailsPayload
+        }
+
+    ElMessage({
+      message: isUpdate ? 'Updating customer...' : 'Adding customer...',
+      type: 'info',
+      duration: 1500
+    })
+
+    // Execute through gated RPC
+    const result = await gatedRpc(fn, params, {
+      entity: 'customer',
+      entityId: isUpdate ? editingCustomerId.value : null,
+      action: isUpdate ? 'update' : 'create',
+      summary: isUpdate
+        ? `Update customer ${customer.value.first_name} ${customer.value.last_name}`
+        : `Create customer ${customer.value.first_name} ${customer.value.last_name}`
+    })
+
+    if (result.pending) {
+      ElNotification({
+        title: 'Sent for approval',
+        message:
+          'Your customer request has been submitted and is waiting for administrator approval.',
+        type: 'info',
+        duration: 4000
+      })
+    } else {
+      ElNotification({
+        title: 'Success',
+        message: isUpdate ? 'Customer updated successfully!' : 'Customer added successfully!',
+        type: 'success'
+      })
+
+      // Refresh only when the operation was executed immediately
+      await fetchCustomers()
+    }
+
     closeModal()
-    fetchCustomers()
   } catch (err) {
     console.error('Error saving customer:', err)
+
     ElNotification({
       title: 'Error',
       message: err.message || 'Failed to save customer',
@@ -247,18 +252,26 @@ const openDeleteModal = (customerData) => {
 const confirmDeleteCustomer = async () => {
   if (!customerToDelete.value) return
   loading.value = true
+  const { gatedRpc } = useGatedRpc()
 
   try {
-    const { data, error } = await supabase.rpc('delete_customer', {
-      p_customer_id: customerToDelete.value.id
-    })
+   
+  const { pending } = await gatedRpc(
+    'delete_customer',
+    { p_customer_id: customerToDelete.value.id },
+    {
+      entity: 'customer',
+      entityId: customerToDelete.value.id,
+      action: 'delete',
+      summary: `Delete customer ${customerToDelete.value.full_name}`
+    }
+  )
+  ElNotification({
+    title: pending ? 'Sent for approval' : 'Deleted',
+    message: pending ? 'Waiting for super admin approval' : 'Customer deleted successfully!',
+    type: pending ? 'info' : 'success'
+  })
     if (error) throw error
-
-    ElNotification({
-      title: 'Deleted',
-      message: 'Customer deleted successfully!',
-      type: 'success'
-    })
     await fetchCustomers()
   } catch (err) {
     console.error('Error deleting customer:', err)

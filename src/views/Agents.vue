@@ -10,10 +10,14 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import { ElMessageBox } from 'element-plus'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import paratus from '@/assets/paratus-logo.jpeg'
+import { useGatedRpc } from '@/composables/useGatedRpc'
 
 const authStore = useAuthStore()
+const { gatedRpc } = useGatedRpc()
+
 const facilities = computed(() => authStore.facilities)
 const merchantId = authStore.merchant?.id
+
 
 // --- NEW: Agent Loan Export ---
 
@@ -458,54 +462,81 @@ const editAgent = (a) => {
 }
 
 // submit add / edit
+
 const submitAgent = async () => {
-  if (formRef.value && formRef.value.validate) {
-    const ok = await formRef.value.validate()
-    if (!ok) {
+  if (formRef.value?.validate) {
+    const result = await formRef.value.validate()
+
+    if (!result.valid) {
       ElMessage({ message: 'Please fix the form errors', type: 'error' })
       return
     }
   }
+
   loading.value = true
+
   try {
-    if (isEditing.value) {
-      const updatePayload = {
-        p_id: agent.value.id,
-        p_full_name: agent.value.full_name?.trim() || null,
-        p_alias: agent.value.alias?.trim() || null,
-        p_phone: agent.value.phone?.trim() || null,
-        p_email: agent.value.email?.trim() || null,
-        p_location: agent.value.location?.trim() || null,
-        p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
-        p_remark: agent.value.remark?.trim() || null,
-        p_status: agent.value.status || 'active'
-      }
+    const isUpdate = isEditing.value
 
-      console.log('🧾 Update Agent Payload:', updatePayload)
-      const { error } = await supabase.rpc('update_agent', updatePayload)
+    const fn = isUpdate ? 'update_agent' : 'add_agent'
 
-      if (error) throw error
-      ElNotification({ title: 'Success', message: 'Agent updated successfully!', type: 'success' })
+    const params = isUpdate
+      ? {
+          p_id: agent.value.id,
+          p_full_name: agent.value.full_name?.trim() || null,
+          p_alias: agent.value.alias?.trim() || null,
+          p_phone: agent.value.phone?.trim() || null,
+          p_email: agent.value.email?.trim() || null,
+          p_location: agent.value.location?.trim() || null,
+          p_agreed_rate:
+            agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
+          p_remark: agent.value.remark?.trim() || null,
+          p_status: agent.value.status || 'active'
+        }
+      : {
+          p_merchant_id: merchantId,
+          p_full_name: agent.value.full_name?.trim(),
+          p_alias: agent.value.alias?.trim() || null,
+          p_phone: agent.value.phone?.trim() || null,
+          p_email: agent.value.email?.trim() || null,
+          p_location: agent.value.location?.trim() || null,
+          p_agreed_rate:
+            agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
+          p_remark: agent.value.remark?.trim() || null,
+          p_status: agent.value.status || 'active'
+        }
+
+    const fullName = agent.value.full_name?.trim() || 'agent'
+
+    const meta = {
+      entity: 'agent',
+      entityId: isUpdate ? editingAgentId.value : null,
+      action: isUpdate ? 'update' : 'create',
+      summary: `${isUpdate ? 'Update' : 'Create'} agent ${fullName}`
+    }
+
+    const result = await gatedRpc(fn, params, meta)
+
+    if (result.pending) {
+      ElNotification({
+        title: 'Submitted for Approval',
+        message: `Your request to ${isUpdate ? 'update' : 'add'} ${fullName} has been sent to an administrator.`,
+        type: 'success'
+      })
     } else {
-      const { error } = await supabase.rpc('add_agent', {
-        p_merchant_id: merchantId,
-        p_full_name: agent.value.full_name,
-        p_alias: agent.value.alias || null,
-        p_phone: agent.value.phone || null,
-        p_email: agent.value.email || null,
-        p_location: agent.value.location || null,
-        p_agreed_rate: agent.value.agreed_rate === '' ? null : agent.value.agreed_rate,
-        p_remark: agent.value.remark || null,
-        p_status: agent.value.status || 'active'
+      ElNotification({
+        title: 'Success',
+        message: `Agent ${isUpdate ? 'updated' : 'added'} successfully!`,
+        type: 'success'
       })
 
-      if (error) throw error
-      ElNotification({ title: 'Success', message: 'Agent added successfully!', type: 'success' })
+      await fetchAgents()
     }
-    await fetchAgents()
+
     closeModal()
   } catch (err) {
     console.error('Error saving agent:', err)
+
     ElNotification({
       title: 'Error',
       message: err.message || 'Failed to save agent',
@@ -515,6 +546,7 @@ const submitAgent = async () => {
     loading.value = false
   }
 }
+
 
 const closeModal = () => {
   showModal.value = false
@@ -534,16 +566,47 @@ const cancelDelete = () => {
   showDeleteModal.value = false
 }
 
+
 const confirmDeleteAgent = async () => {
   if (!agentToDelete.value) return
+
   loading.value = true
+
   try {
-    const { error } = await supabase.rpc('delete_agent', { p_id: agentToDelete.value.id })
-    if (error) throw error
-    ElNotification({ title: 'Deleted', message: 'Agent deleted successfully!', type: 'success' })
-    await fetchAgents()
+    const targetAgent = agentToDelete.value
+    const agentName = targetAgent.full_name || targetAgent.name || 'agent'
+
+    const result = await gatedRpc(
+      'delete_agent',
+      {
+        p_id: targetAgent.id
+      },
+      {
+        entity: 'agent',
+        entityId: targetAgent.id,
+        action: 'delete',
+        summary: `Delete agent ${agentName}`
+      }
+    )
+
+    if (result.pending) {
+      ElNotification({
+        title: 'Submitted for Approval',
+        message: `Your request to delete ${agentName} has been sent to an administrator.`,
+        type: 'success'
+      })
+    } else {
+      ElNotification({
+        title: 'Deleted',
+        message: 'Agent deleted successfully!',
+        type: 'success'
+      })
+
+      await fetchAgents()
+    }
   } catch (err) {
     console.error('Error deleting agent:', err)
+
     ElNotification({
       title: 'Error',
       message: err.message || 'Failed to delete agent',
@@ -555,6 +618,7 @@ const confirmDeleteAgent = async () => {
     agentToDelete.value = null
   }
 }
+
 
 const downloadAllAgentsExcel = async () => {
   if (!agents.value || agents.value.length === 0) {
