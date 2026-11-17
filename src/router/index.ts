@@ -18,6 +18,7 @@ import Revenue from '@/views/Revenue.vue'
 import FacilitiesBank from '@/views/FacilitiesBank.vue'
 import FacilityLoans from '@/views/FacilityLoans.vue'
 import ExpensesPage from '@/views/ExpensesPage.vue'
+import Forbidden from '@/views/Forbidden.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -134,6 +135,12 @@ const router = createRouter({
       path: '/expenses',
       name: 'expenses',
       component: ExpensesPage,
+      meta: { roles: ['admin', 'staff'] }
+    },
+    {
+      path: '/403',
+      name: 'forbidden',
+      component: Forbidden,
       meta: { roles: ['admin', 'staff'] }
     },
     {
