@@ -107,11 +107,23 @@ async function markAllRead() {
 }
 
 async function openNotification(n) {
-  await markRead(n)
+  if (!n) return
+
+  // Only approval notifications with a request ID should navigate
   if (n.request_id) {
     menu.value = false
-    router.push('/approvals') // adjust to your approvals route
+
+    router.push({
+      name: 'ApprovalDetails',
+      params: { id: n.request_id }
+    })
+
+    // Mark as read after initiating navigation
+    await markRead(n)
+    return
   }
+
+  await markRead(n)
 }
 
 watch(
