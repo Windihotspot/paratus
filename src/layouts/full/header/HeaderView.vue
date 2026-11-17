@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import NotificationsMenu from '@/components/NotificationsMenu.vue'
+
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -96,7 +98,9 @@ const logout = async () => {
 
     
     <!-- User Menu -->
-    <div class="space-x-4">
+     <div class="flex items-center space-x-4">
+      <NotificationsMenu />
+
       <v-menu offset-y location="bottom left" origin="top left" min-width="200">
         <template v-slot:activator="{ props }">
           <div

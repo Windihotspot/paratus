@@ -271,7 +271,6 @@ const confirmDeleteCustomer = async () => {
     message: pending ? 'Waiting for super admin approval' : 'Customer deleted successfully!',
     type: pending ? 'info' : 'success'
   })
-    if (error) throw error
     await fetchCustomers()
   } catch (err) {
     console.error('Error deleting customer:', err)
