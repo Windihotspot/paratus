@@ -99,6 +99,7 @@ const logout = async () => {
     
     <!-- User Menu -->
      <div class="flex items-center space-x-4">
+      
       <NotificationsMenu />
 
       <v-menu offset-y location="bottom left" origin="top left" min-width="200">
