@@ -554,6 +554,9 @@
 import { ref, computed, onMounted, reactive, watch } from 'vue'
 import MainLayout from '@/layouts/full/MainLayout.vue'
 import { supabase } from '@/services/supabase.js'
+import { useGatedRpc } from '@/composables/useGatedRpc'
+
+const { gatedRpc } = useGatedRpc()
 // ─── State ────────────────────────────────────────────────────
 const expenses = ref([])
 const categories = ref([])
@@ -588,19 +591,21 @@ const dialog = reactive({ open: false, isEdit: false, editId: null })
 const deleteDialog = reactive({ open: false, item: null })
 const snack = reactive({ show: false, text: '', color: 'success' })
 
-const defaultForm = () => ({
-  expense_date: new Date().toISOString().split('T')[0],
-  expense_category_id: null,
-  expense_type_id: null,
-  description: '',
-  amount: null,
-  operations_account_id: null,
-  reference_number: '',
-  document_available: false,
-  document_url: '', // keeps the stored path/signed URL
-  document_file: null,
-  notes: ''
-})
+function defaultForm() {
+  return {
+    expense_date: new Date().toISOString().slice(0, 10),
+    expense_category_id: null,
+    expense_type_id: null,
+    description: '',
+    amount: null,
+    operations_account_id: null,
+    reference_number: '',
+    document_available: false,
+    document_url: '',
+    document_file: null,
+    notes: ''
+  }
+}
 const form = reactive(defaultForm())
 
 // ─── Rules ────────────────────────────────────────────────────
@@ -788,17 +793,22 @@ const tableHeaders = [
 const uploadingDoc = ref(false)
 
 async function uploadDocument(file, expenseId) {
-  const ext = file.name.split('.').pop()
-  const path = `expenses/${expenseId}/${Date.now()}.${ext}`
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'file'
+  const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'file'
+
+  const path = `expenses/${expenseId}/${crypto.randomUUID()}.${safeExtension}`
 
   const { error } = await supabase.storage
     .from('expense-documents')
-    .upload(path, file, { upsert: true, contentType: file.type })
+    .upload(path, file, {
+      upsert: false,
+      contentType: file.type || 'application/octet-stream'
+    })
 
   if (error) throw error
-  return path // store the path; generate signed URL on demand when viewing
-}
 
+  return path
+}
 async function getSignedUrl(path) {
   const { data, error } = await supabase.storage
     .from('expense-documents')
@@ -825,7 +835,8 @@ function openEditDialog(item) {
     reference_number: item.reference_number || '',
     document_available: item.document_available || false,
     document_url: item.document_url || '',
-    notes: item.notes || ''
+    notes: item.notes || '',
+    document_file: null,
   })
   dialog.isEdit = true
   dialog.editId = item.id
@@ -842,56 +853,91 @@ async function saveExpense() {
   if (!valid) return
 
   saving.value = true
+
   try {
-    // 1. Build base payload (no document_url yet)
-    const payload = {
-      expense_date: form.expense_date,
-      expense_category_id: form.expense_category_id,
-      expense_type_id: form.expense_type_id,
-      category: categories.value.find((c) => c.id === form.expense_category_id)?.name || '',
-      description: form.description || null,
-      amount: form.amount,
-      operations_account_id: form.operations_account_id || null,
-      reference_number: form.reference_number || null,
-      document_available: form.document_available,
-      document_url: form.document_url || null, // may be overwritten below
-      notes: form.notes || null
-    }
+    const isEdit = dialog.isEdit
 
-    // 2. Insert/update to get the row id
-    let expenseId = dialog.editId
-    let error
+    // Generate an ID before uploading so both new and existing
+    // expenses have a stable document location.
+    const expenseId = isEdit
+      ? dialog.editId
+      : crypto.randomUUID()
 
-    if (dialog.isEdit) {
-      ;({ error } = await supabase.from('expenses').update(payload).eq('id', expenseId))
-    } else {
-      const { data: inserted, error: insertErr } = await supabase
-        .from('expenses')
-        .insert(payload)
-        .select('id')
-        .single()
-      error = insertErr
-      if (inserted) expenseId = inserted.id
-    }
+    let documentPath = form.document_url || null
 
-    if (error) throw error
-
-    // 3. If a new file was chosen, upload it and patch document_url
-    if (form.document_file && expenseId) {
+    // 1. Upload a newly selected document, if any.
+    if (form.document_file) {
       uploadingDoc.value = true
-      const path = await uploadDocument(form.document_file, expenseId)
-      await supabase
-        .from('expenses')
-        .update({ document_url: path, document_available: true })
-        .eq('id', expenseId)
-      uploadingDoc.value = false
+
+      documentPath = await uploadDocument(
+        form.document_file,
+        expenseId
+      )
     }
 
-    showSnack(dialog.isEdit ? 'Expense updated' : 'Expense added', 'success')
+    // 2. Build the RPC arguments.
+    const rpcPayload = {
+      p_expense_id: expenseId,
+      p_expense_date: form.expense_date,
+      p_expense_category_id: form.expense_category_id,
+      p_expense_type_id: form.expense_type_id,
+      p_category:
+        categories.value.find(
+          c => c.id === form.expense_category_id
+        )?.name || '',
+      p_description: form.description || null,
+      p_amount: Number(form.amount),
+      p_operations_account_id:
+        form.operations_account_id || null,
+      p_reference_number: form.reference_number || null,
+      p_document_available: Boolean(documentPath),
+      p_document_url: documentPath,
+      p_notes: form.notes || null
+    }
+
+    // 3. Submit through the approval workflow.
+    const result = await gatedRpc(
+      isEdit ? 'update_expense' : 'add_expense',
+      rpcPayload,
+      {
+        entity: 'expense',
+        entityId: expenseId,
+        action: isEdit ? 'update' : 'create',
+        summary: `${isEdit ? 'Update' : 'Create'} expense: ${
+          form.description || 'Expense'
+        }`
+      }
+    )
+
+    // 4. Handle staff approval requests.
+    if (result.pending) {
+      showSnack(
+        isEdit
+          ? 'Expense update submitted for approval'
+          : 'Expense submitted for approval',
+        'success'
+      )
+
+      closeDialog()
+      return
+    }
+
+    // 5. Handle successful direct execution.
+    showSnack(
+      isEdit ? 'Expense updated successfully' : 'Expense added successfully',
+      'success'
+    )
+
     closeDialog()
     await loadExpenses()
+
   } catch (err) {
-    showSnack('Error saving expense: ' + err.message, 'error')
+    console.error('Expense Submission Error:', err)
+
+    showSnack(
+      'Error saving expense: ' + (err.message || 'Unknown error'),
+      'error'
+    )
   } finally {
     saving.value = false
     uploadingDoc.value = false
@@ -905,14 +951,35 @@ function confirmDelete(item) {
 
 async function deleteExpense() {
   deleting.value = true
-  const { error } = await supabase.from('expenses').delete().eq('id', deleteDialog.item.id)
-  deleting.value = false
-  deleteDialog.open = false
-  if (error) {
+
+  try {
+    const result = await gatedRpc(
+      'delete_expense',
+      {
+        p_expense_id: deleteDialog.item.id
+      },
+      {
+        entity: 'expense',
+        entityId: deleteDialog.item.id,
+        action: 'delete',
+        summary: `Delete expense: ${deleteDialog.item.description || 'Expense'}`
+      }
+    )
+
+    showSnack(
+      result.pending
+        ? 'Expense deletion submitted for approval'
+        : 'Expense deleted',
+      'success'
+    )
+
+    deleteDialog.open = false
+
+    if (!result.pending) await loadExpenses()
+  } catch (error) {
     showSnack('Delete failed: ' + error.message, 'error')
-  } else {
-    showSnack('Expense deleted', 'success')
-    await loadExpenses()
+  } finally {
+    deleting.value = false
   }
 }
 

@@ -7,6 +7,9 @@ import * as pdfMake from 'pdfmake/build/pdfmake'
 import * as pdfFonts from 'pdfmake/build/vfs_fonts'
 import logoImage from '@/assets/paratus-logo.jpeg'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { useGatedRpc } from '@/composables/useGatedRpc'
+
+const { gatedRpc } = useGatedRpc()
 
 const tab = ref<'under_review' | 'submitted_to_bank' | 'account_created'>('under_review')
 
@@ -475,33 +478,49 @@ const bankName = ref('')
 const assigning = ref(false)
 
 const assignAccountNumber = async () => {
-  if (!accountNumber.value || !accountName.value) return
+  if (!accountNumber.value || !accountName.value || !selectedApp.value) return
 
   try {
     assigning.value = true
 
-    const { error } = await supabase.rpc('assign_account_number2', {
-      p_application_id: selectedApp.value.application.id,
-      p_account_number: accountNumber.value,
-      p_account_name: accountName.value,
-      p_bank_name: bankName.value
-    })
+    const applicationId = selectedApp.value.application.id
 
-    if (error) throw error
+    const result = await gatedRpc(
+      'assign_account_number2',
+      {
+        p_application_id: applicationId,
+        p_account_number: accountNumber.value,
+        p_account_name: accountName.value,
+        p_bank_name: bankName.value
+      },
+      {
+        entity: 'application',
+        entityId: applicationId,
+        action: 'assign_account_number',
+        summary: `Assign account number ${accountNumber.value} to ${selectedApp.value.full_name}`
+      }
+    )
+
+    if (result.pending) {
+      snackText.value = 'Account assignment request submitted for approval'
+      snackbar.value = true
+      drawer.value = false
+      return
+    }
 
     snackText.value = 'Account assigned successfully'
     snackbar.value = true
+
     accountNumber.value = ''
     accountName.value = ''
     bankName.value = ''
+
     await fetchApplications()
 
-    // update UI instantly
-    selectedApp.value.application.status = 'account_created'
     drawer.value = false
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    snackText.value = 'Failed to assign account'
+    snackText.value = err?.message || 'Failed to assign account'
     snackbar.value = true
   } finally {
     assigning.value = false
@@ -553,31 +572,43 @@ const updateApplicationStatus = async () => {
   try {
     updatingStatus.value = true
 
-    const { error } = await supabase.rpc('update_application_status', {
-      p_application_id: selectedApp.value.application.id,
-      p_status: statusMap[selectedStatus.value]
-    })
+    const applicationId = selectedApp.value.application.id
+    const newStatus = statusMap[selectedStatus.value]
 
-    if (error) throw error
+    const result = await gatedRpc(
+      'update_application_status',
+      {
+        p_application_id: applicationId,
+        p_status: newStatus
+      },
+      {
+        entity: 'application',
+        entityId: applicationId,
+        action: 'update',
+        summary: `Change application status for ${selectedApp.value.full_name} to ${newStatus}`
+      }
+    )
+
+    if (result.pending) {
+      snackText.value = 'Application status change submitted for approval'
+      snackbar.value = true
+      drawer.value = false
+      return
+    }
 
     snackText.value = 'Status updated successfully'
     snackbar.value = true
 
-    // refresh data
     await fetchApplications()
-
-    // update drawer instantly
-    selectedApp.value.application.status = selectedStatus.value
     drawer.value = false
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    snackText.value = 'Failed to update status'
+    snackText.value = err?.message || 'Failed to update status'
     snackbar.value = true
   } finally {
     updatingStatus.value = false
   }
 }
-
 // debounce search
 const debouncedFetch = useDebounceFn(fetchApplications, 400)
 
@@ -585,6 +616,7 @@ watch([tab, page], fetchApplications)
 watch(search, debouncedFetch)
 
 onMounted(fetchApplications)
+
 
 const deleting = ref(false)
 
@@ -603,21 +635,54 @@ const deleteApplication = async (app: any) => {
 
     deleting.value = true
 
-    // 🔥 1. Delete storage files ONLY (FIXED: file_name, not file_path)
-    if (app.kyc_docs?.length) {
-      const paths = app.kyc_docs.map((d: any) => d.file_name)
+    const applicationId = app.application.id
 
-      const { error: storageError } = await supabase.storage.from('kyc-documents').remove(paths)
+    const result = await gatedRpc(
+      'delete_application_full2',
+      {
+        p_application_id: applicationId
+      },
+      {
+        entity: 'application',
+        entityId: applicationId,
+        action: 'delete',
+        summary: `Delete application for ${app.full_name}`
+      }
+    )
 
-      if (storageError) throw storageError
+    if (result.pending) {
+      ElMessage({
+        type: 'success',
+        message: 'Application deletion submitted for approval'
+      })
+
+      return
     }
 
-    // 🔥 2. Delete application (CASCADE handles everything else)
-    const { error } = await supabase.rpc('delete_application_full2', {
-      p_application_id: app.application.id
-    })
+    // Only remove KYC files after successful direct deletion.
+    if (app.kyc_docs?.length) {
+      const paths = app.kyc_docs
+        .map((doc: any) => doc.file_name)
+        .filter(Boolean)
 
-    if (error) throw error
+      if (paths.length) {
+        const { error: storageError } = await supabase.storage
+          .from('kyc-documents')
+          .remove(paths)
+
+        if (storageError) {
+          console.error('Application deleted, but KYC cleanup failed:', storageError)
+
+          ElMessage({
+            type: 'warning',
+            message: 'Application deleted, but some KYC files could not be removed.'
+          })
+
+          await fetchApplications()
+          return
+        }
+      }
+    }
 
     ElMessage({
       type: 'success',

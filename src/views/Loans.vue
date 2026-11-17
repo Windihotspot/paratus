@@ -9,6 +9,9 @@ import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
 import * as pdfMake from 'pdfmake/build/pdfmake'
 import logoImage from '@/assets/New Logo_with_Paratus.png'
+import { useGatedRpc } from '@/composables/useGatedRpc'
+
+const { gatedRpc } = useGatedRpc()
 
 const authStore = useAuthStore()
 const merchantId = authStore.merchant.id
@@ -140,6 +143,7 @@ const selectLoanType = (type) => {
   if (type === 'new') loan.value.parent_loan_id = null
 }
 
+
 const submitLoan = async () => {
   if (!formRef.value) return
 
@@ -155,49 +159,35 @@ const submitLoan = async () => {
 
   loading.value = true
 
-  ElMessage({
-    message: isEditing.value ? 'Updating loan...' : 'Adding loan...',
-    type: 'info',
-    duration: 1500
-  })
-
   try {
-    /*
-    ============================================================
-    UPDATE EXISTING LOAN
-    ============================================================
-    */
+    let result
 
     if (isEditing.value) {
-      /*
-      ------------------------------------------------------------
-      UPDATE EXTENSION
-      ------------------------------------------------------------
-      */
-
+      // UPDATE EXISTING EXTENSION
       if (loan.value.loan_type === 'extension') {
-        const { error } = await supabase.rpc('update_loan_extension_v2_record_latest', {
-          p_loan_id: editingLoanId.value,
-          p_merchant_id: merchantId,
-          p_tenure_days: Number(loan.value.tenure_days)
-        })
+        const loanId = editingLoanId.value
 
-        if (error) throw error
+        result = await gatedRpc(
+          'update_loan_extension_v2_record_latest',
+          {
+            p_loan_id: loanId,
+            p_merchant_id: merchantId,
+            p_tenure_days: Number(loan.value.tenure_days)
+          },
+          {
+            entity: 'loan_extension',
+            entityId: loanId,
+            action: 'update',
+            summary: `Update loan extension tenure to ${loan.value.tenure_days} days`
+          }
+        )
 
-        ElNotification({
-          title: 'Success',
-          message: 'Extension updated!',
-          type: 'success'
-        })
       } else {
-        /*
-        ------------------------------------------------------------
-        UPDATE NORMAL LOAN
-        ------------------------------------------------------------
-        */
+        // UPDATE NORMAL LOAN
+        const loanId = editingLoanId.value
 
         const payload = {
-          p_loan_id: editingLoanId.value,
+          p_loan_id: loanId,
           p_merchant_id: merchantId,
           p_customer_id: loan.value.customer_id,
           p_facility_id: loan.value.facility_id,
@@ -209,25 +199,39 @@ const submitLoan = async () => {
           p_status: loan.value.status || 'active'
         }
 
-        console.log('Update Loan Payload:', payload)
+        result = await gatedRpc(
+          'update_single_loan',
+          payload,
+          {
+            entity: 'loan',
+            entityId: loanId,
+            action: 'update',
+            summary: `Update loan for ${loan.value.customer_id}`
+          }
+        )
+      }
 
-        const { error } = await supabase.rpc('update_single_loan', payload)
-
-        if (error) throw error
-
+      if (result.pending) {
         ElNotification({
-          title: 'Success',
-          message: 'Loan updated!',
+          title: 'Approval Requested',
+          message: 'Your loan update has been submitted for approval.',
           type: 'success'
         })
-      }
-    } else {
-      /*
-      ============================================================
-      CREATE NEW LOAN / EXTENSION
-      ============================================================
-      */
 
+        closeModal()
+        return
+      }
+
+      ElNotification({
+        title: 'Success',
+        message: loan.value.loan_type === 'extension'
+          ? 'Extension updated!'
+          : 'Loan updated!',
+        type: 'success'
+      })
+
+    } else {
+      // CREATE NEW LOAN OR EXTENSION
       const payload = {
         p_merchant_id: merchantId,
         p_customer_id: loan.value.customer_id,
@@ -238,37 +242,63 @@ const submitLoan = async () => {
         p_disbursed_at: loan.value.disbursed_at,
         p_agent_id: loan.value.agent_id || null,
         p_loan_type: loan.value.loan_type,
-        p_parent_loan_id: loan.value.loan_type === 'extension' ? loan.value.parent_loan_id : null
+        p_parent_loan_id:
+          loan.value.loan_type === 'extension'
+            ? loan.value.parent_loan_id
+            : null
       }
 
-      console.log('Add Loan Payload:', payload)
+      result = await gatedRpc(
+        'add_new_loan_extension_latest_v2',
+        payload,
+        {
+          entity: 'loan',
+          entityId: loan.value.parent_loan_id || null,
+          action: 'create',
+          summary: loan.value.loan_type === 'extension'
+            ? 'Create a loan extension'
+            : 'Create a new loan'
+        }
+      )
 
-      const { error } = await supabase.rpc('add_new_loan_extension_latest_v2', payload)
+      if (result.pending) {
+        ElNotification({
+          title: 'Approval Requested',
+          message: loan.value.loan_type === 'extension'
+            ? 'Your loan extension request has been submitted for approval.'
+            : 'Your new loan request has been submitted for approval.',
+          type: 'success'
+        })
 
-      if (error) throw error
+        closeModal()
+        return
+      }
 
       ElNotification({
         title: 'Success',
-        message: loan.value.loan_type === 'extension' ? 'Loan extended!' : 'Loan added!',
+        message: loan.value.loan_type === 'extension'
+          ? 'Loan extended!'
+          : 'Loan added!',
         type: 'success'
       })
     }
 
     await fetchLoans()
-
     closeModal()
+
   } catch (err) {
-    console.log('Loan Submission Error:', err)
+    console.error('Loan Submission Error:', err)
 
     ElNotification({
       title: 'Error',
-      message: err.message,
+      message: err.message || 'Loan operation failed',
       type: 'error'
     })
   } finally {
     loading.value = false
   }
 }
+
 const isNewExtension = computed(
   () => !isEditing.value && loan.value.loan_type === 'extension' && !!loan.value.parent_loan_id
 )
@@ -318,24 +348,58 @@ const cancelDelete = () => {
   showDeleteModal.value = false
   loanToDelete.value = null
 }
+
 const confirmDeleteLoan = async () => {
   if (!loanToDelete.value) return
+
   loading.value = true
+
   try {
-    const { error } = await supabase.rpc('delete_loan_v1_record', {
-      p_loan_id: loanToDelete.value.id
+    const targetLoan = loanToDelete.value
+
+    const result = await gatedRpc(
+      'delete_loan_v1_record',
+      {
+        p_loan_id: targetLoan.id
+      },
+      {
+        entity: 'loan',
+        entityId: targetLoan.id,
+        action: 'delete',
+        summary: `Delete loan for ${targetLoan.customer_name || 'customer'}`
+      }
+    )
+
+    if (result.pending) {
+      ElNotification({
+        title: 'Approval Requested',
+        message: 'Loan deletion has been submitted for approval.',
+        type: 'success'
+      })
+      return
+    }
+
+    ElNotification({
+      title: 'Deleted',
+      message: 'Loan deleted!',
+      type: 'success'
     })
-    if (error) throw error
-    ElNotification({ title: 'Deleted', message: 'Loan deleted!', type: 'success' })
+
     await fetchLoans()
+
   } catch (err) {
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to delete loan',
+      type: 'error'
+    })
   } finally {
     loading.value = false
     showDeleteModal.value = false
     loanToDelete.value = null
   }
 }
+
 
 // ── Status / Filter ──────────────────────────────────────
 const statusCategories = ['All', 'Active', 'Active < 5 days', 'Closed']
@@ -714,18 +778,47 @@ onMounted(() => {
   fetchCustomers()
   authStore.fetchFacilities()
 })
+
 const deleteExtension = async (ext) => {
   try {
-    const { error } = await supabase.rpc('delete_extension_loan', {
-      p_loan_id: ext.id
+    const result = await gatedRpc(
+      'delete_extension_loan',
+      {
+        p_loan_id: ext.id
+      },
+      {
+        entity: 'loan_extension',
+        entityId: ext.id,
+        action: 'delete',
+        summary: `Delete loan extension (${ext.tenure_days} days)`
+      }
+    )
+
+    if (result.pending) {
+      ElNotification({
+        title: 'Approval Requested',
+        message: 'Extension deletion has been submitted for approval.',
+        type: 'success'
+      })
+      return
+    }
+
+    ElNotification({
+      title: 'Deleted',
+      message: 'Extension removed',
+      type: 'success'
     })
-    if (error) throw error
-    ElNotification({ title: 'Deleted', message: 'Extension removed', type: 'success' })
+
     await fetchLoans()
   } catch (err) {
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to delete extension',
+      type: 'error'
+    })
   }
 }
+
 watch(
   () => loan.value.parent_loan_id,
   (newParentId) => {
@@ -758,24 +851,58 @@ const cancelDeleteExtension = () => {
   extensionToDelete.value = null
 }
 
+
 const confirmDeleteExtension = async () => {
   if (!extensionToDelete.value) return
+
   loading.value = true
+
   try {
-    const { error } = await supabase.rpc('delete_loan_v1_record_latest', {
-      p_loan_id: extensionToDelete.value.id
+    const extension = extensionToDelete.value
+
+    const result = await gatedRpc(
+      'delete_loan_v1_record_latest',
+      {
+        p_loan_id: extension.id
+      },
+      {
+        entity: 'loan_extension',
+        entityId: extension.id,
+        action: 'delete',
+        summary: `Delete loan extension (${extension.tenure_days} days)`
+      }
+    )
+
+    if (result.pending) {
+      ElNotification({
+        title: 'Approval Requested',
+        message: 'Extension deletion has been submitted for approval.',
+        type: 'success'
+      })
+      return
+    }
+
+    ElNotification({
+      title: 'Deleted',
+      message: 'Extension removed',
+      type: 'success'
     })
-    if (error) throw error
-    ElNotification({ title: 'Deleted', message: 'Extension removed', type: 'success' })
+
     await fetchLoans()
+
   } catch (err) {
-    ElNotification({ title: 'Error', message: err.message, type: 'error' })
+    ElNotification({
+      title: 'Error',
+      message: err.message || 'Failed to delete extension',
+      type: 'error'
+    })
   } finally {
     loading.value = false
     showDeleteExtensionModal.value = false
     extensionToDelete.value = null
   }
 }
+
 </script>
 
 <template>
