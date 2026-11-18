@@ -1165,7 +1165,7 @@ const formatActionDetails = (log: any) => {
                     icon
                     size="x-small"
                     variant="text"
-                    @click="copyField(selectedApp.application.nin, 'NIN')"
+                    @click="copyField(selectedApp.application.bvn, 'BVN')"
                   >
                     <v-icon size="16">mdi-content-copy</v-icon>
                   </v-btn>
@@ -1269,6 +1269,17 @@ const formatActionDetails = (log: any) => {
                     size="x-small"
                     variant="text"
                     @click="copyField(selectedApp.application.marital_status, 'Marital status')"
+                  >
+                    <v-icon size="16">mdi-content-copy</v-icon>
+                  </v-btn>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <div><b>Agent:</b> {{ selectedApp.application.agent }}</div>
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click="copyField(selectedApp.application.agent, 'Agent')"
                   >
                     <v-icon size="16">mdi-content-copy</v-icon>
                   </v-btn>
