@@ -257,14 +257,16 @@ onMounted(() => {
 <template>
     <main-layout>
          <div class="approval-page mt-4">
-    <div class="d-flex flex-wrap align-center justify-space-between ga-3 mb-6">
-      <div>
-        <p class="text-xl text-bold  mt-1">
-          Review and manage submitted operation requests.
-        </p>
-      </div>
-
-      <v-btn
+    <div class="">
+    <!-- Header -->
+          <div class="bg-white flex rounded shadow justify-between items-center border-b p-4 mb-4">
+            <div>
+              <h1 class="text-xl font-bold">Approval requests</h1>
+              <p class="text-sm text-gray-500"> Review and manage submitted operation requests.</p>
+            </div>
+    
+            <v-btn
+            color="green"
         variant="outlined"
         prepend-icon="mdi-refresh"
         :loading="loading"
@@ -272,6 +274,10 @@ onMounted(() => {
       >
         Refresh
       </v-btn>
+          </div>
+      
+
+      
     </div>
 
     <v-card rounded="lg" elevation="0" border>
