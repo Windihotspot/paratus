@@ -320,9 +320,9 @@ async function permanentlyDeleteNotification(n) {
 </script>
 
 <template>
-  <v-menu v-model="menu" :close-on-content-click="false" location="bottom end" offset="8">
+  <v-menu class="ma-4" v-model="menu" :close-on-content-click="false" location="bottom end" offset="8">
     <template #activator="{ props }">
-      <v-btn v-bind="props" icon variant="text" size="small" aria-label="Notifications">
+      <v-btn class="m-4" v-bind="props" icon variant="text" size="large" aria-label="Notifications">
         <v-badge
           :model-value="unreadCount > 0"
           :content="unreadCount > 99 ? '99+' : unreadCount"
