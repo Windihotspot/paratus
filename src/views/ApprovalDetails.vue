@@ -300,6 +300,13 @@ const getStatusLabel = (status: string) => {
   if (!status) return 'Pending'
   return formatLabel(status)
 }
+const isAdmin = computed(() => {
+  const role = authStore.role || authStore.profile?.role
+
+  return ['admin', 'super_admin'].includes(
+    String(role || '').toLowerCase()
+  )
+})
 
 const loadRequest = async () => {
   if (!userId.value || !requestId.value) {
@@ -312,12 +319,18 @@ const loadRequest = async () => {
   errorMessage.value = ''
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('approval_requests')
       .select('*')
       .eq('id', requestId.value)
-      .eq('requested_by', userId.value)
-      .maybeSingle()
+
+    // Administrators can view requests submitted by other users.
+    // Ordinary users can only view their own requests.
+    if (!isAdmin.value) {
+      query = query.eq('requested_by', userId.value)
+    }
+
+    const { data, error } = await query.maybeSingle()
 
     if (error) throw error
 
@@ -329,6 +342,7 @@ const loadRequest = async () => {
 
     request.value = data
 
+    // Load reviewer information
     if (data.reviewed_by) {
       const { data: reviewer, error: reviewerError } = await supabase
         .from('profiles')
@@ -341,16 +355,19 @@ const loadRequest = async () => {
       } else {
         reviewerName.value = 'Administrator'
       }
+    } else {
+      reviewerName.value = 'Not yet reviewed'
     }
+
   } catch (error: any) {
     console.error('Approval details error:', error)
+
     errorMessage.value =
       error.message || 'Unable to load approval details.'
   } finally {
     loading.value = false
   }
 }
-
 const goBack = () => {
   router.back()
 }
@@ -427,7 +444,7 @@ onMounted(loadRequest)
 
             <h1>Approval Details</h1>
             <p>
-              Track your submitted request and view its complete details.
+              Track submitted request and view its complete details.
             </p>
           </div>
 
