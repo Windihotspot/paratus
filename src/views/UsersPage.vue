@@ -28,7 +28,7 @@ const editRole = ref('')
 const editStatus = ref('active')
 
 // options
-const roles = ['admin', 'staff', 'viewer']
+const roles = ['super_admin', 'admin', 'staff', 'viewer']
 const statuses = ['active', 'suspended']
 
 // =====================
@@ -44,7 +44,27 @@ const filteredUsers = computed(() => {
       .includes(search.value.toLowerCase())
   )
 })
+const getRoleColor = (role: string) => {
+  const colors: Record<string, string> = {
+    super_admin: 'deep-purple',
+    admin: 'primary',
+    staff: 'success',
+    viewer: 'warning'
+  }
 
+  return colors[role] || 'grey'
+}
+
+const formatRole = (role: string) => {
+  const labels: Record<string, string> = {
+    super_admin: 'Super Admin',
+    admin: 'Admin',
+    staff: 'Staff',
+    viewer: 'Viewer'
+  }
+
+  return labels[role] || role
+}
 // =====================
 // OPEN CREATE
 // =====================
@@ -344,9 +364,14 @@ onMounted(async () => {
               <td>{{ user.email }}</td>
 
               <td>
-                <v-chip size="small" color="primary">
-                  {{ user.role }}
-                </v-chip>
+                <v-chip
+  size="small"
+  :color="getRoleColor(user.role)"
+  variant="tonal"
+  class="font-weight-medium"
+>
+  {{ formatRole(user.role) }}
+</v-chip>
               </td>
 
               <td>
