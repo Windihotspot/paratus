@@ -82,12 +82,15 @@ const closeBankModal = () => {
 SUBMIT BANK
 -------------------------*/
 
+/* ------------------------
+SUBMIT BANK
+------------------------- */
 const submitBank = async () => {
   if (!formRef.value) return
 
   const formValid = await formRef.value.validate()
 
-  if (!formValid) {
+  if (!formValid.valid) {
     ElMessage({
       message: 'Please fix form errors',
       type: 'error'
@@ -100,46 +103,24 @@ const submitBank = async () => {
   try {
     const bankName = bankForm.value.name.trim()
 
-    const result = await gatedRpc(
-      isEditing.value ? 'update_bank' : 'add_bank',
-      isEditing.value
-        ? {
-            p_id: editingBankId.value,
-            p_name: bankName
-          }
-        : {
-            p_name: bankName
-          },
-      {
-        entity: 'bank',
-        entityId: isEditing.value ? editingBankId.value : null,
-        action: isEditing.value ? 'update' : 'create',
-        summary: isEditing.value
-          ? `Update bank ${bankName}`
-          : `Create bank ${bankName}`
-      }
-    )
+    let result
 
-    if (result.pending) {
-      ElNotification({
-        title: 'Submitted for Approval',
-        message: `Your request to ${isEditing.value ? 'update' : 'create'} ${bankName} has been sent for approval.`,
-        type: 'success'
-      })
+    if (isEditing.value) {
+      result = await supabase.from('banks').update({ name: bankName }).eq('id', editingBankId.value)
     } else {
-      ElNotification({
-        title: 'Success',
-        message: isEditing.value
-          ? 'Bank updated successfully'
-          : 'Bank added successfully',
-        type: 'success'
-      })
-
-      await fetchBanks()
+      result = await supabase.from('banks').insert([{ name: bankName }])
     }
 
-    closeBankModal()
+    if (result.error) throw result.error
 
+    ElNotification({
+      title: 'Success',
+      message: isEditing.value ? 'Bank updated successfully' : 'Bank added successfully',
+      type: 'success'
+    })
+
+    await fetchBanks()
+    closeBankModal()
   } catch (err) {
     ElNotification({
       title: 'Error',
@@ -164,7 +145,9 @@ const cancelDelete = () => {
   bankToDelete.value = null
 }
 
-
+/* ------------------------
+DELETE BANK
+------------------------- */
 const confirmDelete = async () => {
   if (!bankToDelete.value) return
 
@@ -173,34 +156,20 @@ const confirmDelete = async () => {
   try {
     const bank = bankToDelete.value
 
-    const result = await gatedRpc(
-      'delete_bank',
-      {
-        p_id: bank.id
-      },
-      {
-        entity: 'bank',
-        entityId: bank.id,
-        action: 'delete',
-        summary: `Delete bank ${bank.name}`
-      }
-    )
+    const { error } = await supabase
+      .from('banks')
+      .delete()
+      .eq('id', bank.id)
 
-    if (result.pending) {
-      ElNotification({
-        title: 'Submitted for Approval',
-        message: `Your request to delete ${bank.name} has been sent for approval.`,
-        type: 'success'
-      })
-    } else {
-      ElNotification({
-        title: 'Deleted',
-        message: 'Bank deleted successfully',
-        type: 'success'
-      })
+    if (error) throw error
 
-      await fetchBanks()
-    }
+    ElNotification({
+      title: 'Deleted',
+      message: 'Bank deleted successfully',
+      type: 'success'
+    })
+
+    await fetchBanks()
 
   } catch (err) {
     ElNotification({
@@ -214,7 +183,6 @@ const confirmDelete = async () => {
     loading.value = false
   }
 }
-
 
 onMounted(fetchBanks)
 </script>
