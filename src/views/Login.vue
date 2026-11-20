@@ -24,16 +24,21 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 // Handle Login Submission
+
 const submitForm = async () => {
   loginForm.value.processing = true
-  loginForm.value.errors = {}
+  loginForm.value.errors = {
+    email: '',
+    password: ''
+  }
 
   try {
     // 1. Authenticate user
-    const { data: userResponse, error } = await supabase.auth.signInWithPassword({
-      email: loginForm.value.email,
-      password: loginForm.value.password
-    })
+    const { data: userResponse, error } =
+      await supabase.auth.signInWithPassword({
+        email: loginForm.value.email,
+        password: loginForm.value.password
+      })
 
     if (error) {
       if (error.message.toLowerCase().includes('email')) {
@@ -48,28 +53,51 @@ const submitForm = async () => {
 
     userData.value = userResponse.user
 
-    // 2. Fetch merchant details
-    let merchant = null
-
-    // 1. Try NEW system (profiles → merchant_id)
+    // 2. Fetch user profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userData.value.id)
       .single()
-    console.log('PROFILE FROM DB:', profile)
-    const role = profile?.role || 'viewer'
 
+    console.log('PROFILE FROM DB:', profile)
+
+    if (profileError || !profile) {
+      loginForm.value.errors.email = 'Unable to retrieve your account profile'
+      await supabase.auth.signOut()
+      return
+    }
+
+    // 3. Validate account status
+    if (profile.status !== 'active') {
+      loginForm.value.errors.email = 'Your account is inactive. Contact your administrator.'
+      await supabase.auth.signOut()
+      return
+    }
+
+    const role = profile.role || 'viewer'
+
+    // 4. Role-based redirect
     const roleRedirectMap = {
+      super_admin: '/dashboard',
       admin: '/dashboard',
       staff: '/applications',
       viewer: '/applications'
     }
 
-    // fallback safety
     const targetRoute = roleRedirectMap[role]
 
-    if (!profileError && profile?.merchant_id) {
+    if (!targetRoute) {
+      loginForm.value.errors.email = 'Your account does not have an authorized role.'
+      await supabase.auth.signOut()
+      return
+    }
+
+    // 5. Fetch merchant (super_admin can operate without one)
+    let merchant = null
+    let facilities = []
+
+    if (profile.merchant_id) {
       const { data: m, error: merchantError } = await supabase
         .from('merchants')
         .select('*')
@@ -81,7 +109,7 @@ const submitForm = async () => {
       }
     }
 
-    // 2. Fallback to OLD system (merchants.user_id)
+    // Fallback to legacy merchant relationship
     if (!merchant) {
       const { data: legacyMerchant, error: legacyError } = await supabase
         .from('merchants')
@@ -94,30 +122,39 @@ const submitForm = async () => {
       }
     }
 
-    // 3. Safety check
-    if (!merchant) {
+    // Staff, admin and viewer must have a merchant
+    if (!merchant && role !== 'super_admin') {
       loginForm.value.errors.email = 'No merchant linked to this account'
+      await supabase.auth.signOut()
       return
     }
 
     merchantData.value = merchant
 
-    // 3. Fetch merchant facilities via RPC
-    const { data: facilities, error: facilitiesError } = await supabase.rpc(
-      'get_merchant_facilities_v2',
-      { p_merchant_id: merchant.id }
-    )
+    // 6. Fetch merchant facilities only when merchant exists
+    if (merchant) {
+      const { data: merchantFacilities, error: facilitiesError } =
+        await supabase.rpc('get_merchant_facilities_v2', {
+          p_merchant_id: merchant.id
+        })
 
-    if (facilitiesError) {
-      console.error('Facilities fetch error:', facilitiesError)
+      if (facilitiesError) {
+        console.error('Facilities fetch error:', facilitiesError)
+      } else {
+        facilities = merchantFacilities || []
+      }
     }
 
-    // 4. Save everything into Pinia + localStorage
+    // 7. Save authentication details
     authStore.setAuth(userData.value, merchant, profile)
-    authStore.setFacilities(facilities || [])
+    authStore.setFacilities(facilities)
 
-    // 5. Redirect to dashboard
-    router.push(targetRoute)
+    // 8. Redirect
+    console.log('LOGIN ROLE:', role)
+    console.log('REDIRECT TARGET:', targetRoute)
+
+    await router.replace(targetRoute)
+
   } catch (err) {
     console.error('Login error:', err)
     loginForm.value.errors.email = 'Something went wrong. Try again.'
@@ -125,6 +162,7 @@ const submitForm = async () => {
     loginForm.value.processing = false
   }
 }
+
 </script>
 
 <template>

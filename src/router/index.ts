@@ -39,7 +39,7 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
-      meta: { roles: ['admin', 'staff', 'viewer'] }
+      meta: { roles: ['super_admin', 'admin',] }
     },
 
     // =====================
@@ -49,49 +49,49 @@ const router = createRouter({
       path: '/facilities',
       name: 'facilities',
       component: Facilities,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin','super_admin', 'staff'] }
     },
     {
       path: '/loans',
       name: 'loans',
       component: Loans,
-      meta: { roles: ['admin', 'staff', 'viewer'] }
+      meta: { roles: ['admin', 'super_admin', 'staff', 'viewer'] }
     },
     {
       path: '/customers',
       name: 'customers',
       component: Customers,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin','super_admin', 'staff'] }
     },
     {
       path: '/profit-loss',
       name: 'profit-loss',
       component: ProfitLoss,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin','super_admin',] }
     },
     {
       path: '/repayments',
       name: 'repayments',
       component: Repayments,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin', 'super_admin', 'staff'] }
     },
     {
       path: '/agents',
       name: 'agents',
       component: Agents,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin','super_admin', 'staff'] }
     },
     {
       path: '/logs',
       name: 'logs',
       component: Logs,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin','super_admin',] }
     },
     {
       path: '/banks',
       name: 'banks',
       component: Banks,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin','super_admin',] }
     },
 
     // =====================
@@ -107,7 +107,7 @@ const router = createRouter({
       path: '/applications',
       name: 'applications',
       component: Applications,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin', 'super_admin','staff'] }
     },
 
     // =====================
@@ -117,31 +117,31 @@ const router = createRouter({
       path: '/users',
       name: 'users',
       component: UsersPage,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin', 'super_admin',] }
     },
     {
       path: '/facilities-bank',
       name: 'facilities-bank',
       component: FacilitiesBank,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin', 'super_admin',] }
     },
     {
       path: '/facilities-loans',
       name: 'facilities-loans',
       component: FacilityLoans,
-      meta: { roles: ['admin'] }
+      meta: { roles: ['admin', 'super_admin',] }
     },
     {
       path: '/expenses',
       name: 'expenses',
       component: ExpensesPage,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin','super_admin', 'staff'] }
     },
     {
       path: '/403',
       name: 'forbidden',
       component: Forbidden,
-      meta: { roles: ['admin', 'staff'] }
+      meta: { roles: ['admin','super_admin', 'staff'] }
     },
     {
       path: '/approvals',

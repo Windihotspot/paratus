@@ -48,10 +48,11 @@ const displayRole = computed(() => {
   const role = profile.value.role || 'viewer'
 
   const map = {
-    admin: 'Admin',
-    staff: 'Staff',
-    viewer: 'Viewer'
-  }
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  staff: 'Staff',
+  viewer: 'Viewer'
+}
 
   return map[role] || 'Viewer'
 })

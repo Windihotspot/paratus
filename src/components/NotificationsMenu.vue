@@ -7,6 +7,8 @@ import { useAuthStore } from '@/stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
+
+
 const menu = ref(false)
 const loading = ref(false)
 const notifications = ref([])
@@ -64,31 +66,45 @@ const visible = computed(() => {
 
 // ── Data ─────────────────────────────────────────────
 async function load() {
-  if (!userId.value) return
+  if (!userId.value) {
+    console.warn('No notification user ID found')
+    return
+  }
+
   loading.value = true
+
   try {
-    const { data, error } = await supabase
+    const { data, error, status, statusText } = await supabase
       .from('notifications')
-      .select(
-        `
-    id,
-    type,
-    title,
-    body,
-    request_id,
-    read_at,
-    archived_at,
-    deleted_at,
-    created_at
-  `
-      )
+      .select(`
+        id,
+        type,
+        title,
+        body,
+        request_id,
+        read_at,
+        archived_at,
+        deleted_at,
+        created_at
+      `)
       .eq('recipient_user_id', userId.value)
       .order('created_at', { ascending: false })
       .limit(100)
+
+    console.log('NOTIFICATION DIAGNOSTICS:', {
+      userId: userId.value,
+      data,
+      error,
+      status,
+      statusText,
+      count: data?.length
+    })
+
     if (error) throw error
+
     notifications.value = data || []
   } catch (e) {
-    console.error('Error loading notifications:', e)
+    console.error('Notification loading failed:', e)
   } finally {
     loading.value = false
   }
@@ -317,6 +333,9 @@ async function permanentlyDeleteNotification(n) {
     console.error('Permanent deletion failed:', error)
   }
 }
+console.log('Authenticated user:', authStore.user?.id)
+console.log('Profile ID:', authStore.profile?.id)
+console.log('Notification recipient ID:', userId.value)
 </script>
 
 <template>
