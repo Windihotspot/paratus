@@ -20,6 +20,7 @@ const search = ref('')
 const reviewNote = ref('')
 const reviewDecision = ref(null)
 const requesterNames = ref({})
+const requestEntityNames = ref({})
 const statusOptions = [
   { title: 'Pending', value: 'pending' },
   { title: 'Approved', value: 'approved' },
@@ -48,7 +49,7 @@ const filteredRequests = computed(() => {
 
   return requests.value.filter(request =>
     [
-      request.summary,
+      displaySummary(request),
       request.fn,
       request.entity,
       request.action,
@@ -122,10 +123,99 @@ async function loadRequesterNames(requestsList) {
     ])
   )
 }
+async function loadRequestEntityNames(requestsList = []) {
+  const entitySources = [
+    {
+      table: 'customers',
+      keys: ['p_customer_id', 'customer_id']
+    },
+    {
+      table: 'agents',
+      keys: ['p_agent_id', 'agent_id']
+    },
+    {
+      table: 'bank_facilities',
+      keys: ['p_facility_id', 'facility_id']
+    },
+    {
+      table: 'merchants',
+      keys: ['p_merchant_id', 'merchant_id']
+    }
+  ]
+
+  const names = {}
+
+  await Promise.all(
+    entitySources.map(async ({ table, keys }) => {
+      const ids = [
+        ...new Set(
+          requestsList.flatMap(request => {
+            const args = request.args || {}
+
+            return keys
+              .map(key => args[key])
+              .filter(Boolean)
+          })
+        )
+      ]
+
+      if (!ids.length) return
+
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .in('id', ids)
+
+      if (error) {
+        console.error(`Could not resolve ${table} names:`, error)
+        return
+      }
+
+      ;(data || []).forEach(record => {
+        names[record.id] = getRecordName(record)
+      })
+    })
+  )
+
+  // Include merchant IDs stored directly on the approval request.
+  const merchantIds = [
+    ...new Set(
+      requestsList
+        .map(request => request.merchant_id)
+        .filter(Boolean)
+    )
+  ]
+
+  const unresolvedMerchantIds = merchantIds.filter(
+    id => !names[id]
+  )
+
+  if (unresolvedMerchantIds.length) {
+    const { data, error } = await supabase
+      .from('merchants')
+      .select('*')
+      .in('id', unresolvedMerchantIds)
+
+    if (error) {
+      console.error('Could not resolve merchant names:', error)
+    } else {
+      ;(data || []).forEach(record => {
+        names[record.id] = getRecordName(record)
+      })
+    }
+  }
+
+  requestEntityNames.value = names
+}
 async function loadRequests() {
   if (!isAdmin.value) return
 
   loading.value = true
+
+  // Clear previously displayed data immediately.
+  requests.value = []
+  requesterNames.value = {}
+  requestEntityNames.value = {}
 
   try {
     let query = supabase
@@ -138,30 +228,46 @@ async function loadRequests() {
     }
 
     const { data, error } = await query
-    console.log("requests:", data)
+
     if (error) throw error
 
-    requests.value = data || []
-    await loadRequesterNames(requests.value)
+    const loadedRequests = data || []
 
-    // Keep the currently open drawer in sync after refreshing.
+    // Load all supporting information before exposing the rows.
+    await Promise.all([
+      loadRequesterNames(loadedRequests),
+      loadRequestEntityNames(loadedRequests)
+    ])
+
+    // Publish the requests only after their supporting information loads.
+    requests.value = loadedRequests
+
+    // Keep the currently open drawer synchronized.
     if (selectedRequest.value) {
-      const updated = requests.value.find(
+      const updated = loadedRequests.find(
         item => item.id === selectedRequest.value.id
       )
 
-      if (updated) selectedRequest.value = updated
-      else {
-        // The selected request may no longer match the active filter.
+      if (updated) {
+        selectedRequest.value = updated
+      } else {
         const { data: latest, error: latestError } = await supabase
           .from('approval_requests')
           .select('*')
           .eq('id', selectedRequest.value.id)
           .single()
 
-        if (!latestError && latest) selectedRequest.value = latest
+        if (!latestError && latest) {
+          selectedRequest.value = latest
+
+          await loadRequestEntityNames([
+            ...loadedRequests,
+            latest
+          ])
+        }
       }
     }
+
   } catch (error) {
     console.error('Error loading approval requests:', error)
     notify(error.message || 'Could not load approval requests', 'error')
@@ -172,6 +278,7 @@ async function loadRequests() {
 
 async function openRequest(item) {
   selectedRequest.value = item
+
   reviewNote.value = ''
   reviewDecision.value = null
 
@@ -185,6 +292,8 @@ async function openRequest(item) {
     reviewer: null
   }
 
+  // Set loading before opening the drawer.
+  loadingRelated.value = true
   drawer.value = true
 
   await loadRelatedRecords(item)
@@ -279,7 +388,6 @@ async function getRecord(table, id) {
 async function loadRelatedRecords(request) {
   if (!request) return
 
-  loadingRelated.value = true
 
   const args = request.args || {}
 
@@ -341,6 +449,19 @@ function getRecordName(record) {
     record.email ||
     'Name unavailable'
   )
+}
+function displaySummary(request) {
+  if (!request) return 'Operation request'
+
+  const summary = request.summary || 'Operation request'
+
+  // Match standard UUIDs in the saved summary.
+  const uuidRegex =
+    /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi
+
+  return summary.replace(uuidRegex, id => {
+    return requestEntityNames.value[id] || 'related record'
+  })
 }
 
 function getRecordReference(record) {
@@ -432,7 +553,7 @@ function formatDateOnly(value) {
 
       <v-data-table
         :headers="headers"
-        :items="filteredRequests"
+        :items="loading ? [] : filteredRequests"
         :loading="loading"
         item-value="id"
         hover
@@ -442,7 +563,7 @@ function formatDateOnly(value) {
         <template #item.summary="{ item }">
           <div class="py-2">
             <div class="font-weight-medium text-body-2">
-              {{ item.summary || 'Operation request' }}
+             {{ displaySummary(item) }}
             </div>
             
           </div>
@@ -518,6 +639,31 @@ function formatDateOnly(value) {
 >
   <template v-if="selectedRequest">
 
+  <!-- SHOW NOTHING EXCEPT LOADING UNTIL ALL DETAILS ARE READY -->
+  <div
+    v-if="loadingRelated"
+    class="d-flex flex-column align-center justify-center pa-10"
+    style="min-height: 350px"
+  >
+    <v-progress-circular
+      indeterminate
+      size="36"
+      width="3"
+      color="primary"
+    />
+
+    <div class="text-body-2 font-weight-medium mt-4">
+      Loading request details...
+    </div>
+
+    <div class="text-caption text-medium-emphasis mt-1">
+      Preparing all related records for review
+    </div>
+  </div>
+
+  <!-- DISPLAY THE COMPLETE DRAWER ONLY AFTER LOADING -->
+  <template v-else>
+
     <!-- HEADER -->
     <div class="drawer-header pa-5">
       <div class="d-flex align-center justify-space-between mb-4">
@@ -586,7 +732,7 @@ function formatDateOnly(value) {
       </div>
 
       <h3 class="text-subtitle-1 font-weight-bold mb-1">
-        {{ selectedRequest.summary || 'Operation request' }}
+        {{ displaySummary(selectedRequest) }}
       </h3>
 
       <div class="text-caption text-medium-emphasis">
@@ -1040,7 +1186,8 @@ function formatDateOnly(value) {
       </section>
 
     </div>
-  </template>
+    </template>
+</template>
 </v-navigation-drawer>
 
   </div>
