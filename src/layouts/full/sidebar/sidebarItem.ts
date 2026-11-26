@@ -54,6 +54,11 @@ const sidebarItems = [
     path: '/expenses',
     icon: 'mdi-account-tie' // User with tie icon
   },
+  {
+    title: 'Credit & Debit',
+    path: '/credit-debit',
+    icon: 'mdi-account-tie' // User with tie icon
+  },
   // {
   //   title: 'Revenue',
   //   path: '/revenue',

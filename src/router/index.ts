@@ -152,6 +152,14 @@ const router = createRouter({
       }
     },
     {
+      path: '/credit-debit',
+      name: 'CreditDebit',
+      component: () => import('@/views/CreditDebit.vue'),
+      meta: {
+        roles: ['admin', 'super_admin']
+      }
+    },
+    {
       path: '/approval-details/:id',
       name: 'ApprovalDetails',
       component: () => import('@/views/ApprovalDetails.vue'),

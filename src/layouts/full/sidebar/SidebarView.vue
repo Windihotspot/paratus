@@ -85,6 +85,14 @@ const goTo = (url) => {
     <div class="flex mt-4 flex-col items-center">
       <span
         class="text-xs mt-2 font-medium text-red-600 hover:text-red-700 cursor-pointer transition"
+        @click="goTo('https://admin.anniepetars.com/')"
+      >
+        Anie Petars
+      </span>
+    </div>
+    <div class="flex mt-4 flex-col items-center">
+      <span
+        class="text-xs mt-2 font-medium text-red-600 hover:text-red-700 cursor-pointer transition"
         @click="goTo('https://cib.globusbank.com/')"
       >
         Globus Bank
